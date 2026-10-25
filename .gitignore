@@ -1,0 +1,29 @@
+
+node_modules/
+**/node_modules/
+
+
+dist/
+build/
+coverage/
+
+
+.env
+.env.*
+!.env.example
+!**/.env.example
+
+
+*.log
+
+
+.DS_Store
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+
+# Locally installed agent skills and their generated links/lockfile
+/backend/.agents/skills/
+/backend/.claude/skills/
+/backend/.windsurf/skills/
+/backend/skills-lock.json

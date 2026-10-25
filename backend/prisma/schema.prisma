@@ -1,0 +1,228 @@
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  admin
+  bidder
+  auctioneer
+
+  @@map("user_role")
+}
+
+enum LotStatus {
+  draft
+  scheduled
+  open
+  closed
+  cancelled
+
+  @@map("lot_status")
+}
+
+enum WalletTransactionType {
+  deposit
+  withdrawal
+  auction_purchase
+  auction_sale
+  refund
+
+  @@map("wallet_transaction_type")
+}
+
+enum WalletHoldStatus {
+  active
+  released
+  captured
+
+  @@map("wallet_hold_status")
+}
+
+model User {
+  id           String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name         String
+  email        String          @unique
+  role         UserRole
+  isActive     Boolean         @default(true) @map("is_active")
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime        @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  wallet       Wallet?
+  lots         Lot[]
+  bids         Bid[]
+  wonAuctions  AuctionResult[] @relation("AuctionWinner")
+  soldAuctions AuctionResult[] @relation("AuctionOwner")
+  auditEvents  AuditEvent[]
+
+  @@map("users")
+}
+
+model Wallet {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId       String              @unique @map("user_id") @db.Uuid
+  currency     String              @default("USD") @db.Char(3)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  user         User                @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  holds        WalletHold[]
+  transactions WalletTransaction[]
+
+  @@map("wallets")
+}
+
+model Lot {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ownerId            String         @map("owner_id") @db.Uuid
+  title              String
+  description        String?
+  status             LotStatus      @default(draft)
+  currency           String         @default("USD") @db.Char(3)
+  startTime          DateTime       @map("start_time") @db.Timestamptz(6)
+  endTime            DateTime       @map("end_time") @db.Timestamptz(6)
+  startingBid        Decimal        @map("starting_bid") @db.Decimal(19, 2)
+  bidIncrement       Decimal        @map("bid_increment") @db.Decimal(19, 2)
+  cancelledAt        DateTime?      @map("cancelled_at") @db.Timestamptz(6)
+  cancellationReason String?        @map("cancellation_reason")
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime       @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  owner              User           @relation(fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items              Item[]
+  bids               Bid[]
+  result             AuctionResult?
+  auditEvents        AuditEvent[]
+
+  @@unique([id, ownerId])
+  @@index([ownerId])
+  @@index([status, endTime])
+  @@map("lots")
+}
+
+model Item {
+  id              String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lotId           String    @map("lot_id") @db.Uuid
+  name            String
+  description     String?
+  estimatedValue  Decimal   @map("estimated_value") @db.Decimal(19, 2)
+  imageUrl        String?   @map("image_url")
+  position        Int       @default(0)
+  articArtworkId  Int?      @map("artic_artwork_id")
+  articImageId    String?   @map("artic_image_id")
+  artistDisplay   String?   @map("artist_display")
+  creditLine      String?   @map("credit_line")
+  isPublicDomain  Boolean?  @map("is_public_domain")
+  sourceSnapshot  Json?     @map("source_snapshot") @db.JsonB
+  sourceFetchedAt DateTime? @map("source_fetched_at") @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  lot             Lot       @relation(fields: [lotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([lotId, articArtworkId])
+  @@index([lotId])
+  @@map("items")
+}
+
+model Bid {
+  id                 String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lotId              String         @map("lot_id") @db.Uuid
+  bidderId           String         @map("bidder_id") @db.Uuid
+  amount             Decimal        @db.Decimal(19, 2)
+  /// Eligible bid; being outbid does not deactivate it.
+  isActive           Boolean        @default(true) @map("is_active")
+  isWinner           Boolean        @default(false) @map("is_winner")
+  invalidatedAt      DateTime?      @map("invalidated_at") @db.Timestamptz(6)
+  invalidationReason String?        @map("invalidation_reason")
+  idempotencyKey     String         @unique @map("idempotency_key") @db.Uuid
+  createdAt          DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  lot                Lot            @relation(fields: [lotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  bidder             User           @relation(fields: [bidderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  hold               WalletHold?
+  result             AuctionResult?
+
+  @@unique([id, lotId, bidderId])
+  @@index([lotId, amount(sort: Desc), createdAt])
+  @@index([bidderId])
+  @@map("bids")
+}
+
+model WalletHold {
+  id         String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId   String           @map("wallet_id") @db.Uuid
+  bidId      String           @unique @map("bid_id") @db.Uuid
+  amount     Decimal          @db.Decimal(19, 2)
+  status     WalletHoldStatus @default(active)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  releasedAt DateTime?        @map("released_at") @db.Timestamptz(6)
+  capturedAt DateTime?        @map("captured_at") @db.Timestamptz(6)
+  wallet     Wallet           @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  bid        Bid              @relation(fields: [bidId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([walletId, status])
+  @@map("wallet_holds")
+}
+
+model AuctionResult {
+  id           String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lotId        String              @unique @map("lot_id") @db.Uuid
+  winnerId     String              @map("winner_id") @db.Uuid
+  ownerId      String              @map("owner_id") @db.Uuid
+  winningBidId String              @unique @map("winning_bid_id") @db.Uuid
+  endedAt      DateTime            @map("ended_at") @db.Timestamptz(6)
+  settledAt    DateTime?           @map("settled_at") @db.Timestamptz(6)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  lot          Lot                 @relation(fields: [lotId, ownerId], references: [id, ownerId], onDelete: Restrict, onUpdate: Restrict)
+  winningBid   Bid                 @relation(fields: [winningBidId, lotId, winnerId], references: [id, lotId, bidderId], onDelete: Restrict, onUpdate: Restrict)
+  winner       User                @relation("AuctionWinner", fields: [winnerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  owner        User                @relation("AuctionOwner", fields: [ownerId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  transactions WalletTransaction[]
+
+  @@unique([lotId, ownerId])
+  @@unique([winningBidId, lotId, winnerId])
+  @@index([winnerId])
+  @@index([ownerId])
+  @@map("auction_results")
+}
+
+model WalletTransaction {
+  id                String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  walletId          String                @map("wallet_id") @db.Uuid
+  type              WalletTransactionType
+  amount            Decimal               @db.Decimal(19, 2)
+  auctionResultId   String?               @map("auction_result_id") @db.Uuid
+  transferId        String?               @map("transfer_id") @db.Uuid
+  externalReference String?               @map("external_reference")
+  idempotencyKey    String                @unique @map("idempotency_key") @db.Uuid
+  description       String?
+  createdAt         DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  wallet            Wallet                @relation(fields: [walletId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  auctionResult     AuctionResult?        @relation(fields: [auctionResultId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([auctionResultId, type])
+  @@index([walletId, createdAt])
+  @@index([transferId])
+  @@map("wallet_transactions")
+}
+
+model AuditEvent {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  lotId      String?  @map("lot_id") @db.Uuid
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  entityType String   @map("entity_type")
+  entityId   String   @map("entity_id") @db.Uuid
+  requestId  String?  @map("request_id") @db.Uuid
+  beforeData Json?    @map("before_data") @db.JsonB
+  afterData  Json?    @map("after_data") @db.JsonB
+  metadata   Json?    @db.JsonB
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  lot        Lot?     @relation(fields: [lotId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([lotId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([actorId])
+  @@map("audit_events")
+}
