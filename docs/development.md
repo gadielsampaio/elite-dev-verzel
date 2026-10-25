@@ -1,0 +1,134 @@
+# Development environment
+
+[Documentation index](README.md)
+
+## Requirements and configuration
+
+Install Docker with the Compose plugin and start its daemon. Use Node.js 24 and npm
+only if running backend commands on the host. Postman is optional. Run the Docker
+commands below from the repository root.
+
+For a new checkout, copy the root template once (keep an existing `.env`):
+
+```sh
+cp .env.example .env
+```
+
+Edit the local file with your development values; do not commit it. The root
+[.env.example](../.env.example) defines these variables:
+
+| Variable            | Use                                |
+| ------------------- | ---------------------------------- |
+| `POSTGRES_USER`     | PostgreSQL initialization user     |
+| `POSTGRES_PASSWORD` | PostgreSQL initialization password |
+| `POSTGRES_DB`       | PostgreSQL initialization database |
+
+Compose builds the API's `DATABASE_URL` from those variables using hostname `db`
+and port `5432`. Use URL-safe local development values: Compose interpolates them into the URL
+without encoding. Encoding the root password alone would also change the password
+given to PostgreSQL, so it is not a workaround for reserved characters. PostgreSQL
+initialization variables apply when the data volume is first initialized; changing
+`.env` does not change credentials in an existing database.
+
+`backend/.env` is separate and is not required for Compose. For host execution,
+copy [backend/.env.example](../backend/.env.example) to `backend/.env` if it does
+not already exist, then configure `DATABASE_URL` to match the local database.
+Use `localhost:5432` on the host. `PORT` optionally overrides the host API port.
+Prisma's config loads dotenv; the application bootstrap does not explicitly load
+it, so use the `--env-file` commands below. Both actual `.env` files are ignored.
+
+## Start, inspect, and stop
+
+```sh
+docker compose up --build
+```
+
+This runs in the foreground; use `docker compose up --build -d` for detached mode.
+The API waits for PostgreSQL's health check, generates the Prisma client, then
+starts Nest watch mode. Source is bind-mounted from `backend/` to `/app`, while
+container dependencies use a separate volume. Startup does **not** apply migrations.
+
+```sh
+docker compose ps
+docker compose logs --tail=100 api db
+curl -i http://localhost:3000/health
+```
+
+| Service    | Host access             | Container access         |
+| ---------- | ----------------------- | ------------------------ |
+| API        | `http://localhost:3000` | API listens on port 3000 |
+| PostgreSQL | `127.0.0.1:5432`        | `db:5432` from the API   |
+
+PostgreSQL is bound to host loopback; the API port is published on all host
+interfaces. For a database shell using the configured container variables:
+
+```sh
+docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
+```
+
+Stop without removing data:
+
+```sh
+docker compose stop
+```
+
+`docker compose down` also removes containers and the network but retains the
+named `postgres_data` volume. Do not add `--volumes` / `-v` when retaining data.
+The PostgreSQL 18 data volume is mounted at `/var/lib/postgresql`.
+
+If watch mode logs `EADDRINUSE` and serves stale routes, inspect API logs and use
+`docker compose restart api` to clear stale processes without restarting PostgreSQL.
+
+## Prisma inside Docker
+
+For a fresh database, start the services first with `docker compose up --build -d`.
+PostgreSQL initializes its database and user when the named volume is empty. Then
+run the following commands to create the application tables from the checked-in
+migration and generate the client. Use the same commands for an existing database;
+Prisma skips migrations that are already recorded as applied.
+
+```sh
+docker compose exec api npx prisma migrate deploy --config prisma7.config.ts
+docker compose exec api npx prisma generate --config prisma7.config.ts
+```
+
+`migrate deploy` applies pending SQL migrations to the configured database; it does
+not create migrations or reset data. Client generation only writes generated code.
+The existing migration is
+[20261025183545_init](../backend/prisma/migrations/20261025183545_init/migration.sql).
+For inspection without applying migrations:
+
+```sh
+docker compose exec api npx prisma migrate status --config prisma7.config.ts
+docker compose exec api npx prisma validate --config prisma7.config.ts
+```
+
+A successful health check runs `SELECT 1`; it does not prove migrations are applied.
+
+## Optional local backend workflow
+
+Before building on the host, run `docker compose stop api` from the repository
+root. The container and host share `backend/dist`; a separate build can remove
+files while Nest watch mode is using them. PostgreSQL can remain running.
+
+Then, from `backend/`, with Node.js 24 and the local `DATABASE_URL` configured:
+
+```sh
+npm ci
+npx prisma generate --config prisma7.config.ts
+npm run build
+npm run lint
+npm test
+node --env-file=.env ./node_modules/vitest/vitest.mjs run --config ./vitest.config.e2e.ts
+```
+
+`npm run lint` runs Oxlint with type-aware checks; ESLint is not configured.
+
+The existing unit and e2e tests cover the starter root endpoint, not the auction
+workflows. Start the compiled application with:
+
+```sh
+node --env-file=.env dist/main.js
+```
+
+See [API and Postman](api.md) for health tests.

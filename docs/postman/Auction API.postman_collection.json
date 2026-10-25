@@ -1,0 +1,1126 @@
+{
+  "info": {
+    "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
+    "name": "Auction API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Import this collection and Auction API Local.postman_environment.json. baseUrl defaults to http://localhost:3000. Only GET /health and the starter GET / are implemented. All domain paths, DTOs, and permitted operations are proposals based on schema.prisma, not existing API behavior. No authentication is configured. Run the Health folder for current validation; planned requests will return 404. UUID variables are illustrative, not seeded records. Replace foreign keys consistently and use a fresh idempotencyKey per logical creation. Decimal money values use strings to preserve precision; timestamps use ISO 8601 UTC. Generated IDs and timestamps are omitted from create bodies. Prisma relations use Restrict deletes, so future CRUD may reject records with dependencies. Append-only/read-only choices are proposed business constraints, not enforced by the current API."
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "userId",
+      "value": "d1d1e97d-e532-5415-b5a0-fa724bd3b768",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "ownerId",
+      "value": "68fc6656-f846-5781-a8eb-694f0f4adecf",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "walletId",
+      "value": "63ee67f6-286d-5580-9302-7256aa02e1a2",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "walletTransactionId",
+      "value": "b14213a7-5a0d-5acf-9d34-c10842dccd93",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "walletHoldId",
+      "value": "a6a659f9-bbca-5a9b-b9ae-faee6bd84692",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "lotId",
+      "value": "0133e0e9-21f2-5a03-832b-eb1fe17aa6a1",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "itemId",
+      "value": "8d7a897a-e3a1-5bd9-a39b-50d89b1dd100",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "bidId",
+      "value": "98cec3db-c513-584b-99f0-2cbeff152746",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "auctionResultId",
+      "value": "b97ae96d-27fe-59d1-b488-968552f1d2f1",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "auditLogId",
+      "value": "a65b5385-d6c4-51fe-8c59-b2a2120a63d3",
+      "type": "string",
+      "description": "Example UUID only; replace with an existing record ID."
+    },
+    {
+      "key": "idempotencyKey",
+      "value": "d9b8b66e-5f2e-5b4d-95bd-380c7b15f995",
+      "type": "string",
+      "description": "Example UUID; use a fresh UUID for each new logical operation."
+    }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "description": "Implemented health check. Database failure returns HTTP 503 with status error and services.database down. The starter root route is included for completeness.",
+      "item": [
+        {
+          "name": "[IMPLEMENTED] GET /health",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            },
+            "description": "Implemented controller route."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+                  "pm.test(\"API and database are healthy\", function () {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.be.an(\"object\");",
+                  "  pm.expect(body.status).to.eql(\"ok\");",
+                  "  pm.expect(body.services).to.be.an(\"object\");",
+                  "  pm.expect(body.services.api).to.eql(\"up\");",
+                  "  pm.expect(body.services.database).to.eql(\"up\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[IMPLEMENTED] GET / (starter)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": []
+            },
+            "description": "Implemented controller route."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "description": "PLANNED \u2014 proposed contract, not implemented. User roles: admin, bidder, auctioneer.",
+      "item": [
+        {
+          "name": "[PLANNED] List users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get users by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create users",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maya Chen\",\n  \"email\": \"maya.chen@example.com\",\n  \"role\": \"bidder\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Update users",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Maya Chen Silva\",\n  \"isActive\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Delete users",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "users",
+                "{{userId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallets",
+      "description": "PLANNED \u2014 proposed contract, not implemented. One wallet per user. Currency update and deletion are proposed only for unused wallets; no balance field exists in Prisma.",
+      "item": [
+        {
+          "name": "[PLANNED] List wallets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallets"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get wallets by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallets",
+                "{{walletId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create wallets",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallets",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallets"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"currency\": \"USD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Update wallets",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallets",
+                "{{walletId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currency\": \"USD\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Delete wallets",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallets/{{walletId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallets",
+                "{{walletId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet Transactions",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed append-only ledger: no update or delete requests. Types: deposit, withdrawal, auction_purchase, auction_sale, refund. auctionResultId and transferId are optional UUIDs.",
+      "item": [
+        {
+          "name": "[PLANNED] List wallet transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-transactions"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get wallet transactions by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-transactions/{{walletTransactionId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-transactions",
+                "{{walletTransactionId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create wallet transactions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-transactions",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-transactions"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"type\": \"deposit\",\n  \"amount\": \"500.00\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\",\n  \"externalReference\": \"local-deposit-001\",\n  \"description\": \"Opening auction funds\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Wallet Holds",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed lifecycle updates only; no delete. Statuses: active, released, captured. The bid must belong to the wallet owner. Capture would use capturedAt.",
+      "item": [
+        {
+          "name": "[PLANNED] List wallet holds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-holds"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get wallet holds by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-holds/{{walletHoldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-holds",
+                "{{walletHoldId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create wallet holds",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-holds",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-holds"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"bidId\": \"{{bidId}}\",\n  \"amount\": \"125.00\",\n  \"status\": \"active\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Update wallet holds",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/wallet-holds/{{walletHoldId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "wallet-holds",
+                "{{walletHoldId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"released\",\n  \"releasedAt\": \"2026-11-02T16:30:00.000Z\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lots",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Statuses: draft, scheduled, open, closed, cancelled. CRUD is proposed for editable drafts; deletion depends on related records.",
+      "item": [
+        {
+          "name": "[PLANNED] List lots",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lots"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get lots by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lots/{{lotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lots",
+                "{{lotId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create lots",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lots",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lots"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ownerId\": \"{{ownerId}}\",\n  \"title\": \"Vintage landscape print\",\n  \"description\": \"Framed landscape print in excellent condition.\",\n  \"status\": \"draft\",\n  \"currency\": \"USD\",\n  \"startTime\": \"2026-11-01T14:00:00.000Z\",\n  \"endTime\": \"2026-11-02T18:00:00.000Z\",\n  \"startingBid\": \"100.00\",\n  \"bidIncrement\": \"25.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Update lots",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lots/{{lotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lots",
+                "{{lotId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Vintage landscape print \\u2014 framed\",\n  \"description\": \"Archival frame included.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Delete lots",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/lots/{{lotId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "lots",
+                "{{lotId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Items",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Optional Art Institute metadata fields include articArtworkId (integer), articImageId, artistDisplay, creditLine, isPublicDomain, sourceSnapshot (JSON), and sourceFetchedAt (ISO timestamp). Example image URL is a placeholder.",
+      "item": [
+        {
+          "name": "[PLANNED] List items",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "items"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get items by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create items",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/items",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "items"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lotId\": \"{{lotId}}\",\n  \"name\": \"Landscape print, numbered edition\",\n  \"description\": \"Paper print with original frame.\",\n  \"estimatedValue\": \"250.00\",\n  \"imageUrl\": \"https://example.com/images/landscape-print.jpg\",\n  \"position\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Update items",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Numbered edition with original frame and mounting.\",\n  \"estimatedValue\": \"275.00\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[PLANNED] Delete items",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/items/{{itemId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "items",
+                "{{itemId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Bids",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed bid creation and reads only. Winner and invalidation fields are workflow-managed; generic update/delete requests intentionally omitted.",
+      "item": [
+        {
+          "name": "[PLANNED] List bids",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bids",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bids"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get bids by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bids/{{bidId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bids",
+                "{{bidId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Create bids",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/bids",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "bids"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lotId\": \"{{lotId}}\",\n  \"bidderId\": \"{{userId}}\",\n  \"amount\": \"125.00\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auction Results",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed read-only settlement results. Fields: id, lotId, winnerId, ownerId, winningBidId, endedAt, settledAt, createdAt. Owner must match the lot; winner and lot must match the winning bid. Creation and settlement are workflow-managed.",
+      "item": [
+        {
+          "name": "[PLANNED] List auction results",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auction-results",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auction-results"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get auction results by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auction-results/{{auctionResultId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auction-results",
+                "{{auctionResultId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Audit Logs",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Maps to Prisma AuditEvent (audit_events table). Proposed read-only logs with action, entityType, entityId, optional lotId, actorId, requestId, beforeData, afterData, metadata, and createdAt. Logs are system-generated.",
+      "item": [
+        {
+          "name": "[PLANNED] List audit logs",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[PLANNED] Get audit logs by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/audit-logs/{{auditLogId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "audit-logs",
+                "{{auditLogId}}"
+              ]
+            },
+            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    }
+  ]
+}
