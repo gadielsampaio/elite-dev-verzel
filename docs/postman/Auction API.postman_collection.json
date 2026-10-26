@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login is implemented; route guards remain planned. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders."
   },
   "variable": [
     {
@@ -148,7 +148,7 @@
     },
     {
       "name": "Users",
-      "description": "User create/list/get/update implemented. Delete planned. User routes are not protected yet.",
+      "description": "Implemented create/list require admin; get/update require own profile or admin. Delete planned.",
       "item": [
         {
           "name": "[IMPLEMENTED] List users",
@@ -169,7 +169,17 @@
                 "users"
               ]
             },
-            "description": "Implemented. Returns public user fields only. No authentication yet."
+            "description": "Requires Bearer JWT. Admin only.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         },
         {
@@ -192,7 +202,17 @@
                 "{{userId}}"
               ]
             },
-            "description": "Implemented. Returns public user fields only. No authentication yet."
+            "description": "Requires Bearer JWT. Own profile or admin.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         },
         {
@@ -218,7 +238,7 @@
                 "users"
               ]
             },
-            "description": "Implemented. Returns public user fields only. No authentication yet.",
+            "description": "Requires Bearer JWT. Admin only.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Maya Chen\",\n  \"email\": \"maya.chen@example.com\",\n  \"role\": \"bidder\",\n  \"isActive\": true\n}",
@@ -227,6 +247,16 @@
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
@@ -254,15 +284,25 @@
                 "{{userId}}"
               ]
             },
-            "description": "Implemented. Returns public user fields only. No authentication yet.",
+            "description": "Requires Bearer JWT. Own profile or admin.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"Maya Chen Silva\",\n  \"isActive\": true\n}",
+              "raw": "{\n  \"name\": \"Maya Chen Silva\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         },
@@ -1146,7 +1186,19 @@
                 }
               }
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.environment.set(\"userId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "[IMPLEMENTED] Login",
@@ -1169,7 +1221,19 @@
               }
             },
             "description": "200 accessToken, tokenType Bearer, expiresIn 900; 401 invalid credentials. Register this user first."
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.environment.set(\"accessToken\", pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

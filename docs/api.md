@@ -2,7 +2,7 @@
 
 [Documentation index](README.md) · [Development setup](development.md)
 
-Base URL: `http://localhost:3000`. No global prefix. Registration exists; JWT login is implemented; route protection remains planned.
+Base URL: `http://localhost:3000`. No global prefix. Registration, JWT login, and user-route protection are implemented.
 
 ## Implemented endpoints
 
@@ -15,7 +15,7 @@ Base URL: `http://localhost:3000`. No global prefix. Registration exists; JWT lo
 
 - `POST /auth/register`: creates a user (201), hashes the password with bcrypt (cost 12), and returns only public user fields. Duplicate email: 409; invalid input: 400.
 - `GET /users`, `GET /users/:id`, `PATCH /users/:id`: implemented. Updates accept only name and email; explicit null is rejected. Missing user: 404.
-- `POST /users`: legacy passwordless creation still exists. These endpoints are currently unprotected development endpoints; guards and authorization are the next stage.
+- `POST /users`: legacy passwordless creation, now admin-only. Use `/auth/register` for public signup.
 
 Registration body:
 
@@ -70,8 +70,20 @@ Invalid credentials, inactive users, and users without a password hash return
 401 with `Invalid credentials`. Invalid body fields return 400.
 JWTs are signed using HS256 and contain `sub` (user ID), `role`, and timestamps.
 
-No refresh tokens, rate limiting, or route guards yet. User endpoints are still
-unprotected development endpoints; JWT issuance alone does not protect them.
+Send `Authorization: Bearer <accessToken>` for all implemented `/users` routes.
+
+| Routes | Access |
+| --- | --- |
+| `GET /users`, `POST /users` | Admin only |
+| `GET /users/:id`, `PATCH /users/:id` | Own profile or admin |
+| `/auth/register`, `/auth/login`, `GET /health`, `GET /` | Public |
+
+Missing, invalid, or expired tokens and inactive/deleted accounts return 401.
+Authenticated users without permission receive 403. The guard checks current
+account status and role in PostgreSQL on each request, ignoring stale token roles.
+Updates still accept only name/email; users cannot promote themselves.
+There is no public admin signup or admin seed. No refresh tokens or rate limiting
+yet; bidder/auctioneer permissions for lots and bids will accompany those modules.
 
 ## Planned modules
 
@@ -107,7 +119,9 @@ Health → [IMPLEMENTED] GET /health**, then send the request. The test script c
 HTTP 200, `status: ok`, `services.api: up`, and `services.database: up`. A legitimate
 503 response fails these success assertions.
 
-The checked-in collection now includes registration and marks the implemented user requests. Re-import it to update an existing Postman workspace. Run the Health folder for current verification rather
+The collection includes registration/login and protected user requests. Login saves
+`accessToken` in the selected environment; registration saves `userId`. Register,
+log in, then get/update that user. List/create users require an admin token. Re-import it to update an existing Postman workspace. Run the Health folder for current verification rather
 than treating failures in planned requests as regressions. Example UUIDs are not
 seeded records. Future use requires replacing related IDs consistently and using
 a fresh idempotency key for each new logical operation. Example monetary values

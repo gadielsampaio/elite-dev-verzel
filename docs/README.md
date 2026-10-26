@@ -4,7 +4,7 @@ The Auction API is being built to manage auction lots and items, bidding, wallet
 and settlement history. The implemented foundation consists of the database
 schema and initial migration, Prisma integration, Docker development environment,
 a database health endpoint, user reads/updates, and password-hashed registration.
-JWT login is implemented. Auction operations and route authorization remain planned.
+JWT login and user-route authorization are implemented. Auction operations remain planned.
 
 - [Development setup and commands](development.md)
 - [Database entities, relationships, and constraints](database.md)

@@ -152,8 +152,10 @@ The last command renews only the API’s disposable dependency volume; the named
 PostgreSQL data volume is retained. Do not run `npm ci` inside a starting API
 container, because it temporarily removes packages needed by startup.
 
-See [registration](api.md#users-and-registration) for the request body. Route guards
-and authorization are the next increment; keep this development API private.
+See [registration](api.md#users-and-registration) for the request body. Log in and
+send `Authorization: Bearer <accessToken>` to user routes. Ordinary users can
+read/update their own profile; listing and legacy creation require an admin.
+There is no admin seed or public admin registration yet.
 
 ## JWT signing secret
 
@@ -162,3 +164,9 @@ for Docker and in `backend/.env` for host execution. There is no fallback secret
 startup requires at least 32 characters. Never commit actual environment files.
 After changing root `.env`, run `docker compose up -d --force-recreate api`.
 Tokens expire after 15 minutes. Changing the secret invalidates existing tokens.
+
+If hot reload reports `EADDRINUSE` or serves stale routes, run
+`docker compose restart api`, then check `docker compose logs --tail=30 api`
+and `GET /health`. Stop the API before a host build to avoid concurrent writes
+to the bind-mounted `dist/`: `docker compose stop api`, `npm run build --prefix backend`,
+then `docker compose up -d api`. These commands retain PostgreSQL data.

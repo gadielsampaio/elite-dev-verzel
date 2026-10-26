@@ -2,7 +2,7 @@
 
 NestJS with TypeScript ESM, Prisma 7, and PostgreSQL. Implemented routes are
 `GET /`, `GET /health`, user create/read/update, and `POST /auth/register`.
-JWT login is implemented; route guards and authorization remain planned.
+JWT login and user-route authorization are implemented (admin or own profile).
 
 See the [project documentation](../docs/README.md),
 [development setup](../docs/development.md), and
