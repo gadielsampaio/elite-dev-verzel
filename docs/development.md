@@ -187,3 +187,16 @@ Search/detail return `provider: "mock"`; external health reports `mocked` and
 `artic: not_checked`. `/health` continues to check PostgreSQL. Use
 `CATALOG_PROVIDER=artic` and recreate the API to switch back; real failures never
 fall back to mock data. See [catalog behavior](api.md#art-institute-catalog).
+
+## Lot database verification
+
+The PostgreSQL lifecycle test is opt-in; it runs HTTP checks inside a transaction
+and rolls back all fixtures and lifecycle writes. With migrations applied:
+
+```sh
+docker compose exec -e RUN_DATABASE_TESTS=1 api npm run test:e2e -- lots-database.e2e-spec.ts
+```
+
+Normal e2e runs skip this test. It verifies lifecycle persistence, public filtering,
+pagination, cancellation, existing-bid rejection and rollback; it does not prove
+future concurrent bid handling or settlement.

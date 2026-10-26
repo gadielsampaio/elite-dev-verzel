@@ -1,5 +1,9 @@
+import { ListLotsDto } from './list-lots.dto.js';
+import { CancelLotDto } from './cancel-lot.dto.js';
 import {
   BadRequestException,
+  ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -66,12 +70,96 @@ export class LotsService {
     });
   }
 
-  async findOne(id: string) {
-    const lot = await this.prisma.lot.findFirst({
-      where: { id, status: { in: ['scheduled', 'open', 'closed'] } },
-      include: { items: { orderBy: { position: 'asc' } } },
+  // Reconcile on reads: timestamps are authoritative, not a background timer.
+  // Closing marks the bidding window ended; settlement is a separate future workflow.
+  private async refreshLifecycle(
+    tx: Prisma.TransactionClient,
+    now: Date,
+    id?: string,
+  ) {
+    await tx.lot.updateMany({
+      where: {
+        id,
+        status: { in: ['scheduled', 'open'] },
+        endTime: { lte: now },
+      },
+      data: { status: 'closed' },
     });
-    if (!lot) throw new NotFoundException('Lot not found');
-    return lot;
+    await tx.lot.updateMany({
+      where: {
+        id,
+        status: 'scheduled',
+        startTime: { lte: now },
+        endTime: { gt: now },
+      },
+      data: { status: 'open' },
+    });
+  }
+
+  async findAll({ status, page, limit }: ListLotsDto) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.refreshLifecycle(tx, new Date());
+      const where: Prisma.LotWhereInput = {
+        status: status ?? { in: ['scheduled', 'open', 'closed'] },
+      };
+      const items = await tx.lot.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        include: { items: { orderBy: { position: 'asc' } } },
+      });
+      const total = await tx.lot.count({ where });
+      return { items, total, page, limit };
+    });
+  }
+
+  async findOne(id: string) {
+    return this.prisma.$transaction(async (tx) => {
+      await this.refreshLifecycle(tx, new Date(), id);
+      const lot = await tx.lot.findFirst({
+        where: { id, status: { in: ['scheduled', 'open', 'closed'] } },
+        include: { items: { orderBy: { position: 'asc' } } },
+      });
+      if (!lot) throw new NotFoundException('Lot not found');
+      return lot;
+    });
+  }
+
+  async cancel(id: string, ownerId: string, { reason }: CancelLotDto) {
+    return this.prisma.$transaction(async (tx) => {
+      // All future bid writes must take this same lot lock before checking state.
+      const locked = await tx.$queryRaw<
+        { id: string }[]
+      >`SELECT id FROM lots WHERE id = ${id}::uuid FOR UPDATE`;
+      if (!locked.length) throw new NotFoundException('Lot not found');
+      const lot = await tx.lot.findUniqueOrThrow({
+        where: { id },
+        include: { items: { orderBy: { position: 'asc' } } },
+      });
+      if (lot.ownerId !== ownerId)
+        throw new ForbiddenException('Only the owner can cancel this lot');
+      if (lot.status === 'cancelled') return lot;
+      const now = new Date();
+      if (!['scheduled', 'open'].includes(lot.status) || lot.endTime <= now) {
+        throw new ConflictException(
+          'Only scheduled or live lots can be cancelled',
+        );
+      }
+      if (await tx.bid.count({ where: { lotId: id } })) {
+        throw new ConflictException(
+          'A lot that has received bids cannot be cancelled',
+        );
+      }
+      return tx.lot.update({
+        where: { id },
+        data: {
+          status: 'cancelled',
+          cancelledAt: now,
+          cancellationReason: reason ?? null,
+        },
+        include: { items: { orderBy: { position: 'asc' } } },
+      });
+    });
   }
 }

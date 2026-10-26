@@ -168,9 +168,36 @@ Mock-sourced lots are development examples, identifiable by the saved provider.
 Missing, draft or cancelled lots return 404; invalid UUIDs return 400. It does not
 fetch fresh catalog data. Stored image URLs still depend on the remote image host.
 
-Listing, editing, cancellation and automatic status transitions remain pending.
-Published lots stay `scheduled` in storage until lifecycle handling is implemented;
-no bids or settlement run in this increment.
+## Lot listing, lifecycle and cancellation
+
+`GET /lots?status=open&page=1&limit=10` is public. `status` optionally accepts
+`scheduled`, `open` or `closed`; omit it for all three. Page starts at 1 (maximum
+1,000,000); limit is 1–50, default 10. Response: `items`, `total`, `page`, `limit`.
+Results include saved artwork details, ordered by creation time then ID descending.
+Draft and cancelled lots never appear. Invalid query fields return 400.
+
+List/detail reads update lifecycle states from server time before returning:
+
+- `scheduled → open` when `startTime <= now < endTime`.
+- `scheduled/open → closed` when `endTime <= now`, including missed start windows.
+- Draft, cancelled and closed states are not reopened.
+
+These are **on-demand updates**, not a background scheduler. Stored states can lag
+while no requests arrive. `closed` means the bidding window ended; it does not mean
+settlement occurred. No winner, transfer or result is created by this transition.
+
+`PATCH /lots/:id/cancel` requires the owning auctioneer's JWT. Send `{}` or
+`{"reason":"No longer available"}` (trimmed, 1–500 characters if supplied).
+A scheduled/live, unexpired lot can be cancelled only if it has **never received
+a bid**, including inactive bids. Returns 200 with `status: cancelled`,
+`cancelledAt` and `cancellationReason`; repeat requests preserve the first result.
+Missing lot: 404; wrong owner/role: 403; expired/draft/closed or any bid: 409.
+Cancelled details subsequently return 404 publicly.
+
+Cancellation locks the lot row and checks ownership/state/bids in one transaction.
+Future bidding must acquire the same row lock before validating state and writing
+a bid; a transaction alone is not the full bidding concurrency solution.
+Editing, bidding, settlement and realtime remain pending.
 
 ## Planned modules
 
@@ -185,7 +212,7 @@ and audit must enforce their business rules, not expose arbitrary record edits.
 | Wallets — `/wallets`                         | User wallets; list, get, create, patch, delete  |
 | Wallet Transactions — `/wallet-transactions` | Financial entries; list, get, create            |
 | Wallet Holds — `/wallet-holds`               | Bid reservations; list, get, create, patch      |
-| Lots — `/lots`                               | Create/get implemented; list, patch, delete remain planned |
+| Lots — `/lots`                               | Create/list/get/cancel implemented; generic patch/delete remain planned |
 | Items — `/items`                             | Lot contents; list, get, create, patch, delete  |
 | Bids — `/bids`                               | Offers; list, get, create                       |
 | Auction Results — `/auction-results`         | Outcomes; list, get                             |

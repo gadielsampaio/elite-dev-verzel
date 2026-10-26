@@ -11,7 +11,7 @@ export class AuctioneerGuard implements CanActivate {
   canActivate(context: ExecutionContext): boolean {
     const { user } = context.switchToHttp().getRequest<AuthenticatedRequest>();
     if (user.role !== 'auctioneer')
-      throw new ForbiddenException('Only auctioneers can publish lots');
+      throw new ForbiddenException('Only auctioneers can manage lots');
     return true;
   }
 }

@@ -6,7 +6,8 @@ JWT login and user-route authorization are implemented (admin or own profile).
 `GET /health/external`, `GET /catalog/search` and `GET /catalog/artworks/:id`
 provide the Art Institute integration with configurable mock/real data;
 `POST /lots` publishes one artwork for an auctioneer; public `GET /lots/:id`
-reads its saved snapshot. See [known limitations](../README.md#known-limitations).
+reads its saved snapshot. `GET /lots` lists public lots; `PATCH /lots/:id/cancel`
+allows owner cancellation before bids. Lifecycle updates occur on list/detail reads. See [known limitations](../README.md#known-limitations).
 
 See the [project documentation](../docs/README.md),
 [development setup](../docs/development.md), and

@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented. Public lot listing, on-demand lifecycle and owner cancellation are implemented."
   },
   "variable": [
     {
@@ -694,10 +694,10 @@
     },
     {
       "name": "Lots",
-      "description": "Auctioneer-only publication and public details implemented. Other operations planned. Register/login as auctioneer first.",
+      "description": "Publication, listing/details and owner-only cancellation implemented. Lifecycle updates on public reads. Editing/deleting planned.",
       "item": [
         {
-          "name": "[PLANNED] List lots",
+          "name": "[IMPLEMENTED] List lots",
           "request": {
             "method": "GET",
             "header": [
@@ -706,16 +706,8 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/lots",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "lots"
-              ]
-            },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "url": "{{baseUrl}}/lots?page=1&limit=10",
+            "description": "Public; optional status=scheduled|open|closed. Returns items,total,page,limit. Draft/cancelled lots excluded."
           }
         },
         {
@@ -865,6 +857,39 @@
               ]
             },
             "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Cancel own lot",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/lots/{{lotId}}/cancel",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"No longer available\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Owning auctioneer only. 200 if scheduled/live and no bids ever; 403 wrong owner/role; 409 expired or bids exist. Repeating preserves the original cancellation. Public detail then returns 404."
           }
         }
       ]

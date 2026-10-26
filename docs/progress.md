@@ -12,9 +12,9 @@ ignored by Git; this summary is available in a fresh checkout.
 | Requirement / plan area | Status and remaining work |
 | --- | --- |
 | Foundation | NestJS, Prisma migrations, PostgreSQL and Docker implemented. Required React frontend absent. |
-| Authentication | Registration, login, JWT and own-profile/admin guards implemented. Lot publication is auctioneer-only with JWT-derived ownership. Management permissions and prohibition on auctioneer bidding await those workflows. |
+| Authentication | Registration, login, JWT and own-profile/admin guards implemented. Lot publication is auctioneer-only with JWT-derived ownership. Cancellation requires the owning auctioneer. Prohibition on auctioneer bidding awaits the bid workflow. |
 | Public item API | Search, artwork details and explicit mock/real transport selection implemented. Local fixtures unblock development; real success remains unverified (Cloudflare 403). Snapshots are persisted during publication; selection UI absent. |
-| Lots and storefront | Single-artwork publication and public database-backed details implemented; prices, dates and ownership validated. Listing, lifecycle transitions, owner management/cancellation and UI remain pending. |
+| Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; UI, editing and a background settlement worker remain pending. |
 | Wallet | Pending: simulated deposits; total, committed and available balances; available = total − committed. |
 | Bids | Pending: live window only; first ≥ starting bid, subsequent ≥ current + increment; leader cannot bid again; sufficient available funds; reserve leader funds and release immediately when outbid. Accepted bids in the last two minutes extend the end by two minutes. |
 | Live room | Pending: current bid, full history, user position, countdown, winning/outbid state and rejection reasons, updated without reload. |
@@ -31,7 +31,7 @@ The existing `admin` role is an implementation addition, not a required challeng
 ## Next small steps
 
 1. Use mock catalog search/detail to continue the required workflows; revisit live access or another public provider after core functionality works.
-2. Add lot listing/lifecycle handling and owner-only cancellation before any bids. Add selection UI and plan image availability during provider outages.
+2. Build wallet deposits/balances next, then bids with shared lot locking, reservations and anti-sniping. Add lot selection UI and plan image availability during provider outages.
 3. Start the required React app and an early public deployment alongside backend increments.
 4. Continue with lots → wallets → bids → settlement → public audit → realtime. Add the required demo seeds when those workflows exist.
 

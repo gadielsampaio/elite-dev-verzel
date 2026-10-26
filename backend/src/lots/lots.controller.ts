@@ -1,8 +1,12 @@
+import { ListLotsDto } from './list-lots.dto.js';
+import { CancelLotDto } from './cancel-lot.dto.js';
 import {
   Body,
   Controller,
   Get,
   Param,
+  Patch,
+  Query,
   ParseUUIDPipe,
   Post,
   Req,
@@ -24,6 +28,21 @@ export class LotsController {
   @UseGuards(JwtAuthGuard, AuctioneerGuard)
   create(@Req() request: AuthenticatedRequest, @Body() data: CreateLotDto) {
     return this.lots.create(request.user.id, data);
+  }
+
+  @Get()
+  findAll(@Query() query: ListLotsDto) {
+    return this.lots.findAll(query);
+  }
+
+  @Patch(':id/cancel')
+  @UseGuards(JwtAuthGuard, AuctioneerGuard)
+  cancel(
+    @Req() request: AuthenticatedRequest,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() data: CancelLotDto,
+  ) {
+    return this.lots.cancel(id, request.user.id, data);
   }
 
   @Get(':id')
