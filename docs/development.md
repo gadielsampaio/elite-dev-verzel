@@ -34,8 +34,10 @@ initialization variables apply when the data volume is first initialized; changi
 copy [backend/.env.example](../backend/.env.example) to `backend/.env` if it does
 not already exist, then configure `DATABASE_URL` to match the local database.
 Use `localhost:5432` on the host. `PORT` optionally overrides the host API port.
-Prisma's config loads dotenv; the application bootstrap does not explicitly load
-it, so use the `--env-file` commands below. Both actual `.env` files are ignored.
+Prisma's config and application bootstrap load dotenv from the working directory;
+run local application commands from `backend/`. Existing environment variables
+(including Compose's `DATABASE_URL`) take precedence. Tests that bypass bootstrap
+still need the `--env-file` command below. Both actual `.env` files are ignored.
 
 ## Start, inspect, and stop
 
