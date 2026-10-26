@@ -134,3 +134,31 @@ node --env-file=.env dist/main.js
 ```
 
 See [API and Postman](api.md) for health tests.
+
+## Registration increment
+
+Apply migrations before starting new code: `password_hash` is added by
+`20261026180000_add_user_password_hash`. Existing users retain a null hash.
+After dependency changes, synchronize the container and restart the API:
+
+```sh
+docker compose up -d db
+docker compose run --rm --no-deps api npx prisma migrate deploy --config prisma7.config.ts
+docker compose build api
+docker compose up -d --no-deps --force-recreate --renew-anon-volumes api
+```
+
+The last command renews only the API’s disposable dependency volume; the named
+PostgreSQL data volume is retained. Do not run `npm ci` inside a starting API
+container, because it temporarily removes packages needed by startup.
+
+See [registration](api.md#users-and-registration) for the request body. Route guards
+and authorization are the next increment; keep this development API private.
+
+## JWT signing secret
+
+Generate a secret with `openssl rand -hex 32`. Set `JWT_SECRET` in root `.env`
+for Docker and in `backend/.env` for host execution. There is no fallback secret;
+startup requires at least 32 characters. Never commit actual environment files.
+After changing root `.env`, run `docker compose up -d --force-recreate api`.
+Tokens expire after 15 minutes. Changing the secret invalidates existing tokens.

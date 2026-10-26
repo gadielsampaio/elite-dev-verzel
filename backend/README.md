@@ -1,7 +1,8 @@
 # Auction API backend
 
 NestJS with TypeScript ESM, Prisma 7, and PostgreSQL. Implemented routes are
-`GET /` and `GET /health`; domain CRUD and authentication remain planned.
+`GET /`, `GET /health`, user create/read/update, and `POST /auth/register`.
+JWT login is implemented; route guards and authorization remain planned.
 
 See the [project documentation](../docs/README.md),
 [development setup](../docs/development.md), and

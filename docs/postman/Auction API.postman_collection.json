@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Import this collection and Auction API Local.postman_environment.json. baseUrl defaults to http://localhost:3000. Only GET /health and the starter GET / are implemented. All domain paths, DTOs, and permitted operations are proposals based on schema.prisma, not existing API behavior. No authentication is configured. Run the Health folder for current validation; planned requests will return 404. UUID variables are illustrative, not seeded records. Replace foreign keys consistently and use a fresh idempotencyKey per logical creation. Decimal money values use strings to preserve precision; timestamps use ISO 8601 UTC. Generated IDs and timestamps are omitted from create bodies. Prisma relations use Restrict deletes, so future CRUD may reject records with dependencies. Append-only/read-only choices are proposed business constraints, not enforced by the current API."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login is implemented; route guards remain planned. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders."
   },
   "variable": [
     {
@@ -148,10 +148,10 @@
     },
     {
       "name": "Users",
-      "description": "PLANNED \u2014 proposed contract, not implemented. User roles: admin, bidder, auctioneer.",
+      "description": "User create/list/get/update implemented. Delete planned. User routes are not protected yet.",
       "item": [
         {
-          "name": "[PLANNED] List users",
+          "name": "[IMPLEMENTED] List users",
           "request": {
             "method": "GET",
             "header": [
@@ -169,11 +169,11 @@
                 "users"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "Implemented. Returns public user fields only. No authentication yet."
           }
         },
         {
-          "name": "[PLANNED] Get users by ID",
+          "name": "[IMPLEMENTED] Get users by ID",
           "request": {
             "method": "GET",
             "header": [
@@ -192,11 +192,11 @@
                 "{{userId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "Implemented. Returns public user fields only. No authentication yet."
           }
         },
         {
-          "name": "[PLANNED] Create users",
+          "name": "[IMPLEMENTED] Create users",
           "request": {
             "method": "POST",
             "header": [
@@ -218,7 +218,7 @@
                 "users"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "Implemented. Returns public user fields only. No authentication yet.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Maya Chen\",\n  \"email\": \"maya.chen@example.com\",\n  \"role\": \"bidder\",\n  \"isActive\": true\n}",
@@ -231,7 +231,7 @@
           }
         },
         {
-          "name": "[PLANNED] Update users",
+          "name": "[IMPLEMENTED] Update users",
           "request": {
             "method": "PATCH",
             "header": [
@@ -254,7 +254,7 @@
                 "{{userId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "Implemented. Returns public user fields only. No authentication yet.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"name\": \"Maya Chen Silva\",\n  \"isActive\": true\n}",
@@ -1118,6 +1118,57 @@
               ]
             },
             "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "[IMPLEMENTED] Register",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/register",
+            "description": "201 public user; 400 invalid input; 409 duplicate email. No token yet.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Bidder\",\n  \"email\": \"bidder@example.com\",\n  \"password\": \"test-password-123\",\n  \"role\": \"bidder\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bidder@example.com\",\n  \"password\": \"test-password-123\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "200 accessToken, tokenType Bearer, expiresIn 900; 401 invalid credentials. Register this user first."
           }
         }
       ]
