@@ -84,6 +84,7 @@ status/timestamp consistency. These remain business-rule design and implementati
 work, not guarantees provided by the current database.
 
 For the challenge, `AuditEvent` is only storage: tamper detection and public
-verification are still missing. Likewise, `Item.sourceSnapshot` and `sourceFetchedAt`
-exist but no publication workflow populates them yet. `AuctionResult` requires a
+verification are still missing. `Item.sourceSnapshot` and `sourceFetchedAt`
+are populated atomically with a lot during publication, preserving normalized
+catalog details and the mock/real provider marker. `AuctionResult` requires a
 winner; a no-bid closure must not invent one. See [remaining requirements](progress.md).

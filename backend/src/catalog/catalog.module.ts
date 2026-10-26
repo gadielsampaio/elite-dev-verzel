@@ -7,6 +7,7 @@ import { CatalogService } from './catalog.service.js';
 import { ExternalHealthController } from './external-health.controller.js';
 
 @Module({
+  exports: [CatalogService],
   controllers: [CatalogController, ExternalHealthController],
   providers: [
     CatalogService,

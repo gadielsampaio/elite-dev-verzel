@@ -132,11 +132,49 @@ The database health endpoint remains independent of either mode.
 
 Real Art Institute access last returned a Cloudflare 403 on 2026-10-26. Real success
 remains unverified; development proceeds with mocks. Revisit provider access or a
-replacement after the core workflows work. Lot publication/snapshots remain planned.
+replacement after the core workflows work. Lot publication now persists normalized snapshots, including the provider marker.
+
+## Lot publication
+
+`POST /lots` requires an active **auctioneer** and Bearer JWT. Bidder/admin accounts
+receive 403; missing or invalid tokens receive 401. The owner comes from the token;
+clients cannot supply `ownerId`, status, currency or snapshot data.
+
+```json
+{
+  "title": "Weekend art auction",
+  "artworkId": 27992,
+  "startingBid": "100.00",
+  "bidIncrement": "5.00",
+  "estimatedValue": "300.00",
+  "startTime": "2027-01-01T18:00:00Z",
+  "endTime": "2027-01-01T19:00:00Z"
+}
+```
+
+Replace dates with future timestamps including a timezone. End must follow start.
+Prices are positive decimal **strings**, at most 17 integer digits and two decimal
+places. `estimatedValue` is supplied by the seller, not a museum valuation.
+This increment supports one artwork per lot and USD only. Title is trimmed,
+1–200 characters. Unknown fields are rejected.
+
+Success: 201 with the lot and its item. A single nested Prisma write creates both
+atomically with status `scheduled`; it saves artwork metadata, normalized detail
+snapshot, provider (`mock`/`artic`) and fetch time. Missing artwork returns 404;
+provider failure returns 503 and creates no lot. Decimal response values are strings.
+Mock-sourced lots are development examples, identifiable by the saved provider.
+
+`GET /lots/:id` is public and reads only PostgreSQL, including saved item details.
+Missing, draft or cancelled lots return 404; invalid UUIDs return 400. It does not
+fetch fresh catalog data. Stored image URLs still depend on the remote image host.
+
+Listing, editing, cancellation and automatic status transitions remain pending.
+Published lots stay `scheduled` in storage until lifecycle handling is implemented;
+no bids or settlement run in this increment.
 
 ## Planned modules
 
-The modules below remain planned, except the implemented user operations above.
+The modules below remain planned, except the implemented user and lot operations above.
 These collection requests are placeholders, not mandatory challenge endpoints.
 Prioritize challenge workflows over blanket CRUD: deposits, holds, bids, settlement
 and audit must enforce their business rules, not expose arbitrary record edits.
@@ -147,7 +185,7 @@ and audit must enforce their business rules, not expose arbitrary record edits.
 | Wallets — `/wallets`                         | User wallets; list, get, create, patch, delete  |
 | Wallet Transactions — `/wallet-transactions` | Financial entries; list, get, create            |
 | Wallet Holds — `/wallet-holds`               | Bid reservations; list, get, create, patch      |
-| Lots — `/lots`                               | Auction units; list, get, create, patch, delete |
+| Lots — `/lots`                               | Create/get implemented; list, patch, delete remain planned |
 | Items — `/items`                             | Lot contents; list, get, create, patch, delete  |
 | Bids — `/bids`                               | Offers; list, get, create                       |
 | Auction Results — `/auction-results`         | Outcomes; list, get                             |

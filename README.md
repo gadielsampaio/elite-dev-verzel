@@ -5,8 +5,8 @@ from the Art Institute of Chicago API. NestJS, TypeScript ESM, Prisma 7,
 PostgreSQL 18 and Docker Compose power the current backend.
 
 Implemented: database schema/migrations, health checks, user create/read/update,
-password-hashed registration, JWT login, user authorization, catalog search and artwork details.
-The required React frontend and auction workflows are not implemented yet.
+password-hashed registration, JWT login, user authorization, catalog search/details, single-artwork lot publication and saved lot details.
+The required React frontend, bidding and settlement are not implemented yet.
 See [requirements and progress](docs/progress.md) for the remaining delivery scope.
 
 ## Run locally
@@ -37,7 +37,9 @@ database access, host execution, tests and troubleshooting.
 - Catalog development uses explicit local fixtures (`CATALOG_PROVIDER=mock`).
   Real Art Institute access returned Cloudflare 403; live success remains unverified.
   Mock external health reports `not_checked`, not real provider availability.
-- No React UI, auction operations, required demo seeds or verified public deployment.
+- No React UI, bidding, settlement, required demo seeds or verified public deployment.
+  Lot listing/cancellation and automatic lifecycle transitions are pending; published
+  lots currently remain `scheduled`.
   Schema tables do not constitute working auction features.
 - Legacy passwordless users cannot log in. No admin seed or public admin signup exists.
 - Watch mode can leave stale processes (`EADDRINUSE`); restart only the API with

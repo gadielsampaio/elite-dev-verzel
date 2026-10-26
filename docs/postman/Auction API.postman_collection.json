@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented."
   },
   "variable": [
     {
@@ -694,7 +694,7 @@
     },
     {
       "name": "Lots",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Statuses: draft, scheduled, open, closed, cancelled. CRUD is proposed for editable drafts; deletion depends on related records.",
+      "description": "Auctioneer-only publication and public details implemented. Other operations planned. Register/login as auctioneer first.",
       "item": [
         {
           "name": "[PLANNED] List lots",
@@ -719,7 +719,7 @@
           }
         },
         {
-          "name": "[PLANNED] Get lots by ID",
+          "name": "[IMPLEMENTED] Get lot details",
           "request": {
             "method": "GET",
             "header": [
@@ -738,11 +738,11 @@
                 "{{lotId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "Public persisted lot/items; no external provider call. 404 missing, draft or cancelled."
           }
         },
         {
-          "name": "[PLANNED] Create lots",
+          "name": "[IMPLEMENTED] Publish lot",
           "request": {
             "method": "POST",
             "header": [
@@ -764,17 +764,49 @@
                 "lots"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "Requires auctioneer JWT. Saves a single artwork snapshot. 201 success; 400 invalid input; 401/403 access denied; 404 artwork missing; 503 provider unavailable.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"ownerId\": \"{{ownerId}}\",\n  \"title\": \"Vintage landscape print\",\n  \"description\": \"Framed landscape print in excellent condition.\",\n  \"status\": \"draft\",\n  \"currency\": \"USD\",\n  \"startTime\": \"2026-11-01T14:00:00.000Z\",\n  \"endTime\": \"2026-11-02T18:00:00.000Z\",\n  \"startingBid\": \"100.00\",\n  \"bidIncrement\": \"25.00\"\n}",
+              "raw": "{\n  \"title\": \"Weekend art auction\",\n  \"artworkId\": 27992,\n  \"startingBid\": \"100.00\",\n  \"bidIncrement\": \"5.00\",\n  \"estimatedValue\": \"300.00\",\n  \"startTime\": \"{{lotStartTime}}\",\n  \"endTime\": \"{{lotEndTime}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.variables.set(\"lotStartTime\", new Date(Date.now() + 3600000).toISOString());",
+                  "pm.variables.set(\"lotEndTime\", new Date(Date.now() + 7200000).toISOString());"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.environment.set(\"lotId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "[PLANNED] Update lots",
