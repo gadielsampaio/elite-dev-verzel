@@ -1,0 +1,20 @@
+import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
+import { ExternalItemProvider } from './external-item.provider.js';
+
+@Controller('health/external')
+export class ExternalHealthController {
+  constructor(private readonly provider: ExternalItemProvider) {}
+
+  @Get()
+  async check() {
+    try {
+      await this.provider.check();
+      return { status: 'ok', services: { artic: 'up' } };
+    } catch {
+      throw new ServiceUnavailableException({
+        status: 'error',
+        services: { artic: 'down' },
+      });
+    }
+  }
+}

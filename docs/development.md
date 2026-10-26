@@ -170,3 +170,16 @@ If hot reload reports `EADDRINUSE` or serves stale routes, run
 and `GET /health`. Stop the API before a host build to avoid concurrent writes
 to the bind-mounted `dist/`: `docker compose stop api`, `npm run build --prefix backend`,
 then `docker compose up -d api`. These commands retain PostgreSQL data.
+
+## External catalog checks
+
+No API key or new environment variables are required. With the API running:
+
+```sh
+curl -i http://localhost:3000/health/external
+curl -i 'http://localhost:3000/catalog/search?q=cats&limit=5'
+```
+
+These requests depend on Art Institute availability; `/health` still checks only
+API/database health. A provider Cloudflare challenge currently causes 503 from
+these external endpoints. See [catalog behavior and limitations](api.md#art-institute-catalog).

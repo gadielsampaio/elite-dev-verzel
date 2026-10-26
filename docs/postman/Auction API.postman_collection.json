@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; upstream Cloudflare blocking may cause 503."
   },
   "variable": [
     {
@@ -142,6 +142,14 @@
               "path": []
             },
             "description": "Implemented controller route."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] GET /health/external",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/health/external",
+            "description": "Public. 200 services.artic=up; 503 services.artic=down on upstream failure (including Cloudflare challenges)."
           }
         }
       ]
@@ -1234,6 +1242,20 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "Catalog",
+      "description": "Read-only Art Institute integration; no persisted items or lots.",
+      "item": [
+        {
+          "name": "[IMPLEMENTED] Search artworks",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/catalog/search?q=cats&page=1&limit=10",
+            "description": "Public. 200 normalized items/page/limit/total; 400 invalid query; 503 provider unavailable. Live success currently blocked by upstream Cloudflare 403."
+          }
         }
       ]
     }

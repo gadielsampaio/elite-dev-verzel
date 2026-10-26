@@ -85,6 +85,46 @@ Updates still accept only name/email; users cannot promote themselves.
 There is no public admin signup or admin seed. No refresh tokens or rate limiting
 yet; bidder/auctioneer permissions for lots and bids will accompany those modules.
 
+## Art Institute catalog
+
+Public, read-only endpoints; no credentials or database writes:
+
+| Endpoint | Behavior |
+| --- | --- |
+| `GET /health/external` | Probes Art Institute `/artworks?limit=1&fields=id`; 200 when usable, otherwise 503. Independent of the database health check. |
+| `GET /catalog/search?q=cats&page=1&limit=10` | Searches artwork metadata through the Art Institute adapter. |
+
+External health responses:
+
+```json
+{"status":"ok","services":{"artic":"up"}}
+```
+
+On HTTP 503:
+
+```json
+{"status":"error","services":{"artic":"down"}}
+```
+
+Search requires a nonblank `q` (maximum 100 characters). `page` defaults to 1
+(range 1–100); `limit` defaults to 10 (range 1–20). Invalid query fields return 400.
+The response contains `items`, `page`, `limit`, and `total`. Each item contains
+`articArtworkId`, `name`, `articImageId`, `imageUrl`, `artistDisplay`, `creditLine`,
+and `isPublicDomain`. Optional metadata and missing images remain null.
+Images use the provider's IIIF URL format; image availability is not checked.
+
+The adapter uses a five-second deadline. Network errors, upstream HTTP errors,
+invalid responses, and timeouts return 503. Empty search results return 200.
+There is no cache or retry yet. This step does not create items/lots or persist
+snapshots. Lot publication and owner permissions remain planned.
+
+Provider contract: [Art Institute API documentation](https://api.artic.edu/docs/#quick-start).
+On 2026-10-26, live requests from the development host and Docker received a
+Cloudflare HTTP 403 challenge. Local endpoints correctly return 503 in this case;
+success responses are covered with mocked upstream HTTP tests, but live search
+success remains unverified. Retry from the deployment environment or contact the
+provider if the block persists.
+
 ## Planned modules
 
 The modules below remain planned, except the implemented user operations above. Their business workflows are not available yet.
