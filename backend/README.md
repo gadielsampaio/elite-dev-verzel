@@ -3,6 +3,9 @@
 NestJS with TypeScript ESM, Prisma 7, and PostgreSQL. Implemented routes are
 `GET /`, `GET /health`, user create/read/update, and `POST /auth/register`.
 JWT login and user-route authorization are implemented (admin or own profile).
+`GET /health/external`, `GET /catalog/search` and `GET /catalog/artworks/:id`
+provide the Art Institute integration with configurable mock/real data;
+see [known limitations](../README.md#known-limitations).
 
 See the [project documentation](../docs/README.md),
 [development setup](../docs/development.md), and

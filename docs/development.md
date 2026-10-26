@@ -22,6 +22,8 @@ Edit the local file with your development values; do not commit it. The root
 | `POSTGRES_USER`     | PostgreSQL initialization user     |
 | `POSTGRES_PASSWORD` | PostgreSQL initialization password |
 | `POSTGRES_DB`       | PostgreSQL initialization database |
+| `CATALOG_PROVIDER` | `mock` for local fixtures; `artic` for real HTTP |
+| `JWT_SECRET` | Required signing secret, at least 32 characters; generate with `openssl rand -hex 32` |
 
 Compose builds the API's `DATABASE_URL` from those variables using hostname `db`
 and port `5432`. Use URL-safe local development values: Compose interpolates them into the URL
@@ -96,8 +98,10 @@ docker compose exec api npx prisma generate --config prisma7.config.ts
 
 `migrate deploy` applies pending SQL migrations to the configured database; it does
 not create migrations or reset data. Client generation only writes generated code.
-The existing migration is
-[20261025183545_init](../backend/prisma/migrations/20261025183545_init/migration.sql).
+The checked-in migrations are
+[initial schema](../backend/prisma/migrations/20261025183545_init/migration.sql) and
+[password hash](../backend/prisma/migrations/20261026180000_add_user_password_hash/migration.sql).
+No seed script exists yet; migrations alone do not create the required demo users/lots.
 For inspection without applying migrations:
 
 ```sh
@@ -126,8 +130,9 @@ node --env-file=.env ./node_modules/vitest/vitest.mjs run --config ./vitest.conf
 
 `npm run lint` runs Oxlint with type-aware checks; ESLint is not configured.
 
-The existing unit and e2e tests cover the starter root endpoint, not the auction
-workflows. Start the compiled application with:
+Tests cover root, user operations, registration/login, authorization and catalog
+normalization/failure handling. Catalog HTTP tests mock the external provider; they
+do not prove live provider availability. Auction workflows have no implementation yet. Start the compiled application with:
 
 ```sh
 node --env-file=.env dist/main.js
@@ -165,21 +170,20 @@ startup requires at least 32 characters. Never commit actual environment files.
 After changing root `.env`, run `docker compose up -d --force-recreate api`.
 Tokens expire after 15 minutes. Changing the secret invalidates existing tokens.
 
-If hot reload reports `EADDRINUSE` or serves stale routes, run
-`docker compose restart api`, then check `docker compose logs --tail=30 api`
-and `GET /health`. Stop the API before a host build to avoid concurrent writes
-to the bind-mounted `dist/`: `docker compose stop api`, `npm run build --prefix backend`,
-then `docker compose up -d api`. These commands retain PostgreSQL data.
+## Catalog development
 
-## External catalog checks
-
-No API key or new environment variables are required. With the API running:
+The example environment files set `CATALOG_PROVIDER=mock`. Set it in root `.env`
+for Docker or `backend/.env` for host execution. No new dependency or API key is
+required. After changing the Docker setting, recreate only the API:
 
 ```sh
+docker compose up -d --force-recreate api
+curl -i 'http://localhost:3000/catalog/search?q=painting&limit=2'
+curl -i http://localhost:3000/catalog/artworks/27992
 curl -i http://localhost:3000/health/external
-curl -i 'http://localhost:3000/catalog/search?q=cats&limit=5'
 ```
 
-These requests depend on Art Institute availability; `/health` still checks only
-API/database health. A provider Cloudflare challenge currently causes 503 from
-these external endpoints. See [catalog behavior and limitations](api.md#art-institute-catalog).
+Search/detail return `provider: "mock"`; external health reports `mocked` and
+`artic: not_checked`. `/health` continues to check PostgreSQL. Use
+`CATALOG_PROVIDER=artic` and recreate the API to switch back; real failures never
+fall back to mock data. See [catalog behavior](api.md#art-institute-catalog).

@@ -8,7 +8,9 @@ export class ExternalHealthController {
   @Get()
   async check() {
     try {
-      await this.provider.check();
+      const result = await this.provider.check();
+      if (result === 'mocked')
+        return { status: 'mocked', services: { artic: 'not_checked' } };
       return { status: 'ok', services: { artic: 'up' } };
     } catch {
       throw new ServiceUnavailableException({

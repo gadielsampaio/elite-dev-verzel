@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; upstream Cloudflare blocking may cause 503."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503."
   },
   "variable": [
     {
@@ -149,7 +149,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/health/external",
-            "description": "Public. 200 services.artic=up; 503 services.artic=down on upstream failure (including Cloudflare challenges)."
+            "description": "Mock: 200 status=mocked and artic=not_checked. Real: 200 artic=up or 503 artic=down. Mock success does not prove real availability."
           }
         }
       ]
@@ -1247,15 +1247,47 @@
     },
     {
       "name": "Catalog",
-      "description": "Read-only Art Institute integration; no persisted items or lots.",
+      "description": "Search and artwork details. Explicit mock/artic modes; no persisted items or lots.",
       "item": [
         {
           "name": "[IMPLEMENTED] Search artworks",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/catalog/search?q=cats&page=1&limit=10",
-            "description": "Public. 200 normalized items/page/limit/total; 400 invalid query; 503 provider unavailable. Live success currently blocked by upstream Cloudflare 403."
-          }
+            "url": "{{baseUrl}}/catalog/search?q=painting&page=1&limit=10",
+            "description": "Public. 200 items/page/limit/total/provider; 400 invalid query; 503 real provider failure. Mock matches titles, artists and types."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Provider is explicit\", () => pm.expect(pm.response.json().provider).to.be.oneOf([\"mock\", \"artic\"]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[IMPLEMENTED] Artwork details",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/catalog/artworks/27992",
+            "description": "Public. 200 normalized artwork details with provider; 400 invalid ID; 404 missing artwork; 503 real provider failure."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Provider is explicit\", () => pm.expect(pm.response.json().provider).to.be.oneOf([\"mock\", \"artic\"]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }

@@ -82,3 +82,8 @@ funds, matching currencies, auction time ordering, role permissions, one
 They also do not enforce paired transfers, immutable financial/audit records, or
 status/timestamp consistency. These remain business-rule design and implementation
 work, not guarantees provided by the current database.
+
+For the challenge, `AuditEvent` is only storage: tamper detection and public
+verification are still missing. Likewise, `Item.sourceSnapshot` and `sourceFetchedAt`
+exist but no publication workflow populates them yet. `AuctionResult` requires a
+winner; a no-bid closure must not invent one. See [remaining requirements](progress.md).

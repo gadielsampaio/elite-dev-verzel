@@ -4,8 +4,9 @@ The Auction API is being built to manage auction lots and items, bidding, wallet
 and settlement history. The implemented foundation consists of the database
 schema and initial migration, Prisma integration, Docker development environment,
 a database health endpoint, user reads/updates, and password-hashed registration.
-JWT login, user-route authorization, external health checks, and Art Institute catalog search are implemented. Auction operations remain planned.
+JWT login, user-route authorization, external health checks, and Art Institute catalog search/details with explicit mocks are implemented. Auction operations remain planned.
 
+- [Challenge requirements, progress and next steps](progress.md)
 - [Development setup and commands](development.md)
 - [Database entities, relationships, and constraints](database.md)
 - [Implemented API, planned modules, and Postman](api.md)
@@ -19,14 +20,17 @@ Vitest and Oxlint provide tests and linting.
 | Path                                                                                     | Purpose                                                          |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | [backend/src/main.ts](../backend/src/main.ts)                                            | Bootstrap; port 3000 by default; no global route prefix          |
-| [backend/src/app.module.ts](../backend/src/app.module.ts)                                | Registers PrismaModule and HealthModule; starter root controller |
+| [backend/src/app.module.ts](../backend/src/app.module.ts)                                | Registers Prisma, Health, Users, Auth and Catalog modules |
+| [backend/src/catalog/](../backend/src/catalog/) | Art Institute adapter, mock/HTTP transports, search/details and external health |
+| [backend/src/auth/](../backend/src/auth/) | Registration, login and JWT verification |
+| [backend/src/users/](../backend/src/users/) | User operations and profile/admin permissions |
 | [backend/src/health/](../backend/src/health/)                                            | Health controller, module, and `healthservice.ts`                |
 | [backend/src/prisma/](../backend/src/prisma/)                                            | Prisma service using `DATABASE_URL` and `@prisma/adapter-pg`     |
 | [backend/prisma/schema.prisma](../backend/prisma/schema.prisma)                          | Database model source of truth                                   |
-| [backend/prisma/migrations/](../backend/prisma/migrations/)                              | Initial SQL migration and PostgreSQL migration lock              |
+| [backend/prisma/migrations/](../backend/prisma/migrations/)                              | Initial schema, password-hash migration and migration lock              |
 | [backend/prisma7.config.ts](../backend/prisma7.config.ts)                                | Prisma schema/migration paths and datasource URL                 |
 | [backend/Dockerfile](../backend/Dockerfile), [docker-compose.yml](../docker-compose.yml) | API and database development containers                          |
-| [backend/test/](../backend/test/)                                                        | Existing HTTP smoke test for `GET /`                             |
+| [backend/test/](../backend/test/)                                                        | HTTP tests for root, user authorization and catalog/provider failures                             |
 | [postman/](postman/)                                                                     | Importable collection and local environment                      |
 
 The generated Prisma client lives in `backend/src/generated/prisma/` and is ignored

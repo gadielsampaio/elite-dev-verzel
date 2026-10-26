@@ -11,6 +11,9 @@ Base URL: `http://localhost:3000`. No global prefix. Registration, JWT login, an
 | `GET /`         | Starter response: HTTP 200 with plain text `Hello World!`                 |
 | `GET /health`   | Executes `SELECT 1` through Prisma; reports API and database availability |
 
+The full challenge scope and outstanding workflows are tracked in
+[requirements and progress](progress.md).
+
 ## Users and registration
 
 - `POST /auth/register`: creates a user (201), hashes the password with bcrypt (cost 12), and returns only public user fields. Duplicate email: 409; invalid input: 400.
@@ -91,43 +94,52 @@ Public, read-only endpoints; no credentials or database writes:
 
 | Endpoint | Behavior |
 | --- | --- |
-| `GET /health/external` | Probes Art Institute `/artworks?limit=1&fields=id`; 200 when usable, otherwise 503. Independent of the database health check. |
-| `GET /catalog/search?q=cats&page=1&limit=10` | Searches artwork metadata through the Art Institute adapter. |
+| `GET /catalog/search?q=painting&page=1&limit=10` | Search normalized artworks; returns `items`, `page`, `limit`, `total`, `provider`. |
+| `GET /catalog/artworks/27992` | Fetch one artwork with date, medium, dimensions and artwork type; 404 if missing. ID must be a positive safe integer. |
+| `GET /health/external` | Real provider: 200/up or 503/down. Mock provider: 200/mocked, without contacting Art Institute. |
 
-External health responses:
+`CATALOG_PROVIDER=mock` enables deterministic local fixtures; `artic` selects real
+HTTP calls. If unset, the application uses `artic`; invalid values prevent startup.
+The example environment files select `mock` for local development. There is **no
+automatic fallback** from real errors to fixtures.
+
+Search requires nonblank `q` (maximum 100 characters). `page`: 1–100, default 1;
+`limit`: 1–20, default 10. Invalid parameters return 400; no matches return 200
+with an empty array. Search items contain `articArtworkId`, `name`, `articImageId`,
+`imageUrl`, `artistDisplay`, `creditLine`, and `isPublicDomain`. Detail adds
+`dateDisplay`, `mediumDisplay`, `dimensions`, and `artworkType`.
+Search and detail responses include `provider: "mock"` or `"artic"`.
+Optional metadata and missing images remain null; image URLs are not fetched or
+cached by this API, so images can still require external connectivity.
+
+Mock search uses case-insensitive substring matching on title, artist and type;
+it does not reproduce Elasticsearch ranking. Try `painting`, `Seurat`, `Bedroom`
+or `Alma Thomas`. Fixtures cover public-domain/non-public-domain metadata and null
+images. They are curated examples, not verified live captures or persisted items.
+See [fixture contract and source](../backend/src/catalog/fixtures/README.md).
+
+Mock external health:
 
 ```json
-{"status":"ok","services":{"artic":"up"}}
+{"status":"mocked","services":{"artic":"not_checked"}}
 ```
 
-On HTTP 503:
+Real external health returns `{"status":"ok","services":{"artic":"up"}}`
+on success and `{"status":"error","services":{"artic":"down"}}` with 503
+on failure. The real adapter uses a five-second deadline; network errors, invalid
+responses and provider errors return 503 (artwork detail 404 stays 404).
+The database health endpoint remains independent of either mode.
 
-```json
-{"status":"error","services":{"artic":"down"}}
-```
-
-Search requires a nonblank `q` (maximum 100 characters). `page` defaults to 1
-(range 1–100); `limit` defaults to 10 (range 1–20). Invalid query fields return 400.
-The response contains `items`, `page`, `limit`, and `total`. Each item contains
-`articArtworkId`, `name`, `articImageId`, `imageUrl`, `artistDisplay`, `creditLine`,
-and `isPublicDomain`. Optional metadata and missing images remain null.
-Images use the provider's IIIF URL format; image availability is not checked.
-
-The adapter uses a five-second deadline. Network errors, upstream HTTP errors,
-invalid responses, and timeouts return 503. Empty search results return 200.
-There is no cache or retry yet. This step does not create items/lots or persist
-snapshots. Lot publication and owner permissions remain planned.
-
-Provider contract: [Art Institute API documentation](https://api.artic.edu/docs/#quick-start).
-On 2026-10-26, live requests from the development host and Docker received a
-Cloudflare HTTP 403 challenge. Local endpoints correctly return 503 in this case;
-success responses are covered with mocked upstream HTTP tests, but live search
-success remains unverified. Retry from the deployment environment or contact the
-provider if the block persists.
+Real Art Institute access last returned a Cloudflare 403 on 2026-10-26. Real success
+remains unverified; development proceeds with mocks. Revisit provider access or a
+replacement after the core workflows work. Lot publication/snapshots remain planned.
 
 ## Planned modules
 
-The modules below remain planned, except the implemented user operations above. Their business workflows are not available yet.
+The modules below remain planned, except the implemented user operations above.
+These collection requests are placeholders, not mandatory challenge endpoints.
+Prioritize challenge workflows over blanket CRUD: deposits, holds, bids, settlement
+and audit must enforce their business rules, not expose arbitrary record edits.
 
 | Module / proposed path                       | Purpose and requests in the collection          |
 | -------------------------------------------- | ----------------------------------------------- |

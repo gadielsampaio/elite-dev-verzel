@@ -1,3 +1,8 @@
+import {
+  ArticTransport,
+  HttpArticTransport,
+} from '../src/catalog/artic.transport.js';
+import { artworkResponses } from '../src/catalog/fixtures/artworks.js';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import request from 'supertest';
@@ -19,7 +24,10 @@ describe('Catalog and external health (HTTP)', () => {
   beforeAll(async () => {
     const module = await Test.createTestingModule({
       imports: [CatalogModule],
-    }).compile();
+    })
+      .overrideProvider(ArticTransport)
+      .useValue(new HttpArticTransport())
+      .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(
       new ValidationPipe({
@@ -59,6 +67,7 @@ describe('Catalog and external health (HTTP)', () => {
       .query({ q: ' cats & dogs ', page: 2, limit: 5 })
       .expect(200);
     expect(res.body).toEqual({
+      provider: 'artic',
       items: [
         {
           articArtworkId: 27992,
@@ -110,7 +119,7 @@ describe('Catalog and external health (HTTP)', () => {
     await request(app.getHttpServer())
       .get('/catalog/search?q=absent')
       .expect(200)
-      .expect({ items: [], page: 1, limit: 10, total: 0 });
+      .expect({ items: [], page: 1, limit: 10, total: 0, provider: 'artic' });
   });
   it.each([
     '',
@@ -189,5 +198,43 @@ describe('Catalog and external health (HTTP)', () => {
   it('rejects an empty health response', async () => {
     reply({ data: [] });
     await request(app.getHttpServer()).get('/health/external').expect(503);
+  });
+  it('normalizes the official detail shape using the HTTP transport', async () => {
+    reply(artworkResponses[0]);
+    const res = await request(app.getHttpServer())
+      .get('/catalog/artworks/27992')
+      .expect(200);
+    expect(res.body).toMatchObject({
+      provider: 'artic',
+      articArtworkId: 27992,
+      mediumDisplay: 'Oil on canvas',
+      artworkType: 'Painting',
+    });
+    expect(fetchMock.mock.calls[0][0].pathname).toBe('/api/v1/artworks/27992');
+  });
+  it('maps provider detail 404 to a local 404', async () => {
+    reply(
+      { status: 404, error: 'Not Found', detail: 'Artwork not found' },
+      404,
+    );
+    await request(app.getHttpServer())
+      .get('/catalog/artworks/999999')
+      .expect(404);
+  });
+  it('does not substitute fixtures when real detail requests fail', async () => {
+    reply({ error: 'unavailable' }, 503);
+    await request(app.getHttpServer())
+      .get('/catalog/artworks/27992')
+      .expect(503);
+  });
+  it.each([
+    { data: [] },
+    { data: { ...artworkResponses[0].data, id: 28560 } },
+    { data: { ...artworkResponses[0].data, dimensions: 42 } },
+  ])('rejects malformed detail %j', async (body) => {
+    reply(body);
+    await request(app.getHttpServer())
+      .get('/catalog/artworks/27992')
+      .expect(503);
   });
 });

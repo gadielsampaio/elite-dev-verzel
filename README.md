@@ -1,12 +1,47 @@
 # Auction API
 
-NestJS and TypeScript (ESM), Prisma 7, PostgreSQL 18, and Docker Compose.
-The database schema, initial migration, Prisma integration, and `GET /health`
-are implemented, along with user create/read/update and password-hashed registration.
-JWT login, user-route authorization, external health checks, and Art Institute catalog search are implemented; auction operations remain planned.
-Live catalog verification is currently blocked by an upstream Cloudflare 403; see [limitations](docs/api.md#art-institute-catalog).
+An online art-auction project for the Elite Dev / Verzel challenge, using items
+from the Art Institute of Chicago API. NestJS, TypeScript ESM, Prisma 7,
+PostgreSQL 18 and Docker Compose power the current backend.
 
-See the [project documentation](docs/README.md) for the overview and structure,
-[development setup](docs/development.md) for environment and migration commands,
-[database reference](docs/database.md) for entities and constraints, and
-[API and Postman guide](docs/api.md) for supported endpoints and testing.
+Implemented: database schema/migrations, health checks, user create/read/update,
+password-hashed registration, JWT login, user authorization, catalog search and artwork details.
+The required React frontend and auction workflows are not implemented yet.
+See [requirements and progress](docs/progress.md) for the remaining delivery scope.
+
+## Run locally
+
+Requires Docker with Compose. From the repository root, on a new checkout:
+
+```sh
+cp .env.example .env
+openssl rand -hex 32
+```
+
+Set `JWT_SECRET` in `.env` to the generated value and configure the PostgreSQL
+variables. Keep existing environment files; never commit secrets. Then:
+
+```sh
+docker compose up --build -d
+docker compose exec api npx prisma migrate deploy --config prisma7.config.ts
+curl -i http://localhost:3000/health
+```
+
+API: `http://localhost:3000`; PostgreSQL: `127.0.0.1:5432`. Startup generates the
+Prisma Client but does not apply migrations. Stop safely with `docker compose stop`;
+do not remove database volumes. See [development setup](docs/development.md) for
+database access, host execution, tests and troubleshooting.
+
+## Known limitations
+
+- Catalog development uses explicit local fixtures (`CATALOG_PROVIDER=mock`).
+  Real Art Institute access returned Cloudflare 403; live success remains unverified.
+  Mock external health reports `not_checked`, not real provider availability.
+- No React UI, auction operations, required demo seeds or verified public deployment.
+  Schema tables do not constitute working auction features.
+- Legacy passwordless users cannot log in. No admin seed or public admin signup exists.
+- Watch mode can leave stale processes (`EADDRINUSE`); restart only the API with
+  `docker compose restart api`. Stop the API before building on the host.
+
+[API and Postman](docs/api.md) · [Database](docs/database.md) ·
+[Documentation index](docs/README.md)

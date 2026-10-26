@@ -6,7 +6,17 @@ import { SearchCatalogDto } from './search-catalog.dto.js';
 export class CatalogService {
   constructor(private readonly provider: ExternalItemProvider) {}
 
-  search({ q, page, limit }: SearchCatalogDto) {
-    return this.provider.search(q, page, limit);
+  async findOne(id: number) {
+    return {
+      ...(await this.provider.findOne(id)),
+      provider: this.provider.name,
+    };
+  }
+
+  async search({ q, page, limit }: SearchCatalogDto) {
+    return {
+      ...(await this.provider.search(q, page, limit)),
+      provider: this.provider.name,
+    };
   }
 }

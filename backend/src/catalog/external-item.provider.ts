@@ -9,7 +9,18 @@ export interface CatalogItem {
 }
 
 export abstract class ExternalItemProvider {
-  abstract check(): Promise<void>;
+  abstract readonly name: 'artic' | 'mock';
+  abstract check(): Promise<'up' | 'mocked'>;
+  abstract findOne(
+    id: number,
+  ): Promise<
+    CatalogItem & {
+      dateDisplay: string | null;
+      mediumDisplay: string | null;
+      dimensions: string | null;
+      artworkType: string | null;
+    }
+  >;
   abstract search(
     query: string,
     page: number,
