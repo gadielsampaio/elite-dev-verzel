@@ -1228,8 +1228,19 @@
     },
     {
       "name": "Auction Results",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed read-only settlement results. Fields: id, lotId, winnerId, ownerId, winningBidId, endedAt, settledAt, createdAt. Owner must match the lot; winner and lot must match the winning bid. Creation and settlement are workflow-managed.",
+      "description": "Per-lot public result implemented. Generic auction-results routes remain planned.",
       "item": [
+        {
+          "name": "[IMPLEMENTED] Public lot result and receipt",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/lots/{{lotId}}/result",
+            "description": "Public result. States: awaiting_close, pending_settlement, no_winner, settled. Only settled includes a pseudonymous receipt. No authentication or museum request."
+          }
+        },
         {
           "name": "[PLANNED] List auction results",
           "request": {
@@ -1405,7 +1416,7 @@
     },
     {
       "name": "Catalog",
-      "description": "Cleveland catalog search/details; mock uses offline Cleveland fixtures.",
+      "description": "Cleveland catalog: q text, type, or both; images and CC0 are mandatory. Explicit offline mock mode available.",
       "item": [
         {
           "name": "[IMPLEMENTED] Search artworks",
@@ -1446,6 +1457,26 @@
               }
             }
           ]
+        },
+        {
+          "name": "[IMPLEMENTED] Search paintings (type only)",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/catalog/search?type=Painting&page=1&limit=10"
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Search Monet paintings",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/catalog/search?q=Monet&type=Painting&page=1&limit=10"
+          }
         }
       ]
     }

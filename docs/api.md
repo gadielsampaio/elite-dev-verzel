@@ -104,7 +104,16 @@ Mock health remains `{"status":"mocked","services":{"cleveland":"not_checked"}}`
 Database health is independent. Requests have a five-second timeout; provider,
 network and invalid-response failures return 503.
 
-Search requires nonblank `q` (maximum 100 characters), page 1–100 and limit 1–20.
+Search accepts `q` (artwork/artist text, maximum 100 characters), `type`, or both.
+At least one must be supplied. Page: 1–100; limit: 1–20. Supported types match the
+Seller Studio choices: Painting, Drawing, Sculpture, Photograph, Print, Ceramic,
+Textile, Jewelry, Furniture and woodwork. Invalid filters return 400.
+The adapter always sends `has_image=1` and `cc0` to Cleveland. Publication also
+rejects artworks without an image or confirmed CC0 status. Existing lots are unchanged.
+
+Examples: `?type=Painting`, `?q=Monet`, `?q=Monet&type=Painting`.
+Seller Studio retains submitted filters across pagination and the category when
+returning from artwork details; editing fields requires SEARCH to apply them.
 Cleveland pagination uses `skip=(page-1)*limit`, with total from `info.total`.
 Metadata maps title, creators, creditline, web image, license, creation date,
 technique, measurements and type. Missing optional metadata remains null.
@@ -180,6 +189,21 @@ Cancelled details subsequently return 404 publicly.
 Cancellation locks the lot row and checks ownership/state/bids in one transaction.
 Bid placement acquires the same lot lock before validating state and writing a bid.
 Editing and realtime remain pending; [background settlement](settlement.md) is implemented.
+
+## Seller lot management
+
+`GET /lots/mine?page=1&limit=9` requires an active auctioneer's JWT. Ownership
+comes exclusively from the token; `ownerId` query parameters are rejected.
+Pagination matches the public listing (limit up to 50). An optional `status`
+filter accepts scheduled/open/closed; omitting it includes the owner's draft and
+cancelled lots as well. Other owners' lots are never returned.
+
+Response: `items`, `total`, `page`, `limit`. Each lot includes saved items,
+`bidCount` (all bids, including inactive bids) and `canCancel`. Eligibility requires
+scheduled/open status, an unexpired deadline and no bid ever received. The
+existing cancellation endpoint rechecks eligibility transactionally; the displayed
+flag is not authorization. No bidder identity or settlement totals are added.
+Reads reconcile only this owner's lifecycle and use a consistent snapshot.
 
 ## Wallet balances and simulated deposits
 
@@ -261,6 +285,19 @@ Aliases are scoped to each lot using HMAC with `JWT_SECRET`; rotating that secre
 changes aliases. No user IDs, names, emails or idempotency keys are exposed.
 This pseudonymization does **not** provide tamper detection; public audit remains pending.
 
+## Public results and shareable receipts
+
+`GET /lots/:lotId/result` is public. Returns lot ID/title/currency, saved item names
+and image URLs, deadline, result status and a nullable receipt. Statuses distinguish
+`awaiting_close`, `pending_settlement`, `no_winner` and `settled`; only settled
+results return a receipt. Invalid UUID: 400; missing/draft/cancelled lot: 404.
+
+Receipt fields: `id`, `winningBidId`, `amount` (decimal string), `winnerAlias`,
+`endedAt`, `settledAt`. Account identifiers and personal profile data are excluded.
+Reads use PostgreSQL only. Frontend link: `/#/receipt/:lotId`, accessible without
+login and linked from closed lots in Seller Studio. No integrity guarantee is
+claimed. See [settlement](settlement.md).
+
 ## Planned modules
 
 The modules below remain planned, except the implemented user, lot, wallet and bid operations above.
@@ -277,7 +314,7 @@ and audit must enforce their business rules, not expose arbitrary record edits.
 | Lots — `/lots`                               | Create/list/get/cancel implemented; generic patch/delete remain planned |
 | Items — `/items`                             | Lot contents; list, get, create, patch, delete  |
 | Bids — `/lots/:lotId/bids` | Placement, public history and own position implemented |
-| Auction Results — `/auction-results`         | Outcomes; list, get                             |
+| Auction Results — `/auction-results`         | Generic list/get planned; per-lot result implemented|
 | Audit Logs — `/audit-logs`                   | `AuditEvent` history; list, get                 |
 
 List/create proposals use the collection path; get/patch/delete proposals use

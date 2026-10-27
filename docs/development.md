@@ -133,7 +133,7 @@ node --env-file=.env ./node_modules/vitest/vitest.mjs run --config ./vitest.conf
 
 Tests cover root, user operations, registration/login, authorization and catalog
 normalization/failure handling. Catalog HTTP tests mock the external provider; they
-do not prove live provider availability. Auction workflows have no implementation yet. Start the compiled application with:
+do not prove live provider availability. Lot, wallet and bidding API increments are also covered by their domain tests; settlement remains pending. Start the compiled application with:
 
 ```sh
 node --env-file=.env dist/main.js
@@ -207,7 +207,14 @@ future concurrent bid handling or settlement.
 `docker compose up --build -d` also starts the React frontend at
 `http://127.0.0.1:5175`. Register a bidder to try simulated deposits; no demo
 accounts or lots are seeded automatically. Browse lots publicly, or log in to view
-your wallet. Seller publication/cancellation and bid-entry screens are still pending. Bid
+your wallet. `/` uses the HAUS UI with real API calls; `/#/login`,
+`/#/register` and `/#/wallet` are the connected account routes. The room reads
+saved details, public bid history and authenticated position, with manual refresh.
+`/preview` is an isolated local-state visual reference, not the application.
+The older API screens remain at `/lots`, `/login` and `/wallet` during transition.
+Seller Studio at `/#/seller` is now available to signed-in auctioneers for
+backend catalog search, publication, persistent own-lot listing and cancellation.
+Bid-entry screens and seller results/receipts are still pending. Bid
 placement is available through the API/Postman.
 
 For host development, stop the Docker web service, then:
@@ -233,7 +240,12 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-Browser tests use mocked API responses, including retry/session/mobile cases.
+Browser contract tests use mocked API responses, including retry/session/mobile cases.
+`connected.spec.ts` covers the HAUS integration; `app.spec.ts` preserves the older
+API UI regressions; `preview.spec.ts` covers the isolated visual prototype.
+Shared response fixtures live in `tests/support/api.ts`. These tests alone do not
+prove database persistence or live provider availability; see the separate live
+verification evidence in [frontend integration](frontend-integration.md).
 To use installed Chrome, set `PLAYWRIGHT_CHANNEL=chrome` for the test command.
 The production build outputs `frontend/dist`; a deployed host must serve SPA routes
 and proxy `/api` separately. The Compose/Vite setup is development-only.

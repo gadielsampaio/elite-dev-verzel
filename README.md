@@ -8,7 +8,7 @@ Implemented: database schema/migrations, health checks, user create/read/update,
 password-hashed registration, JWT login, user authorization, catalog search/details, single-artwork lot publication, listing/details and owner-only cancellation.
 The initial frontend supports registration/login, lot browsing/details and wallet
 balances with simulated deposits. Bid placement and reservation/release now work
-through the API. Background settlement is implemented; bid UI and shareable receipts remain pending.
+through the API. Background settlement is implemented; public results and shareable receipts are implemented. Bid entry UI remains pending.
 See [requirements and progress](docs/progress.md) for the remaining delivery scope.
 
 ## Run locally
@@ -39,7 +39,7 @@ database access, host execution, tests and troubleshooting.
 - Catalog uses Cleveland (`CATALOG_PROVIDER=cleveland`), with verified live search/detail.
   Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
-- Seller publication/cancellation UI, bid UI, shareable receipts, required demo seeds and
+- Bid entry UI, seller totals, bidder participation/wins, required demo seeds and
   verified public deployment remain pending.
   Lifecycle states update on reads and during background settlement. The worker
   transfers funds and captures winning holds; failed settlements retain holds for retry.

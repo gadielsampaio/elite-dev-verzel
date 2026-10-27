@@ -7,6 +7,7 @@ a database health endpoint, user reads/updates, and password-hashed registration
 JWT login, user-route authorization, external health checks, and Cleveland catalog search/details with explicit mocks are implemented. Lot publication, listing/details, on-demand lifecycle and owner cancellation are implemented; bid placement with reservations is implemented; settlement remains planned.
 
 - [Challenge requirements, progress and next steps](progress.md)
+- [Frontend integration inventory and verification](frontend-integration.md)
 - [Development setup and commands](development.md)
 - [Database entities, relationships, and constraints](database.md)
 - [Implemented API, planned modules, and Postman](api.md)
@@ -20,7 +21,7 @@ uses React Router and Playwright browser tests.
 
 | Path                                                                                     | Purpose                                                          |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [frontend/](../frontend/) | React login/registration, lot browsing and wallet/deposit UI |
+| [frontend/](../frontend/) | HAUS UI with backend auth, public lot/history reads and wallet/deposits; isolated `/preview` prototype |
 | [backend/src/bids/](../backend/src/bids/) | Bid placement, reservations, public history and own position |
 | [backend/src/wallets/](../backend/src/wallets/) | Own balances and idempotent simulated deposits |
 | [backend/src/main.ts](../backend/src/main.ts)                                            | Bootstrap; port 3000 by default; no global route prefix          |
