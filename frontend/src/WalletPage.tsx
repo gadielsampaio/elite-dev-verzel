@@ -178,8 +178,8 @@ function WalletContent({
         )}
       </div>
       <p className="footnote">
-        Available balance = total balance − committed balance. Bid reservations
-        are not active yet.
+        Available balance = total balance − committed balance. Leading bids
+        reserve funds. Settlement is not available yet.
       </p>
     </section>
   );

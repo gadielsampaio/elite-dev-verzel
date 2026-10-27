@@ -54,7 +54,7 @@ Prisma updates this field on writes; the migration does not install SQL update t
   cascading deletes.
 - Email is unique; wallet `userId`, hold `bidId`, result `lotId`, and result
   `winningBidId` are unique. Bid and transaction idempotency keys are each unique
-  within their own table; simulated deposits enforce safe replay, while bid replay remains pending.
+  within their own table; deposits and bid placement enforce safe replay.
 - Item `(lotId, articArtworkId)` is unique. PostgreSQL allows multiple rows with
   null artwork IDs in this constraint.
 - Lot `(id, ownerId)` and bid `(id, lotId, bidderId)` are composite unique keys.
@@ -74,7 +74,8 @@ Transactions store financial entries, holds represent reservations associated
 with bids, and results link the winning bid to the lot and settlement timestamps.
 Audit events can record before/after state and request context. These structures
 exist. Simulated deposits and ledger/active-hold balance calculation are implemented.
-Automatic reservation, release, capture, settlement and audit recording remain pending.
+Bid placement reserves/releases holds atomically. Capture, settlement and audit
+recording remain pending; `isWinner` is not set just because a bid leads.
 
 The schema and initial migration do not enforce positive amounts, sufficient
 funds, matching currencies, auction time ordering, role permissions, one

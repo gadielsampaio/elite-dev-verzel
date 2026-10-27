@@ -207,7 +207,8 @@ future concurrent bid handling or settlement.
 `docker compose up --build -d` also starts the React frontend at
 `http://127.0.0.1:5175`. Register a bidder to try simulated deposits; no demo
 accounts or lots are seeded automatically. Browse lots publicly, or log in to view
-your wallet. Seller publication/cancellation screens and bidding are still pending.
+your wallet. Seller publication/cancellation and bid-entry screens are still pending. Bid
+placement is available through the API/Postman.
 
 For host development, stop the Docker web service, then:
 
@@ -247,3 +248,15 @@ This opt-in test creates uniquely identified users and ledger/hold fixtures to t
 independent concurrent transactions. Cleanup removes only those test IDs, preserving
 existing data. It verifies single credit on repeated keys, cross-user conflicts and
 exact balances; it does not execute settlement.
+
+## Bid concurrency verification
+
+```sh
+docker compose exec -e RUN_DATABASE_TESTS=1 api npm run test:e2e -- bids-database.e2e-spec.ts
+```
+
+This opt-in test creates dedicated users, wallets, lots, deposits and bids, then
+removes only its own fixture IDs. It checks concurrent equal bids, cross-lot funds,
+leader changes, idempotent retries, deadline extension, cancellation races and
+concurrent deposits. It does not test settlement or audit integrity. No schema
+migration is needed for this increment.

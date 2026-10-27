@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented. Public lot listing, on-demand lifecycle and owner cancellation are implemented. Own wallet balances and idempotent simulated deposits are implemented."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented. Public lot listing, on-demand lifecycle and owner cancellation are implemented. Own wallet balances and idempotent simulated deposits are implemented. Bid placement, reservation/release and anti-sniping implemented; settlement pending."
   },
   "variable": [
     {
@@ -1112,7 +1112,7 @@
     },
     {
       "name": "Bids",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed bid creation and reads only. Winner and invalidation fields are workflow-managed; generic update/delete requests intentionally omitted.",
+      "description": "Bid placement implemented under /lots/:lotId/bids. History/read endpoints remain planned.",
       "item": [
         {
           "name": "[PLANNED] List bids",
@@ -1160,7 +1160,7 @@
           }
         },
         {
-          "name": "[PLANNED] Create bids",
+          "name": "[IMPLEMENTED] Place bid",
           "request": {
             "method": "POST",
             "header": [
@@ -1173,26 +1173,49 @@
                 "value": "application/json"
               }
             ],
-            "url": {
-              "raw": "{{baseUrl}}/bids",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "bids"
-              ]
-            },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "url": "{{baseUrl}}/lots/{{lotId}}/bids",
+            "description": "Bidder only; requires funded wallet and live lot. 201 receipt; 409 rule failure. Same key/amount safely retries. Clear bidKey before each new intended bid. Leading holds remain committed until outbid or future settlement.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"lotId\": \"{{lotId}}\",\n  \"bidderId\": \"{{userId}}\",\n  \"amount\": \"125.00\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\"\n}",
+              "raw": "{\n  \"amount\": \"105.00\",\n  \"idempotencyKey\": \"{{bidKey}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
                 }
               }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
             }
-          }
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"bidKey\")) pm.environment.set(\"bidKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) pm.environment.set(\"bidId\", pm.response.json().id);"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

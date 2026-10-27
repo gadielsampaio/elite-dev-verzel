@@ -209,7 +209,7 @@ export function LotPage() {
                 {lot.items[0]?.sourceSnapshot?.mediumDisplay ?? "Not listed"}
               </dd>
             </dl>
-            <p className="notice">Bidding is not available yet.</p>
+            <p className="notice">Bid placement is currently available through the API only.</p>
           </div>
         </section>
       )}

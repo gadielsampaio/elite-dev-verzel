@@ -102,7 +102,7 @@ test("browses status filters and saved lot details", async ({ page }) => {
     page.getByRole("heading", { name: "Sunday afternoon" }),
   ).toBeVisible();
   await expect(page.getByText("Oil on canvas")).toBeVisible();
-  await expect(page.getByText("Bidding is not available yet.")).toBeVisible();
+  await expect(page.getByText("Bid placement is currently available through the API only.")).toBeVisible();
 });
 test("protects wallet and deposits without exposing tokens in storage", async ({
   page,

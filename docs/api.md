@@ -195,9 +195,8 @@ Missing lot: 404; wrong owner/role: 403; expired/draft/closed or any bid: 409.
 Cancelled details subsequently return 404 publicly.
 
 Cancellation locks the lot row and checks ownership/state/bids in one transaction.
-Future bidding must acquire the same row lock before validating state and writing
-a bid; a transaction alone is not the full bidding concurrency solution.
-Editing, bidding, settlement and realtime remain pending.
+Bid placement acquires the same lot lock before validating state and writing a bid.
+Editing, settlement and realtime remain pending.
 
 ## Wallet balances and simulated deposits
 
@@ -221,14 +220,51 @@ amount returns the same receipt without another credit, including concurrent ret
 Reusing a key for another user, amount or operation returns 409. Invalid input: 400;
 missing token: 401; non-bidder: 403. No client-supplied user/wallet IDs are accepted.
 
-Deposits lock the user then wallet row. Future bid/settlement writes must coordinate
-on wallet locks and a consistent lock order. Balance calculation supports existing
-hold/ledger records; bid reservation/release, withdrawal, refunds and settlement
-workflows are not implemented. No schema changes were needed.
+Deposits lock the user (`FOR NO KEY UPDATE`) then wallet row, allowing concurrent
+bid foreign-key checks. Bid placement locks the lot then affected wallets in ID
+order; future settlement must preserve a compatible lock order. Active bid holds
+contribute to committed balance. Withdrawal, refunds and settlement are not implemented. No schema changes were needed.
+
+## Bid placement
+
+`POST /lots/:lotId/bids` requires an active **bidder** and Bearer JWT.
+Auctioneers/admins receive 403. The bidder comes from the token, not the request.
+
+```json
+{"amount":"105.00","idempotencyKey":"44444444-4444-4444-8444-444444444444"}
+```
+
+Amount is a positive decimal string (up to 17 integer digits/two decimals).
+Success: 201 with `id`, `lotId`, `amount`, `idempotencyKey`, `createdAt`.
+Retry the same key/lot/bidder/amount to receive the original receipt without another
+hold or extension, even after the lot closes. A different bid needs a new UUID.
+Conflicting key reuse returns 409; invalid body/UUID: 400; missing lot: 404.
+
+Within one transaction, `BidsService` coordinates:
+
+- Scheduled/open lots only, with `startTime <= server time < endTime`; own lots are forbidden.
+- First bid ≥ starting bid; later bids ≥ highest eligible bid + minimum increment.
+- Current leader cannot bid again with a new key.
+- Matching wallet/lot currency and enough **available** funds across all lots.
+- New active reservation and immediate release of the old leader's hold. Being
+  outbid does not deactivate the historical bid. Rejection rolls back all changes.
+- Accepted bids with at most two minutes remaining add two minutes to the existing
+  deadline. Expiry is rechecked after waiting for wallet locks.
+
+Rule failures return 409 with a specific reason. Lot locking serializes bids with
+cancellation; ordered wallet locks prevent concurrent overspending across lots.
+An inconsistent legacy leader without a valid active hold is rejected for repair.
+No payment, winning-bid designation or ledger debit is performed during bidding.
+
+Use a live lot and deposit funds first. Public lot details expose the updated
+`endTime`; a receipt does not imply the bid is still leading. History/current-leader
+read endpoints, bid UI, realtime events and tamper-evident history remain pending.
+Leading holds **remain committed after close** until settlement is implemented;
+closing the lot alone neither debits nor releases them.
 
 ## Planned modules
 
-The modules below remain planned, except the implemented user, lot and wallet operations above.
+The modules below remain planned, except the implemented user, lot, wallet and bid operations above.
 These collection requests are placeholders, not mandatory challenge endpoints.
 Prioritize challenge workflows over blanket CRUD: deposits, holds, bids, settlement
 and audit must enforce their business rules, not expose arbitrary record edits.
@@ -241,7 +277,7 @@ and audit must enforce their business rules, not expose arbitrary record edits.
 | Wallet Holds — `/wallet-holds`               | Bid reservations; list, get, create, patch      |
 | Lots — `/lots`                               | Create/list/get/cancel implemented; generic patch/delete remain planned |
 | Items — `/items`                             | Lot contents; list, get, create, patch, delete  |
-| Bids — `/bids`                               | Offers; list, get, create                       |
+| Bids — `/lots/:lotId/bids` | Placement implemented; history/read endpoints remain planned |
 | Auction Results — `/auction-results`         | Outcomes; list, get                             |
 | Audit Logs — `/audit-logs`                   | `AuditEvent` history; list, get                 |
 

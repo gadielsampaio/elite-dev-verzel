@@ -10,7 +10,9 @@ reads its saved snapshot. `GET /lots` lists public lots; `PATCH /lots/:id/cancel
 allows owner cancellation before bids. Lifecycle updates occur on list/detail reads. See [known limitations](../README.md#known-limitations).
 
 `GET /wallet` returns own balances; bidder-only `POST /wallet/deposits` records
-idempotent simulated deposits. Background settlement remains pending.
+idempotent simulated deposits. Bidder-only `POST /lots/:lotId/bids` applies auction
+rules, reserves/releases funds and extends late deadlines. Background settlement
+remains pending; leading holds are not captured/released on close yet.
 
 See the [project documentation](../docs/README.md),
 [development setup](../docs/development.md), and

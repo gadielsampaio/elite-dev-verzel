@@ -7,7 +7,8 @@ PostgreSQL 18 and Docker Compose power the backend; React, TypeScript and Vite p
 Implemented: database schema/migrations, health checks, user create/read/update,
 password-hashed registration, JWT login, user authorization, catalog search/details, single-artwork lot publication, listing/details and owner-only cancellation.
 The initial frontend supports registration/login, lot browsing/details and wallet
-balances with simulated deposits. Bidding and settlement are not implemented yet.
+balances with simulated deposits. Bid placement and reservation/release now work
+through the API; bid UI and settlement remain pending.
 See [requirements and progress](docs/progress.md) for the remaining delivery scope.
 
 ## Run locally
@@ -38,10 +39,10 @@ database access, host execution, tests and troubleshooting.
 - Catalog development uses explicit local fixtures (`CATALOG_PROVIDER=mock`).
   Real Art Institute access returned Cloudflare 403; live success remains unverified.
   Mock external health reports `not_checked`, not real provider availability.
-- Seller publication/cancellation UI, bidding, settlement, required demo seeds and
+- Seller publication/cancellation UI, bid UI, settlement, required demo seeds and
   verified public deployment remain pending.
   Lifecycle states update on list/detail requests; no background closing or
-  settlement worker exists yet.
+  settlement worker exists yet. Leading bids retain their holds after closing.
   Schema tables do not constitute working auction features.
 - Sign in again after refreshing the page: tokens are kept in memory only.
 - Legacy passwordless users cannot log in. No admin seed or public admin signup exists.

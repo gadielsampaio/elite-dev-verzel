@@ -1,3 +1,4 @@
+import { walletBalance } from './wallet-balance.js';
 import {
   BadRequestException,
   ConflictException,
@@ -23,29 +24,16 @@ export class WalletsService {
             committed: '0.00',
             available: '0.00',
           };
-        const entries = await tx.walletTransaction.groupBy({
-          by: ['type'],
-          where: { walletId: wallet.id },
-          _sum: { amount: true },
-        });
-        let total = new Prisma.Decimal(0);
-        for (const entry of entries) {
-          const amount = entry._sum.amount ?? new Prisma.Decimal(0);
-          total = ['withdrawal', 'auction_purchase'].includes(entry.type)
-            ? total.minus(amount)
-            : total.plus(amount);
-        }
-        const holds = await tx.walletHold.aggregate({
-          where: { walletId: wallet.id, status: 'active' },
-          _sum: { amount: true },
-        });
-        const committed = holds._sum.amount ?? new Prisma.Decimal(0);
+        const { total, committed, available } = await walletBalance(
+          tx,
+          wallet.id,
+        );
         return {
           walletId: wallet.id,
           currency: wallet.currency,
           total: total.toFixed(2),
           committed: committed.toFixed(2),
-          available: total.minus(committed).toFixed(2),
+          available: available.toFixed(2),
         };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
@@ -92,8 +80,8 @@ export class WalletsService {
       throw new BadRequestException('Deposit must be greater than zero');
     try {
       return await this.prisma.$transaction(async (tx) => {
-        // Serialize first-wallet creation for this user as well as repeated deposits.
-        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR UPDATE`;
+        // Serialize first-wallet creation; NO KEY UPDATE permits bid foreign-key checks.
+        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
         const existing = await this.replay(tx, userId, data, amount);
         if (existing) return existing;
         const wallet = await tx.wallet.upsert({
