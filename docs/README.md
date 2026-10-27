@@ -21,7 +21,7 @@ uses React Router and Playwright browser tests.
 | Path                                                                                     | Purpose                                                          |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | [frontend/](../frontend/) | React login/registration, lot browsing and wallet/deposit UI |
-| [backend/src/bids/](../backend/src/bids/) | Bid placement, lot/wallet locking and reservation orchestration |
+| [backend/src/bids/](../backend/src/bids/) | Bid placement, reservations, public history and own position |
 | [backend/src/wallets/](../backend/src/wallets/) | Own balances and idempotent simulated deposits |
 | [backend/src/main.ts](../backend/src/main.ts)                                            | Bootstrap; port 3000 by default; no global route prefix          |
 | [backend/src/app.module.ts](../backend/src/app.module.ts)                                | Registers Prisma, Health, Users, Auth, Catalog, Lots, Wallets and Bids modules |

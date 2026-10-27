@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { BidReadsService } from '../src/bids/bid-reads.service.js';
 import { BidsService } from '../src/bids/bids.service.js';
 import { WalletsService } from '../src/wallets/wallets.service.js';
 import { LotsService } from '../src/lots/lots.service.js';
@@ -118,6 +119,88 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         status: 409,
       });
       expect(await db.auctionResult.count({ where: { lotId: l.id } })).toBe(0);
+    });
+    it('reads private-safe history and ranks distinct active bidders', async () => {
+      const reads = new BidReadsService(db);
+      const a = await bidder(),
+        b = await bidder(),
+        l = await lot(),
+        other = await lot();
+      expect(await reads.mine(l.id, a)).toMatchObject({
+        bestBid: null,
+        position: null,
+        isLeading: false,
+      });
+      expect(await reads.history(l.id, { page: 1, limit: 20 })).toMatchObject({
+        currentBid: null,
+        minimumNextBid: '100.00',
+        total: 0,
+      });
+      await place(l.id, a, '100.00');
+      await place(l.id, b, '105.00');
+      await place(l.id, a, '110.00');
+      await place(l.id, b, '115.00');
+      const history = await reads.history(l.id, { page: 1, limit: 2 });
+      expect(history).toMatchObject({
+        currentBid: '115.00',
+        minimumNextBid: '120.00',
+        total: 4,
+        status: 'open',
+      });
+      expect(history.items).toHaveLength(2);
+      expect(history.items.map((x) => x.amount)).toEqual(['115.00', '110.00']);
+      expect(JSON.stringify(history)).not.toContain(a);
+      expect(JSON.stringify(history)).not.toContain(b);
+      expect(Object.keys(history.items[0]).sort()).toEqual([
+        'amount',
+        'bidderAlias',
+        'createdAt',
+        'id',
+        'isActive',
+      ]);
+      expect(await reads.mine(l.id, a)).toMatchObject({
+        position: 2,
+        isLeading: false,
+        bestBid: { amount: '110.00' },
+      });
+      expect(await reads.mine(l.id, b)).toMatchObject({
+        position: 1,
+        isLeading: true,
+        bestBid: { bidderAlias: history.leader?.bidderAlias },
+      });
+      await place(other.id, b, '100.00');
+      expect(
+        (await reads.history(other.id, { page: 1, limit: 20 })).leader
+          ?.bidderAlias,
+      ).not.toBe(history.leader?.bidderAlias);
+      await db.bid.update({
+        where: { id: history.items[0].id },
+        data: { isActive: false },
+      });
+      expect(await reads.mine(l.id, b)).toMatchObject({
+        position: 2,
+        isLeading: false,
+        bestBid: { amount: '105.00' },
+      });
+      await db.lot.update({
+        where: { id: l.id },
+        data: { endTime: new Date(Date.now() - 1000) },
+      });
+      expect(await reads.history(l.id, { page: 2, limit: 2 })).toMatchObject({
+        status: 'closed',
+        minimumNextBid: null,
+        total: 4,
+      });
+      await db.lot.update({
+        where: { id: l.id },
+        data: { status: 'cancelled' },
+      });
+      await expect(
+        reads.history(l.id, { page: 1, limit: 20 }),
+      ).rejects.toMatchObject({ status: 404 });
+      await expect(reads.mine(randomUUID(), a)).rejects.toMatchObject({
+        status: 404,
+      });
     });
     it('accepts only one of two simultaneous equal bids', async () => {
       const a = await bidder(),

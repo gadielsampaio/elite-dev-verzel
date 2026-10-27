@@ -1112,28 +1112,17 @@
     },
     {
       "name": "Bids",
-      "description": "Bid placement implemented under /lots/:lotId/bids. History/read endpoints remain planned.",
+      "description": "Implemented placement, public history/current leader and authenticated own position. Settlement and tamper verification remain pending.",
       "item": [
         {
-          "name": "[PLANNED] List bids",
+          "name": "[IMPLEMENTED] Lot bid history",
           "request": {
             "method": "GET",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/bids",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "bids"
-              ]
+            "auth": {
+              "type": "noauth"
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "url": "{{baseUrl}}/lots/{{lotId}}/bids?page=1&limit=20",
+            "description": "Public paginated history with pseudonymous bidder aliases and current leader. Set lotId to an existing published lot."
           }
         },
         {
@@ -1216,6 +1205,24 @@
               }
             }
           ]
+        },
+        {
+          "name": "[IMPLEMENTED] My bid position",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/lots/{{lotId}}/bids/me",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Own best active bid, position and leadership. Requires login. Leader does not mean settled winner."
+          }
         }
       ]
     },

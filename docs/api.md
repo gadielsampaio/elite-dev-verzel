@@ -257,10 +257,25 @@ An inconsistent legacy leader without a valid active hold is rejected for repair
 No payment, winning-bid designation or ledger debit is performed during bidding.
 
 Use a live lot and deposit funds first. Public lot details expose the updated
-`endTime`; a receipt does not imply the bid is still leading. History/current-leader
-read endpoints, bid UI, realtime events and tamper-evident history remain pending.
+`endTime`; a receipt does not imply the bid is still leading. History/current-leader reads are described below; bid UI, realtime events and
+tamper-evident history remain pending.
 Leading holds **remain committed after close** until settlement is implemented;
 closing the lot alone neither debits nor releases them.
+
+## Bid history and position
+
+- `GET /lots/:lotId/bids?page=1&limit=20`: public, newest-first history plus current leader, current price, minimum next bid, server time and deadline. Page: 1–1,000,000; limit: 1–50.
+- `GET /lots/:lotId/bids/me`: JWT required; adds `bestBid`, `position` and `isLeading` for the authenticated user. Position counts distinct bidders with higher active bids; no active bid means null position.
+
+Both read a consistent PostgreSQL snapshot without calling the catalog provider or
+changing state. Missing/draft/cancelled lots return 404. History includes inactive
+bids, but only active bids determine leadership and position. Closed lots have no
+minimum next bid; the current leader is not a settled winner.
+
+Public bid fields are `id`, `bidderAlias`, `amount`, `createdAt`, `isActive`.
+Aliases are scoped to each lot using HMAC with `JWT_SECRET`; rotating that secret
+changes aliases. No user IDs, names, emails or idempotency keys are exposed.
+This pseudonymization does **not** provide tamper detection; public audit remains pending.
 
 ## Planned modules
 
@@ -277,7 +292,7 @@ and audit must enforce their business rules, not expose arbitrary record edits.
 | Wallet Holds — `/wallet-holds`               | Bid reservations; list, get, create, patch      |
 | Lots — `/lots`                               | Create/list/get/cancel implemented; generic patch/delete remain planned |
 | Items — `/items`                             | Lot contents; list, get, create, patch, delete  |
-| Bids — `/lots/:lotId/bids` | Placement implemented; history/read endpoints remain planned |
+| Bids — `/lots/:lotId/bids` | Placement, public history and own position implemented |
 | Auction Results — `/auction-results`         | Outcomes; list, get                             |
 | Audit Logs — `/audit-logs`                   | `AuditEvent` history; list, get                 |
 

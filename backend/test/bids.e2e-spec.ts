@@ -5,10 +5,13 @@ import request from 'supertest';
 import { vi } from 'vitest';
 import { AppModule } from '../src/app.module.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
+import { BidReadsService } from '../src/bids/bid-reads.service.js';
 import { BidsService } from '../src/bids/bids.service.js';
 describe('Bid HTTP access and validation', () => {
   const id = '11111111-1111-4111-8111-111111111111',
     key = '22222222-2222-4222-8222-222222222222';
+  const history = vi.fn(),
+    mine = vi.fn();
   const place = vi.fn(),
     findUnique = vi.fn();
   let app: INestApplication, token: string;
@@ -18,6 +21,8 @@ describe('Bid HTTP access and validation', () => {
     const module = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(PrismaService)
       .useValue({ user: { findUnique } })
+      .overrideProvider(BidReadsService)
+      .useValue({ history, mine })
       .overrideProvider(BidsService)
       .useValue({ place })
       .compile();
@@ -52,6 +57,34 @@ describe('Bid HTTP access and validation', () => {
       amount: '100.00',
       idempotencyKey: key,
     });
+  });
+  it('allows public paginated history', async () => {
+    history.mockResolvedValue({ items: [] });
+    await request(app.getHttpServer())
+      .get(`/lots/${id}/bids?page=2&limit=5`)
+      .expect(200);
+    expect(history).toHaveBeenCalledWith(id, { page: 2, limit: 5 });
+  });
+  it.each(['page=0', 'limit=51', 'page=1.5', 'bidderId=other'])(
+    'rejects history query %s',
+    async (query) => {
+      await request(app.getHttpServer())
+        .get(`/lots/${id}/bids?${query}`)
+        .expect(400);
+      expect(history).not.toHaveBeenCalled();
+    },
+  );
+  it('requires authentication for own position', async () => {
+    await request(app.getHttpServer()).get(`/lots/${id}/bids/me`).expect(401);
+    expect(mine).not.toHaveBeenCalled();
+  });
+  it('reads only the authenticated user position', async () => {
+    mine.mockResolvedValue({ position: null });
+    await request(app.getHttpServer())
+      .get(`/lots/${id}/bids/me`)
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    expect(mine).toHaveBeenCalledWith(id, id);
   });
   it('requires login', async () => {
     await request(app.getHttpServer())

@@ -16,8 +16,8 @@ ignored by Git; this summary is available in a fresh checkout.
 | Public item API | Search, artwork details and explicit mock/real transport selection implemented. Local fixtures unblock development; real success remains unverified (Cloudflare 403). Snapshots are persisted during publication; selection UI absent. |
 | Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; Public browsing/detail UI implemented; seller management UI, editing and background settlement remain pending. |
 | Wallet | Own balances and bidder-only simulated deposits implemented in API/UI. Concurrent retries are idempotent. Bid placement reserves leader funds and atomically releases the previous hold. |
-| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Read/history endpoints, bid UI and tamper-evident recording remain pending. |
-| Live room | Pending: current bid, full history, user position, countdown, winning/outbid state and rejection reasons, updated without reload. |
+| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Bid UI and tamper-evident recording remain pending. |
+| Live room | API reads expose current bid, history, user position and deadline. Room UI and realtime updates remain pending. |
 | Settlement and results | Pending: debit winner, credit auctioneer, shareable receipt; close without winner when no bids; seller totals and bidder participation/wins screens. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without Art Institute. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
 | Public audit and privacy | Pending: detect edits/deletions/insertions, including direct database changes; explain verification; no login or personal-data exposure in audit/receipts. `AuditEvent` storage is not tamper detection. |
@@ -31,7 +31,7 @@ The existing `admin` role is an implementation addition, not a required challeng
 ## Next small steps
 
 1. Use mock catalog search/detail to continue the required workflows; revisit live access or another public provider after core functionality works.
-2. Add bid history/current-leader reads, then idempotent background settlement to resolve holds at close; finish the bid UI afterward.
+2. Add idempotent background settlement to resolve holds at close; finish the bid UI afterward.
 3. Add seller catalog/publication/cancellation UI and an early public deployment. Plan image availability during provider outages.
 4. Continue with lots → wallets → bids → settlement → public audit → realtime. Add the required demo seeds when those workflows exist.
 

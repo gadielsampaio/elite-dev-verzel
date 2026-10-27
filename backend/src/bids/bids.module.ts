@@ -1,3 +1,4 @@
+import { BidReadsService } from './bid-reads.service.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { PrismaModule } from '../prisma/prisma.module.js';
@@ -6,6 +7,6 @@ import { BidsService } from './bids.service.js';
 @Module({
   imports: [AuthModule, PrismaModule],
   controllers: [BidsController],
-  providers: [BidsService],
+  providers: [BidsService, BidReadsService],
 })
 export class BidsModule {}
