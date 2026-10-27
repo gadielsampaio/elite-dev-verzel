@@ -47,6 +47,7 @@ describe('Cleveland adapter', () => {
     const [url, options] = fetchMock.mock.calls[0];
     expect(url.origin).toBe('https://openaccess-api.clevelandart.org');
     expect(url.searchParams.get('skip')).toBe('5');
+    expect(url.searchParams.get('has_image')).toBe('1');
     expect(url.searchParams.get('q')).toBe('painting & landscape');
     expect(options.signal).toBeInstanceOf(AbortSignal);
   });

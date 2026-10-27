@@ -83,6 +83,35 @@ describe('Catalog and external health (HTTP)', () => {
     expect(url.pathname).toBe('/api/artworks/');
     expect(url.searchParams.get('q')).toBe('cats & dogs');
   });
+  it.each([
+    { type: 'Painting' },
+    { q: 'Monet' },
+    { q: 'Monet', type: 'Painting' },
+  ])(
+    'forwards optional filters with mandatory image/CC0 restrictions %j',
+    async (filters) => {
+      reply({ data: [artwork], info: { total: 1 } });
+      await request(app.getHttpServer())
+        .get('/catalog/search')
+        .query({ ...filters, page: 2, limit: 5 })
+        .expect(200);
+      const url = fetchMock.mock.calls[0][0] as URL;
+      expect(url.searchParams.get('q')).toBe(filters.q ?? null);
+      expect(url.searchParams.get('type')).toBe(filters.type ?? null);
+      expect(url.searchParams.has('cc0')).toBe(true);
+      expect(url.searchParams.get('has_image')).toBe('1');
+      expect(url.searchParams.get('skip')).toBe('5');
+    },
+  );
+  it.each(['?type=Unknown', '?q=Monet&type=', '?q=Monet&cc0=false'])(
+    'rejects invalid filters %s',
+    async (query) => {
+      await request(app.getHttpServer())
+        .get('/catalog/search' + query)
+        .expect(400);
+      expect(fetchMock).not.toHaveBeenCalled();
+    },
+  );
   it('preserves missing images and optional metadata as null', async () => {
     reply({
       data: [

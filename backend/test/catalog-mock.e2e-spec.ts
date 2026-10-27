@@ -65,7 +65,7 @@ describe('Mock catalog (HTTP)', () => {
     const second = await request(app.getHttpServer())
       .get('/catalog/search?q=painting&limit=1&page=2')
       .expect(200);
-    expect(first.body.total).toBe(3);
+    expect(first.body.total).toBe(2);
     expect(first.body.items[0].articArtworkId).not.toBe(
       second.body.items[0].articArtworkId,
     );
@@ -73,7 +73,27 @@ describe('Mock catalog (HTTP)', () => {
       .get('/catalog/search?q=painting&page=10')
       .expect(200);
     expect(beyond.body.items).toEqual([]);
-    expect(beyond.body.total).toBe(3);
+    expect(beyond.body.total).toBe(2);
+  });
+  it('supports type-only and combined filters in offline mode', async () => {
+    const result = await request(app.getHttpServer())
+      .get('/catalog/search?type=Painting')
+      .expect(200);
+    expect(result.body.total).toBe(2);
+    expect(
+      result.body.items.every(
+        (item: { imageUrl: string; isPublicDomain: boolean }) =>
+          item.imageUrl && item.isPublicDomain,
+      ),
+    ).toBe(true);
+    const combined = await request(app.getHttpServer())
+      .get('/catalog/search?q=Church&type=Painting')
+      .expect(200);
+    expect(combined.body.total).toBe(1);
+    const other = await request(app.getHttpServer())
+      .get('/catalog/search?type=Sculpture')
+      .expect(200);
+    expect(other.body.total).toBe(0);
   });
   it('returns an empty array for unmatched queries', async () => {
     const result = await request(app.getHttpServer())

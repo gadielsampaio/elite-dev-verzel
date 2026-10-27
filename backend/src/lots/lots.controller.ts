@@ -35,6 +35,12 @@ export class LotsController {
     return this.lots.findAll(query);
   }
 
+  @Get('mine')
+  @UseGuards(JwtAuthGuard, AuctioneerGuard)
+  findMine(@Req() request: AuthenticatedRequest, @Query() query: ListLotsDto) {
+    return this.lots.findMine(request.user.id, query);
+  }
+
   @Patch(':id/cancel')
   @UseGuards(JwtAuthGuard, AuctioneerGuard)
   cancel(

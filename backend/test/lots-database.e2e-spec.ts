@@ -99,6 +99,49 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
                 const token = await module
                   .get(JwtService)
                   .signAsync({ sub: owner.id });
+                const otherOwner = await tx.user.create({
+                  data: {
+                    name: 'Other owner',
+                    email: `other-${email}`,
+                    role: 'auctioneer',
+                  },
+                });
+                const otherLot = await tx.lot.create({
+                  data: {
+                    ownerId: otherOwner.id,
+                    title: 'Not yours',
+                    status: 'scheduled',
+                    startTime: new Date(now + 3600000),
+                    endTime: new Date(now + 7200000),
+                    startingBid: '100',
+                    bidIncrement: '1',
+                  },
+                });
+                ids.push(otherLot.id);
+                const own = await request(http)
+                  .get('/lots/mine?limit=50')
+                  .auth(token, { type: 'bearer' })
+                  .expect(200);
+                expect(
+                  own.body.items.every(
+                    (item: { ownerId: string }) => item.ownerId === owner.id,
+                  ),
+                ).toBe(true);
+                expect(
+                  own.body.items.some(
+                    (item: { id: string }) => item.id === otherLot.id,
+                  ),
+                ).toBe(false);
+                expect(
+                  own.body.items.find(
+                    (item: { id: string }) => item.id === withBids.id,
+                  ).canCancel,
+                ).toBe(false);
+                expect(
+                  own.body.items.find(
+                    (item: { id: string }) => item.id === cancelled.id,
+                  ).status,
+                ).toBe('cancelled');
                 const list = await request(http)
                   .get('/lots?limit=50')
                   .expect(200);

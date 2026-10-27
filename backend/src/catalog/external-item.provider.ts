@@ -23,6 +23,7 @@ export abstract class ExternalItemProvider {
     query: string,
     page: number,
     limit: number,
+    type?: string,
   ): Promise<{
     items: CatalogItem[];
     page: number;

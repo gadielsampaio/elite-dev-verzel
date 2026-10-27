@@ -38,6 +38,10 @@ export class LotsService {
       throw new BadRequestException('Prices must be greater than zero');
     }
     const artwork = await this.catalog.findOne(data.artworkId);
+    if (artwork.isPublicDomain !== true)
+      throw new BadRequestException('Artwork must be public domain (CC0)');
+    if (!artwork.imageUrl?.trim())
+      throw new BadRequestException('Artwork must have an image');
     // Reject a schedule that expired while waiting for the provider.
     if (startTime.getTime() <= Date.now())
       throw new BadRequestException('Start must be in the future');
@@ -76,10 +80,12 @@ export class LotsService {
     tx: Prisma.TransactionClient,
     now: Date,
     id?: string,
+    ownerId?: string,
   ) {
     await tx.lot.updateMany({
       where: {
         id,
+        ownerId,
         status: { in: ['scheduled', 'open'] },
         endTime: { lte: now },
       },
@@ -88,6 +94,7 @@ export class LotsService {
     await tx.lot.updateMany({
       where: {
         id,
+        ownerId,
         status: 'scheduled',
         startTime: { lte: now },
         endTime: { gt: now },
@@ -112,6 +119,40 @@ export class LotsService {
       const total = await tx.lot.count({ where });
       return { items, total, page, limit };
     });
+  }
+
+  async findMine(ownerId: string, { status, page, limit }: ListLotsDto) {
+    return this.prisma.$transaction(
+      async (tx) => {
+        const now = new Date();
+        await this.refreshLifecycle(tx, now, undefined, ownerId);
+        const where: Prisma.LotWhereInput = {
+          ownerId,
+          ...(status ? { status } : {}),
+        };
+        const lots = await tx.lot.findMany({
+          where,
+          skip: (page - 1) * limit,
+          take: limit,
+          orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+          include: {
+            items: { orderBy: { position: 'asc' } },
+            _count: { select: { bids: true } },
+          },
+        });
+        const total = await tx.lot.count({ where });
+        const items = lots.map(({ _count, ...lot }) => ({
+          ...lot,
+          bidCount: _count.bids,
+          canCancel:
+            ['scheduled', 'open'].includes(lot.status) &&
+            lot.endTime > now &&
+            _count.bids === 0,
+        }));
+        return { items, total, page, limit };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.RepeatableRead },
+    );
   }
 
   async findOne(id: string) {

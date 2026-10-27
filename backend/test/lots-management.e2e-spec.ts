@@ -79,7 +79,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
     await app.close();
     vi.unstubAllEnvs();
   });
-  const cancel = (body: unknown = {}) =>
+  const cancel = (body: object = {}) =>
     request(app.getHttpServer())
       .patch(`/lots/${lotId}/cancel`)
       .auth(token, { type: 'bearer' })
@@ -140,6 +140,50 @@ describe('Lot listing and cancellation (HTTP)', () => {
       .get('/lots?' + query)
       .expect(400);
     expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+  it('lists only token-owned lots, including cancellations, with bid eligibility', async () => {
+    prisma.lot.findMany.mockResolvedValue([
+      { ...lot, _count: { bids: 0 } },
+      { ...lot, id: 'with-bids', _count: { bids: 1 } },
+      { ...lot, id: 'cancelled', status: 'cancelled', _count: { bids: 0 } },
+    ]);
+    prisma.lot.count.mockResolvedValue(3);
+    const response = await request(app.getHttpServer())
+      .get('/lots/mine?page=2&limit=5')
+      .auth(token, { type: 'bearer' })
+      .expect(200);
+    expect(
+      response.body.items.map((item: { canCancel: boolean }) => item.canCancel),
+    ).toEqual([true, false, false]);
+    expect(response.body.items[0]).not.toHaveProperty('_count');
+    expect(prisma.lot.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { ownerId }, skip: 5, take: 5 }),
+    );
+    expect(prisma.lot.count).toHaveBeenCalledWith({ where: { ownerId } });
+    expect(
+      prisma.lot.updateMany.mock.calls.every(
+        ([args]) => args.where.ownerId === ownerId,
+      ),
+    ).toBe(true);
+  });
+  it('protects the seller list and rejects owner spoofing', async () => {
+    await request(app.getHttpServer()).get('/lots/mine').expect(401);
+    await request(app.getHttpServer())
+      .get('/lots/mine?ownerId=spoof')
+      .auth(token, { type: 'bearer' })
+      .expect(400);
+    for (const role of ['bidder', 'admin']) {
+      prisma.user.findUnique.mockResolvedValue({
+        id: ownerId,
+        role,
+        isActive: true,
+      });
+      await request(app.getHttpServer())
+        .get('/lots/mine')
+        .auth(token, { type: 'bearer' })
+        .expect(403);
+    }
+    expect(prisma.lot.findMany).not.toHaveBeenCalled();
   });
   it.each(['scheduled', 'open'])(
     'allows owner cancellation of a %s lot without bids',

@@ -72,7 +72,7 @@ describe('Wallet HTTP', () => {
     await app.close();
     vi.unstubAllEnvs();
   });
-  const deposit = (body: unknown = { amount: '100.10', idempotencyKey: key }) =>
+  const deposit = (body: object = { amount: '100.10', idempotencyKey: key }) =>
     request(app.getHttpServer())
       .post('/wallet/deposits')
       .auth(token, { type: 'bearer' })

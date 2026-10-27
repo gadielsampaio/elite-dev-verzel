@@ -1,13 +1,35 @@
 import { Transform, Type } from 'class-transformer';
-import { IsInt, IsString, Length, Max, Min } from 'class-validator';
+import {
+  IsIn,
+  IsInt,
+  IsString,
+  Length,
+  Max,
+  Min,
+  ValidateIf,
+} from 'class-validator';
 
 export class SearchCatalogDto {
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string' ? value.trim() : value,
   )
   @IsString()
-  @Length(1, 100)
-  q!: string;
+  @Length(0, 100)
+  q = '';
+
+  @ValidateIf((_object, value: unknown) => value !== undefined)
+  @IsIn([
+    'Painting',
+    'Drawing',
+    'Sculpture',
+    'Photograph',
+    'Print',
+    'Ceramic',
+    'Textile',
+    'Jewelry',
+    'Furniture and woodwork',
+  ])
+  type?: string;
 
   @Type(() => Number)
   @IsInt()

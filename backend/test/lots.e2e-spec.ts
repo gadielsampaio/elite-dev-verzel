@@ -91,7 +91,7 @@ describe('Lot publication (HTTP)', () => {
     await app.close();
     vi.unstubAllEnvs();
   });
-  const publish = (body: unknown = data) =>
+  const publish = (body: object = data) =>
     request(app.getHttpServer())
       .post('/lots')
       .auth(token, { type: 'bearer' })
@@ -117,6 +117,27 @@ describe('Lot publication (HTTP)', () => {
     expect(write.items.create.sourceFetchedAt).toBeInstanceOf(Date);
     expect(catalog.findOne).toHaveBeenCalledWith(27992);
   });
+  it('rejects artwork without an image before creating a lot', async () => {
+    catalog.findOne.mockResolvedValue({ ...artwork, imageUrl: null });
+    await request(app.getHttpServer())
+      .post('/lots')
+      .auth(token, { type: 'bearer' })
+      .send(data)
+      .expect(400);
+    expect(prisma.lot.create).not.toHaveBeenCalled();
+  });
+  it.each([false, null])(
+    'rejects non-CC0 artwork (%s)',
+    async (isPublicDomain) => {
+      catalog.findOne.mockResolvedValue({ ...artwork, isPublicDomain });
+      await request(app.getHttpServer())
+        .post('/lots')
+        .auth(token, { type: 'bearer' })
+        .send(data)
+        .expect(400);
+      expect(prisma.lot.create).not.toHaveBeenCalled();
+    },
+  );
   it('requires a JWT', async () => {
     await request(app.getHttpServer()).post('/lots').send(data).expect(401);
     expect(prisma.lot.create).not.toHaveBeenCalled();

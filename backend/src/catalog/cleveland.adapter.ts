@@ -81,9 +81,12 @@ export class ClevelandAdapter extends ExternalItemProvider {
       isPublicDomain: license === null ? null : license === 'CC0',
     };
   }
-  async search(query: string, page: number, limit: number) {
+  async search(query: string, page: number, limit: number, type?: string) {
     const body = await this.request('artworks/', {
-      q: query,
+      ...(query ? { q: query } : {}),
+      ...(type ? { type } : {}),
+      cc0: '',
+      has_image: '1',
       skip: String((page - 1) * limit),
       limit: String(limit),
     });

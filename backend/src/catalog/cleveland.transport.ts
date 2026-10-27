@@ -37,10 +37,14 @@ export class MockClevelandTransport extends ClevelandTransport {
   async request(path: string, params: Record<string, string>) {
     if (path === 'artworks/') {
       const q = (params.q ?? '').toLowerCase();
-      const matches = artworkResponses.filter(({ data }) =>
-        `${data.title} ${data.creators?.map((c) => c.description).join(' ')} ${data.type}`
-          .toLowerCase()
-          .includes(q),
+      const matches = artworkResponses.filter(
+        ({ data }) =>
+          (!('cc0' in params) || data.share_license_status === 'CC0') &&
+          (!params.type || data.type === params.type) &&
+          (params.has_image !== '1' || Boolean(data.images?.web?.url)) &&
+          `${data.title} ${data.creators?.map((c) => c.description).join(' ')} ${data.type}`
+            .toLowerCase()
+            .includes(q),
       );
       const skip = Number(params.skip ?? 0),
         limit = Number(params.limit ?? 10);
