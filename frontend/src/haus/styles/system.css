@@ -1,0 +1,101 @@
+/* Shared design contract for every view. UI changes belong here first. */
+:root {
+  --hs-bg: #faf9f6;
+  --hs-ink: #181817;
+  --hs-surface: #eeece6;
+  --hs-border: #d4d1c9;
+  --hs-muted: #77736d;
+  --hs-danger: #a24a3b;
+  --hs-success: #34704b;
+  --hs-font-ui: 'DM Sans', Arial, sans-serif;
+  --hs-font-display: 'Sora', sans-serif;
+  --hs-space-1: 4px;
+  --hs-space-2: 8px;
+  --hs-space-3: 12px;
+  --hs-space-4: 16px;
+  --hs-space-5: 24px;
+  --hs-space-6: 32px;
+  --hs-space-7: 48px;
+  --hs-control-height: 49px;
+  --hs-focus-ring: 2px solid var(--hs-ink);
+  --hs-primary-hover: #3a3935;
+  --hs-hover: #eae8e0;
+  --hs-input-bg: #fffdfa;
+  --hs-footer-bg: #1b1b1a;
+  --hs-footer-ink: #eae9e5;
+  --hs-footer-border: #494844;
+  --hs-surface-2: #f3f1ec;
+  --hs-overlay: #1119;
+}
+/* The original stylesheet resets the native button with `all: unset`. */
+button:not(:disabled) { cursor: pointer; }
+button:disabled { cursor: not-allowed; opacity: .4; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible {
+  outline: var(--hs-focus-ring); outline-offset: 0px;
+}
+/* Shared actions: solid = main action, outline = secondary, text = navigation. */
+.ui-action-primary, .hs-primary-link, .hs-seller-btn:not(.ghost) {
+  background: var(--hs-ink); color: var(--hs-bg);
+  transition: background-color .2s ease, color .2s ease;
+}
+.ui-action-primary:hover, .hs-primary-link:hover, .hs-seller-btn:not(.ghost):hover {
+  background: var(--hs-primary-hover);
+}
+.ui-action-secondary, .hs-seller-btn.ghost {
+  background: transparent; color: var(--hs-ink); border-color: var(--hs-border);
+}
+.ui-action-secondary:hover, .hs-seller-btn.ghost:hover { background: var(--hs-hover); }
+.ui-back {
+  display: inline-flex; align-items: center; gap: 12px;
+  font: 600 11px var(--hs-font-display);
+  letter-spacing: .08em; text-transform: uppercase;
+  border-bottom: 1px solid var(--hs-ink);
+  padding: 5px 0 8px;
+  color: var(--hs-ink);
+}
+.ui-back:hover { color: var(--hs-muted); border-color: var(--hs-muted); }
+.hs-tools-preview.hs-utility-page { max-width: 1120px; }
+.hs-tools-preview.hs-seller-page { max-width: 1420px; }
+.hs-page-heading { margin: 45px 0 38px; }
+.hs-page-title {
+  font: 500 clamp(32px, 4vw, 55px)/1.1 var(--hs-font-display);
+  text-transform: uppercase; letter-spacing: -.055em;
+}
+.hs-page-lead { margin-top: 14px; font-size: 13px; line-height: 1.7; color: var(--hs-muted); }
+.hs-page-content { border-top: 1px solid var(--hs-border); padding-top: 24px; }
+.hs-panel-heading {
+  display: flex; align-items: center; justify-content: space-between; gap: 18px;
+  padding-bottom: 18px; border-bottom: 1px solid var(--hs-border);
+}
+.hs-panel-heading h2 { font: 500 20px var(--hs-font-display); letter-spacing: -.035em; }
+.hs-wallet-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid var(--hs-border); }
+.hs-wallet-grid > div { padding: 28px 20px; border-right: 1px solid var(--hs-border); }
+.hs-wallet-grid > div:first-child { padding-left: 0; }
+.hs-wallet-grid > div:last-child { border-right: none; }
+.hs-wallet-grid strong { display: block; margin-top: 14px; font: 500 clamp(18px, 2.2vw, 27px) var(--hs-font-display); letter-spacing: -.05em; }
+.hs-wallet-form { max-width: 460px; margin-top: 45px; }
+.hs-wallet-form .hs-seller-btn { margin-top: 16px; width: 100%; box-sizing: border-box; }
+.hs-utility-row {
+  display: flex; justify-content: space-between; gap: 24px; align-items: center;
+  border-bottom: 1px solid var(--hs-border); padding: 22px 0;
+}
+.hs-utility-row strong { font: 500 14px var(--hs-font-display); white-space: nowrap; }
+.hs-utility-row h3 { font: 500 13px var(--hs-font-display); text-transform: uppercase; }
+.hs-utility-row p { font-size: 11px; line-height: 1.5; color: var(--hs-muted); margin-top: 6px; }
+.hs-utility-empty { padding: 55px 10px; color: var(--hs-muted); font-size: 13px; line-height: 1.7; text-align: center; }
+/* Fix offset inherited from the old desktop room and an obsolete transform. */
+.hs-preview-details { transform: none; }
+@media(max-width:790px) {
+  .hs-preview-details { top: auto; transform: none; }
+}
+@media(max-width:670px) {
+  .hs-tools-preview { margin: 55px auto; }
+  .hs-page-heading { margin: 35px 0 28px; }
+  .hs-wallet-grid { grid-template-columns: 1fr; }
+  .hs-wallet-grid > div, .hs-wallet-grid > div:first-child { padding: 20px 0; border-right: 0; border-bottom: 1px solid var(--hs-border); }
+  .hs-wallet-grid > div:last-child { border-bottom: 0; }
+  .hs-utility-row { align-items: start; flex-direction: column; gap: 8px; }
+}
+
+/* Identify the current destination in the shared footer. */
+.hs-footer-links button[aria-current="page"] { text-decoration: underline; text-underline-offset: 5px; }

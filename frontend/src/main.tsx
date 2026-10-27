@@ -1,69 +1,28 @@
-import { StrictMode } from "react";
+import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import {
-  BrowserRouter,
-  Link,
-  NavLink,
-  Navigate,
-  Route,
-  Routes,
-} from "react-router-dom";
-import { SessionProvider, useSession } from "./session";
-import { AuthPage } from "./AuthPage";
-import { LotsPage, LotPage } from "./LotsPage";
-import { WalletPage } from "./WalletPage";
-import "./styles.css";
-function App() {
-  const { session, logout } = useSession();
-  return (
-    <>
-      <header>
-        <Link className="brand" to="/lots">
-          <span className="brand-mark">a.</span> Auction House
-        </Link>
-        <nav aria-label="Main navigation">
-          <NavLink to="/lots">Explore</NavLink>
-          <NavLink to="/wallet">Wallet</NavLink>
-          {session ? (
-            <button className="secondary" onClick={logout}>
-              Sign out
-            </button>
-          ) : (
-            <NavLink to="/login">Sign in</NavLink>
-          )}
-        </nav>
-      </header>
-      <main>
-        <Routes>
-          <Route path="/" element={<Navigate to="/lots" replace />} />
-          <Route path="/lots" element={<LotsPage />} />
-          <Route path="/lots/:id" element={<LotPage />} />
-          <Route path="/login" element={<AuthPage />} />
-          <Route path="/wallet" element={<WalletPage />} />
-          <Route
-            path="*"
-            element={
-              <section className="panel">
-                <h1>Page not found</h1>
-                <Link to="/lots">Explore lots</Link>
-              </section>
-            }
-          />
-        </Routes>
-      </main>
-      <footer>
-        <span>Auction House</span>
-        <span>Art, with a new chapter.</span>
-      </footer>
-    </>
-  );
-}
+import { BrowserRouter } from "react-router-dom";
+import { SessionProvider } from "./session";
+
+// Separate entry bundles keep the existing API application's global CSS isolated.
+const HausApp = lazy(() => import("./haus/HausApp"));
+const LegacyApp = lazy(() => import("./LegacyApp"));
+const ConnectedApp = lazy(() => import("./haus/connected/ConnectedApp"));
+const isHaus = ["/preview", "/preview/"].includes(location.pathname);
+const isConnected = location.pathname === "/";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <BrowserRouter>
-      <SessionProvider>
-        <App />
-      </SessionProvider>
-    </BrowserRouter>
+    <SessionProvider>
+      <Suspense fallback={null}>
+        {isConnected ? (
+          <ConnectedApp />
+        ) : isHaus ? (
+          <HausApp />
+        ) : (
+          <BrowserRouter>
+            <LegacyApp />
+          </BrowserRouter>
+        )}
+      </Suspense>
+    </SessionProvider>
   </StrictMode>,
 );

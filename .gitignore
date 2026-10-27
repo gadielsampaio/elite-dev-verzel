@@ -35,3 +35,6 @@ coverage/
 # Browser test output
 /frontend/test-results/
 /frontend/playwright-report/
+
+# Local visual migration comparisons
+/frontend/verification/
