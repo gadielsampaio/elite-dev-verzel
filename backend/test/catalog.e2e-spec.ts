@@ -1,7 +1,7 @@
 import {
-  ArticTransport,
-  HttpArticTransport,
-} from '../src/catalog/artic.transport.js';
+  ClevelandTransport,
+  HttpClevelandTransport,
+} from '../src/catalog/cleveland.transport.js';
 import { artworkResponses } from '../src/catalog/fixtures/artworks.js';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -13,20 +13,14 @@ import { CatalogModule } from '../src/catalog/catalog.module.js';
 describe('Catalog and external health (HTTP)', () => {
   let app: INestApplication;
   const fetchMock = vi.fn();
-  const artwork = {
-    id: 27992,
-    title: 'A Sunday on La Grande Jatte',
-    image_id: 'image-id',
-    artist_display: 'Georges Seurat',
-    credit_line: 'Helen Birch Bartlett Memorial Collection',
-    is_public_domain: true,
-  };
+  const artwork = artworkResponses[0].data;
   beforeAll(async () => {
+    vi.stubEnv('CATALOG_PROVIDER', 'cleveland');
     const module = await Test.createTestingModule({
       imports: [CatalogModule],
     })
-      .overrideProvider(ArticTransport)
-      .useValue(new HttpArticTransport())
+      .overrideProvider(ClevelandTransport)
+      .useValue(new HttpClevelandTransport())
       .compile();
     app = module.createNestApplication();
     app.useGlobalPipes(
@@ -45,38 +39,38 @@ describe('Catalog and external health (HTTP)', () => {
   afterEach(() => vi.unstubAllGlobals());
   afterAll(async () => {
     await app.close();
+    vi.unstubAllEnvs();
   });
   const reply = (body: unknown, status = 200) =>
     fetchMock.mockResolvedValue(new Response(JSON.stringify(body), { status }));
 
   it('reports external availability independently of PostgreSQL', async () => {
-    reply({ data: [{ id: 27992 }] });
+    reply({ data: [{ id: 141639 }] });
     await request(app.getHttpServer())
       .get('/health/external')
       .expect(200)
-      .expect({ status: 'ok', services: { artic: 'up' } });
+      .expect({ status: 'ok', services: { cleveland: 'up' } });
     const [url, options] = fetchMock.mock.calls[0];
     expect(url.searchParams.get('fields')).toBe('id');
     expect(url.searchParams.get('limit')).toBe('1');
     expect(options.signal).toBeInstanceOf(AbortSignal);
   });
   it('normalizes search results and encodes user input as a query value', async () => {
-    reply({ data: [artwork], pagination: { total: 1 } });
+    reply({ data: [artwork], info: { total: 1 } });
     const res = await request(app.getHttpServer())
       .get('/catalog/search')
       .query({ q: ' cats & dogs ', page: 2, limit: 5 })
       .expect(200);
     expect(res.body).toEqual({
-      provider: 'artic',
+      provider: 'cleveland',
       items: [
         {
-          articArtworkId: 27992,
+          articArtworkId: 141639,
           name: artwork.title,
-          articImageId: 'image-id',
-          imageUrl:
-            'https://www.artic.edu/iiif/2/image-id/full/843,/0/default.jpg',
-          artistDisplay: artwork.artist_display,
-          creditLine: artwork.credit_line,
+          articImageId: null,
+          imageUrl: artwork.images!.web.url,
+          artistDisplay: artwork.creators[0].description,
+          creditLine: artwork.creditline,
           isPublicDomain: true,
         },
       ],
@@ -85,8 +79,8 @@ describe('Catalog and external health (HTTP)', () => {
       total: 1,
     });
     const url = fetchMock.mock.calls[0][0] as URL;
-    expect(url.origin).toBe('https://api.artic.edu');
-    expect(url.pathname).toBe('/api/v1/artworks/search');
+    expect(url.origin).toBe('https://openaccess-api.clevelandart.org');
+    expect(url.pathname).toBe('/api/artworks/');
     expect(url.searchParams.get('q')).toBe('cats & dogs');
   });
   it('preserves missing images and optional metadata as null', async () => {
@@ -94,13 +88,13 @@ describe('Catalog and external health (HTTP)', () => {
       data: [
         {
           ...artwork,
-          image_id: null,
-          artist_display: null,
-          credit_line: null,
-          is_public_domain: null,
+          images: null,
+          creators: null,
+          creditline: null,
+          share_license_status: null,
         },
       ],
-      pagination: { total: 1 },
+      info: { total: 1 },
     });
     const res = await request(app.getHttpServer())
       .get('/catalog/search?q=cats')
@@ -115,11 +109,17 @@ describe('Catalog and external health (HTTP)', () => {
     expect(res.body).toMatchObject({ page: 1, limit: 10 });
   });
   it('returns an empty result without treating it as provider failure', async () => {
-    reply({ data: [], pagination: { total: 0 } });
+    reply({ data: [], info: { total: 0 } });
     await request(app.getHttpServer())
       .get('/catalog/search?q=absent')
       .expect(200)
-      .expect({ items: [], page: 1, limit: 10, total: 0, provider: 'artic' });
+      .expect({
+        items: [],
+        page: 1,
+        limit: 10,
+        total: 0,
+        provider: 'cleveland',
+      });
   });
   it.each([
     '',
@@ -145,7 +145,7 @@ describe('Catalog and external health (HTTP)', () => {
     await request(app.getHttpServer())
       .get('/health/external')
       .expect(503)
-      .expect({ status: 'error', services: { artic: 'down' } });
+      .expect({ status: 'error', services: { cleveland: 'down' } });
   });
   it.each(['network', 'timeout', 'json', 'shape'])(
     'maps %s failures to 503',
@@ -187,8 +187,8 @@ describe('Catalog and external health (HTTP)', () => {
   });
   it.each([
     { data: [artwork] },
-    { data: [{ id: 'bad' }], pagination: { total: 1 } },
-    { data: [], pagination: { total: -1 } },
+    { data: [{ id: 'bad' }], info: { total: 1 } },
+    { data: [], info: { total: -1 } },
   ])('rejects malformed search data %j', async (body) => {
     reply(body);
     await request(app.getHttpServer())
@@ -202,15 +202,15 @@ describe('Catalog and external health (HTTP)', () => {
   it('normalizes the official detail shape using the HTTP transport', async () => {
     reply(artworkResponses[0]);
     const res = await request(app.getHttpServer())
-      .get('/catalog/artworks/27992')
+      .get('/catalog/artworks/141639')
       .expect(200);
     expect(res.body).toMatchObject({
-      provider: 'artic',
-      articArtworkId: 27992,
-      mediumDisplay: 'Oil on canvas',
+      provider: 'cleveland',
+      articArtworkId: 141639,
+      mediumDisplay: 'oil on canvas',
       artworkType: 'Painting',
     });
-    expect(fetchMock.mock.calls[0][0].pathname).toBe('/api/v1/artworks/27992');
+    expect(fetchMock.mock.calls[0][0].pathname).toBe('/api/artworks/141639');
   });
   it('maps provider detail 404 to a local 404', async () => {
     reply(
@@ -224,17 +224,17 @@ describe('Catalog and external health (HTTP)', () => {
   it('does not substitute fixtures when real detail requests fail', async () => {
     reply({ error: 'unavailable' }, 503);
     await request(app.getHttpServer())
-      .get('/catalog/artworks/27992')
+      .get('/catalog/artworks/141639')
       .expect(503);
   });
   it.each([
     { data: [] },
     { data: { ...artworkResponses[0].data, id: 28560 } },
-    { data: { ...artworkResponses[0].data, dimensions: 42 } },
+    { data: { ...artworkResponses[0].data, measurements: 42 } },
   ])('rejects malformed detail %j', async (body) => {
     reply(body);
     await request(app.getHttpServer())
-      .get('/catalog/artworks/27992')
+      .get('/catalog/artworks/141639')
       .expect(503);
   });
 });

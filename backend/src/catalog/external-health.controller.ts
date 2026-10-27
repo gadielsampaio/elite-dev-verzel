@@ -10,12 +10,12 @@ export class ExternalHealthController {
     try {
       const result = await this.provider.check();
       if (result === 'mocked')
-        return { status: 'mocked', services: { artic: 'not_checked' } };
-      return { status: 'ok', services: { artic: 'up' } };
+        return { status: 'mocked', services: { cleveland: 'not_checked' } };
+      return { status: 'ok', services: { cleveland: 'up' } };
     } catch {
       throw new ServiceUnavailableException({
         status: 'error',
-        services: { artic: 'down' },
+        services: { cleveland: 'down' },
       });
     }
   }

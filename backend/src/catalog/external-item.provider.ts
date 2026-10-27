@@ -9,11 +9,9 @@ export interface CatalogItem {
 }
 
 export abstract class ExternalItemProvider {
-  abstract readonly name: 'artic' | 'mock';
+  abstract readonly name: 'mock' | 'cleveland';
   abstract check(): Promise<'up' | 'mocked'>;
-  abstract findOne(
-    id: number,
-  ): Promise<
+  abstract findOne(id: number): Promise<
     CatalogItem & {
       dateDisplay: string | null;
       mediumDisplay: string | null;

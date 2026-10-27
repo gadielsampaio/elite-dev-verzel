@@ -22,7 +22,7 @@ Edit the local file with your development values; do not commit it. The root
 | `POSTGRES_USER`     | PostgreSQL initialization user     |
 | `POSTGRES_PASSWORD` | PostgreSQL initialization password |
 | `POSTGRES_DB`       | PostgreSQL initialization database |
-| `CATALOG_PROVIDER` | `mock` for local fixtures; `artic` for real HTTP |
+| `CATALOG_PROVIDER` | `cleveland` (default); `mock` for offline Cleveland fixtures |
 | `JWT_SECRET` | Required signing secret, at least 32 characters; generate with `openssl rand -hex 32` |
 
 Compose builds the API's `DATABASE_URL` from those variables using hostname `db`
@@ -173,21 +173,21 @@ Tokens expire after 15 minutes. Changing the secret invalidates existing tokens.
 
 ## Catalog development
 
-The example environment files set `CATALOG_PROVIDER=mock`. Set it in root `.env`
+The example environment files set `CATALOG_PROVIDER=cleveland`. Set it in root `.env`
 for Docker or `backend/.env` for host execution. No new dependency or API key is
 required. After changing the Docker setting, recreate only the API:
 
 ```sh
 docker compose up -d --force-recreate api
 curl -i 'http://localhost:3000/catalog/search?q=painting&limit=2'
-curl -i http://localhost:3000/catalog/artworks/27992
+curl -i http://localhost:3000/catalog/artworks/141639
 curl -i http://localhost:3000/health/external
 ```
 
-Search/detail return `provider: "mock"`; external health reports `mocked` and
-`artic: not_checked`. `/health` continues to check PostgreSQL. Use
-`CATALOG_PROVIDER=artic` and recreate the API to switch back; real failures never
-fall back to mock data. See [catalog behavior](api.md#art-institute-catalog).
+Search/detail return `provider: "cleveland"`; external health reports `cleveland: up`.
+`/health` continues to check PostgreSQL. Use `CATALOG_PROVIDER=mock` for the
+existing offline Cleveland fixtures. Real failures never fall back to mock data.
+See [catalog behavior](api.md#museum-catalog).
 
 ## Lot database verification
 

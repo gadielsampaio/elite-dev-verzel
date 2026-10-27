@@ -5,9 +5,9 @@ import { vi } from 'vitest';
 import { CatalogModule } from '../src/catalog/catalog.module.js';
 import {
   catalogTransport,
-  HttpArticTransport,
-  MockArticTransport,
-} from '../src/catalog/artic.transport.js';
+  HttpClevelandTransport,
+  MockClevelandTransport,
+} from '../src/catalog/cleveland.transport.js';
 
 describe('Mock catalog (HTTP)', () => {
   let app: INestApplication;
@@ -42,7 +42,7 @@ describe('Mock catalog (HTTP)', () => {
 
   it('supports case-insensitive search and selecting the returned artwork', async () => {
     const search = await request(app.getHttpServer())
-      .get('/catalog/search?q=SEURAT')
+      .get('/catalog/search?q=CHURCH')
       .expect(200);
     expect(search.body).toMatchObject({ provider: 'mock', total: 1 });
     const id = search.body.items[0].articArtworkId;
@@ -52,9 +52,9 @@ describe('Mock catalog (HTTP)', () => {
     expect(detail.body).toMatchObject({
       ...search.body.items[0],
       provider: 'mock',
-      mediumDisplay: 'Oil on canvas',
-      dateDisplay: '1884–86',
-      dimensions: '207.5 × 308.1 cm',
+      mediumDisplay: 'oil on canvas',
+      dateDisplay: '1860',
+
       artworkType: 'Painting',
     });
   });
@@ -87,7 +87,7 @@ describe('Mock catalog (HTTP)', () => {
   });
   it('preserves nullable fields and non-public-domain metadata', async () => {
     const result = await request(app.getHttpServer())
-      .get('/catalog/artworks/129884')
+      .get('/catalog/artworks/900000002')
       .expect(200);
     expect(result.body).toMatchObject({
       imageUrl: null,
@@ -112,18 +112,18 @@ describe('Mock catalog (HTTP)', () => {
     await request(app.getHttpServer())
       .get('/health/external')
       .expect(200)
-      .expect({ status: 'mocked', services: { artic: 'not_checked' } });
+      .expect({ status: 'mocked', services: { cleveland: 'not_checked' } });
   });
   it('selects providers explicitly and rejects misconfiguration', () => {
-    expect(catalogTransport()).toBeInstanceOf(MockArticTransport);
+    expect(catalogTransport()).toBeInstanceOf(MockClevelandTransport);
     try {
-      vi.stubEnv('CATALOG_PROVIDER', 'artic');
-      expect(catalogTransport()).toBeInstanceOf(HttpArticTransport);
+      vi.stubEnv('CATALOG_PROVIDER', 'cleveland');
+      expect(catalogTransport()).toBeInstanceOf(HttpClevelandTransport);
       vi.stubEnv('CATALOG_PROVIDER', undefined);
-      expect(catalogTransport()).toBeInstanceOf(HttpArticTransport);
+      expect(catalogTransport()).toBeInstanceOf(HttpClevelandTransport);
       vi.stubEnv('CATALOG_PROVIDER', 'typo');
       expect(() => catalogTransport()).toThrow(
-        'CATALOG_PROVIDER must be artic or mock',
+        'CATALOG_PROVIDER must be cleveland or mock',
       );
     } finally {
       vi.stubEnv('CATALOG_PROVIDER', 'mock');

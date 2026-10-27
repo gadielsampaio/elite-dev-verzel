@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented. Public lot listing, on-demand lifecycle and owner cancellation are implemented. Own wallet balances and idempotent simulated deposits are implemented. Bid placement, reservation/release and anti-sniping implemented; settlement pending."
+    "description": "Auction API: implemented requests are labeled; planned requests are placeholders. Catalog defaults to live Cleveland, with explicit Cleveland mock mode. JWT required where indicated. Settlement remains pending."
   },
   "variable": [
     {
@@ -149,7 +149,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/health/external",
-            "description": "Mock: 200 status=mocked and artic=not_checked. Real: 200 artic=up or 503 artic=down. Mock success does not prove real availability."
+            "description": "Cleveland: 200 cleveland=up or 503 cleveland=down. Mock: 200 mocked, cleveland=not_checked."
           }
         }
       ]
@@ -830,7 +830,7 @@
             "description": "Requires auctioneer JWT. Saves a single artwork snapshot. 201 success; 400 invalid input; 401/403 access denied; 404 artwork missing; 503 provider unavailable.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"Weekend art auction\",\n  \"artworkId\": 27992,\n  \"startingBid\": \"100.00\",\n  \"bidIncrement\": \"5.00\",\n  \"estimatedValue\": \"300.00\",\n  \"startTime\": \"{{lotStartTime}}\",\n  \"endTime\": \"{{lotEndTime}}\"\n}",
+              "raw": "{\n  \"title\": \"Weekend art auction\",\n  \"artworkId\": 141639,\n  \"startingBid\": \"100.00\",\n  \"bidIncrement\": \"5.00\",\n  \"estimatedValue\": \"300.00\",\n  \"startTime\": \"{{lotStartTime}}\",\n  \"endTime\": \"{{lotEndTime}}\"\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -967,7 +967,7 @@
     },
     {
       "name": "Items",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Optional Art Institute metadata fields include articArtworkId (integer), articImageId, artistDisplay, creditLine, isPublicDomain, sourceSnapshot (JSON), and sourceFetchedAt (ISO timestamp). Example image URL is a placeholder.",
+      "description": "PLANNED \u2014 proposed contract, not implemented. Optional stored source metadata fields include articArtworkId (integer), articImageId, artistDisplay, creditLine, isPublicDomain, sourceSnapshot (JSON), and sourceFetchedAt (ISO timestamp). Example image URL is a placeholder.",
       "item": [
         {
           "name": "[PLANNED] List items",
@@ -1405,7 +1405,7 @@
     },
     {
       "name": "Catalog",
-      "description": "Search and artwork details. Explicit mock/artic modes; no persisted items or lots.",
+      "description": "Cleveland catalog search/details; mock uses offline Cleveland fixtures.",
       "item": [
         {
           "name": "[IMPLEMENTED] Search artworks",
@@ -1421,7 +1421,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Provider is explicit\", () => pm.expect(pm.response.json().provider).to.be.oneOf([\"mock\", \"artic\"]));"
+                  "pm.test(\"Provider is explicit\", () => pm.expect(pm.response.json().provider).to.be.oneOf([\"cleveland\", \"mock\"]));"
                 ]
               }
             }
@@ -1431,7 +1431,7 @@
           "name": "[IMPLEMENTED] Artwork details",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/catalog/artworks/27992",
+            "url": "{{baseUrl}}/catalog/artworks/141639",
             "description": "Public. 200 normalized artwork details with provider; 400 invalid ID; 404 missing artwork; 503 real provider failure."
           },
           "event": [
@@ -1441,7 +1441,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"HTTP 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"Provider is explicit\", () => pm.expect(pm.response.json().provider).to.be.oneOf([\"mock\", \"artic\"]));"
+                  "pm.test(\"Provider is explicit\", () => pm.expect(pm.response.json().provider).to.be.oneOf([\"cleveland\", \"mock\"]));"
                 ]
               }
             }

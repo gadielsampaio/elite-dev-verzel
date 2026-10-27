@@ -88,51 +88,34 @@ Updates still accept only name/email; users cannot promote themselves.
 There is no public admin signup or admin seed. No refresh tokens or rate limiting
 yet; bidder/auctioneer permissions for lots and bids will accompany those modules.
 
-## Art Institute catalog
+## Museum catalog
 
-Public, read-only endpoints; no credentials or database writes:
+Cleveland Museum of Art is the default live provider, through `ClevelandAdapter`
+implementing the existing `ExternalItemProvider` interface. [Official contract](https://openaccess-api.clevelandart.org/).
 
 | Endpoint | Behavior |
 | --- | --- |
-| `GET /catalog/search?q=painting&page=1&limit=10` | Search normalized artworks; returns `items`, `page`, `limit`, `total`, `provider`. |
-| `GET /catalog/artworks/27992` | Fetch one artwork with date, medium, dimensions and artwork type; 404 if missing. ID must be a positive safe integer. |
-| `GET /health/external` | Real provider: 200/up or 503/down. Mock provider: 200/mocked, without contacting Art Institute. |
+| `GET /catalog/search?q=painting&page=1&limit=10` | Normalized items with page, limit, total and provider. |
+| `GET /catalog/artworks/141639` | Artwork detail; missing artwork returns 404. |
+| `GET /health/external` | Cleveland: 200 with `{"status":"ok","services":{"cleveland":"up"}}`; failure: 503 with `status: error`, `cleveland: down`. |
 
-`CATALOG_PROVIDER=mock` enables deterministic local fixtures; `artic` selects real
-HTTP calls. If unset, the application uses `artic`; invalid values prevent startup.
-The example environment files select `mock` for local development. There is **no
-automatic fallback** from real errors to fixtures.
+`CATALOG_PROVIDER=cleveland` is the default. `mock` selects offline Cleveland fixtures. No automatic fallback.
+Mock health remains `{"status":"mocked","services":{"cleveland":"not_checked"}}`.
+Database health is independent. Requests have a five-second timeout; provider,
+network and invalid-response failures return 503.
 
-Search requires nonblank `q` (maximum 100 characters). `page`: 1–100, default 1;
-`limit`: 1–20, default 10. Invalid parameters return 400; no matches return 200
-with an empty array. Search items contain `articArtworkId`, `name`, `articImageId`,
-`imageUrl`, `artistDisplay`, `creditLine`, and `isPublicDomain`. Detail adds
-`dateDisplay`, `mediumDisplay`, `dimensions`, and `artworkType`.
-Search and detail responses include `provider: "mock"` or `"artic"`.
-Optional metadata and missing images remain null; image URLs are not fetched or
-cached by this API, so images can still require external connectivity.
+Search requires nonblank `q` (maximum 100 characters), page 1–100 and limit 1–20.
+Cleveland pagination uses `skip=(page-1)*limit`, with total from `info.total`.
+Metadata maps title, creators, creditline, web image, license, creation date,
+technique, measurements and type. Missing optional metadata remains null.
+Only `share_license_status: CC0` maps to `isPublicDomain: true`.
 
-Mock search uses case-insensitive substring matching on title, artist and type;
-it does not reproduce Elasticsearch ranking. Try `painting`, `Seurat`, `Bedroom`
-or `Alma Thomas`. Fixtures cover public-domain/non-public-domain metadata and null
-images. They are curated examples, not verified live captures or persisted items.
-See [fixture contract and source](../backend/src/catalog/fixtures/README.md).
-
-Mock external health:
-
-```json
-{"status":"mocked","services":{"artic":"not_checked"}}
-```
-
-Real external health returns `{"status":"ok","services":{"artic":"up"}}`
-on success and `{"status":"error","services":{"artic":"down"}}` with 503
-on failure. The real adapter uses a five-second deadline; network errors, invalid
-responses and provider errors return 503 (artwork detail 404 stays 404).
-The database health endpoint remains independent of either mode.
-
-Real Art Institute access last returned a Cloudflare 403 on 2026-10-26. Real success
-remains unverified; development proceeds with mocks. Revisit provider access or a
-replacement after the core workflows work. Lot publication now persists normalized snapshots, including the provider marker.
+For compatibility, responses/storage retain `articArtworkId` (now the selected
+provider's numeric ID) and `articImageId` (null for Cleveland). Always interpret IDs
+with `provider`; saved lots retain it in `sourceSnapshot`. Existing snapshots are
+unchanged. Use artwork IDs returned by the current catalog.
+Images use remote URLs; they are not cached for outages. Live Cleveland search,
+detail and health are verified locally; this does not guarantee future uptime.
 
 ## Lot publication
 
@@ -143,7 +126,7 @@ clients cannot supply `ownerId`, status, currency or snapshot data.
 ```json
 {
   "title": "Weekend art auction",
-  "artworkId": 27992,
+  "artworkId": 141639,
   "startingBid": "100.00",
   "bidIncrement": "5.00",
   "estimatedValue": "300.00",
@@ -160,7 +143,7 @@ This increment supports one artwork per lot and USD only. Title is trimmed,
 
 Success: 201 with the lot and its item. A single nested Prisma write creates both
 atomically with status `scheduled`; it saves artwork metadata, normalized detail
-snapshot, provider (`mock`/`artic`) and fetch time. Missing artwork returns 404;
+snapshot, provider (`cleveland`/`mock`) and fetch time. Missing artwork returns 404;
 provider failure returns 503 and creates no lot. Decimal response values are strings.
 Mock-sourced lots are development examples, identifiable by the saved provider.
 

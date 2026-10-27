@@ -1,7 +1,7 @@
 # Auction API
 
 An online art-auction project for the Elite Dev / Verzel challenge, using items
-from the Art Institute of Chicago API. NestJS, TypeScript ESM, Prisma 7,
+from the Cleveland Museum of Art API. NestJS, TypeScript ESM, Prisma 7,
 PostgreSQL 18 and Docker Compose power the backend; React, TypeScript and Vite power the frontend.
 
 Implemented: database schema/migrations, health checks, user create/read/update,
@@ -36,8 +36,8 @@ database access, host execution, tests and troubleshooting.
 
 ## Known limitations
 
-- Catalog development uses explicit local fixtures (`CATALOG_PROVIDER=mock`).
-  Real Art Institute access returned Cloudflare 403; live success remains unverified.
+- Catalog uses Cleveland (`CATALOG_PROVIDER=cleveland`), with verified live search/detail.
+  Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
 - Seller publication/cancellation UI, bid UI, settlement, required demo seeds and
   verified public deployment remain pending.

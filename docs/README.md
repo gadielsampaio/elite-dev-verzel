@@ -4,7 +4,7 @@ The Auction API is being built to manage auction lots and items, bidding, wallet
 and settlement history. The implemented foundation consists of the database
 schema and initial migration, Prisma integration, Docker development environment,
 a database health endpoint, user reads/updates, and password-hashed registration.
-JWT login, user-route authorization, external health checks, and Art Institute catalog search/details with explicit mocks are implemented. Lot publication, listing/details, on-demand lifecycle and owner cancellation are implemented; bid placement with reservations is implemented; settlement remains planned.
+JWT login, user-route authorization, external health checks, and Cleveland catalog search/details with explicit mocks are implemented. Lot publication, listing/details, on-demand lifecycle and owner cancellation are implemented; bid placement with reservations is implemented; settlement remains planned.
 
 - [Challenge requirements, progress and next steps](progress.md)
 - [Development setup and commands](development.md)
@@ -26,7 +26,7 @@ uses React Router and Playwright browser tests.
 | [backend/src/main.ts](../backend/src/main.ts)                                            | Bootstrap; port 3000 by default; no global route prefix          |
 | [backend/src/app.module.ts](../backend/src/app.module.ts)                                | Registers Prisma, Health, Users, Auth, Catalog, Lots, Wallets and Bids modules |
 | [backend/src/lots/](../backend/src/lots/) | Publication, listings/details, lifecycle and owner cancellation |
-| [backend/src/catalog/](../backend/src/catalog/) | Art Institute adapter, mock/HTTP transports, search/details and external health |
+| [backend/src/catalog/](../backend/src/catalog/) | Cleveland adapter and mock/HTTP transports, search/details and external health |
 | [backend/src/auth/](../backend/src/auth/) | Registration, login and JWT verification |
 | [backend/src/users/](../backend/src/users/) | User operations and profile/admin permissions |
 | [backend/src/health/](../backend/src/health/)                                            | Health controller, module, and `healthservice.ts`                |
