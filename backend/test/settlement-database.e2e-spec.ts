@@ -1,3 +1,4 @@
+import { ResultsService } from '../src/settlement/results.service.js';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { SettlementService } from '../src/settlement/settlement.service.js';
@@ -86,6 +87,13 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       );
       expect(new Set(results.map((r) => r?.id)).size).toBe(1);
       expect(results[0]?.settledAt).toBeInstanceOf(Date);
+      const receipt = await new ResultsService(db).forLot(l.id);
+      expect(receipt).toMatchObject({
+        status: 'settled',
+        receipt: { id: results[0]?.id, amount: '100.00' },
+      });
+      expect(JSON.stringify(receipt)).not.toContain(buyer);
+      expect(JSON.stringify(receipt)).not.toContain(seller);
       const entries = await db.walletTransaction.findMany({
         where: { auctionResultId: results[0]!.id },
       });
@@ -127,6 +135,10 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         status: 'closed',
       });
       expect(await db.auctionResult.count({ where: { lotId: l.id } })).toBe(0);
+      expect(await new ResultsService(db).forLot(l.id)).toMatchObject({
+        status: 'no_winner',
+        receipt: null,
+      });
       expect(await wallets.balance(seller)).toMatchObject({
         walletId: null,
         total: '0.00',

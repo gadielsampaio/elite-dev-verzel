@@ -21,8 +21,10 @@ Lots without eligible bids close without a winner, result or money transfer.
 Already-closed lots with eligible bids but no result are still settled. Cancelled
 and draft lots are excluded. A closed status alone does not prove settlement.
 
-No public settlement route is exposed. Shareable receipts, result reads, seller
-totals, winner screens and audit integrity remain pending. No external museum
+No public settlement mutation is exposed. `GET /lots/:lotId/result` returns a
+public result and, after settlement, a privacy-safe receipt. The frontend
+`/#/receipt/:lotId` is shareable without login; closed Seller Studio lots link to
+it. Seller totals, participation/wins screens and audit integrity remain pending. No external museum
 requests occur during settlement. No schema changes are required.
 
 Validation (uses only test-created records and removes those fixtures):
@@ -33,3 +35,15 @@ docker compose stop api
 docker compose run --rm --no-deps -e RUN_DATABASE_TESTS=1 api npm run test:e2e -- --no-file-parallelism
 docker compose up -d api
 ```
+
+## Public results
+
+Statuses: `awaiting_close`, `pending_settlement`, `no_winner`, `settled`.
+Only `settled` includes a receipt: result ID, winning bid ID, exact decimal
+amount, lot-scoped winner alias, ended time and settlement time. No account IDs,
+names, emails, raw snapshots or ledger keys are returned. Missing, draft and
+cancelled lots return 404; invalid UUIDs return 400.
+
+Reads use a consistent database snapshot and never contact Cleveland or trigger
+settlement. A receipt records simulated funds; it does not claim tamper detection.
+Aliases match public bid history and change when `JWT_SECRET` rotates.

@@ -1,6 +1,5 @@
-import { createHmac } from 'node:crypto';
+import { bidderAlias } from './bidder-alias.js';
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { jwtOptions } from '../auth/jwt.config.js';
 import { Prisma, type Lot } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ListBidsDto } from './list-bids.dto.js';
@@ -21,17 +20,12 @@ const leaderOrder = [
 
 @Injectable()
 export class BidReadsService {
-  private readonly aliasKey = jwtOptions().secret;
   constructor(private readonly prisma: PrismaService) {}
 
   private publicBid(lotId: string, bid: PublicBid) {
-    const alias = createHmac('sha256', this.aliasKey)
-      .update(JSON.stringify(['auction-bid-alias-v1', lotId, bid.bidderId]))
-      .digest('hex')
-      .slice(0, 32);
     return {
       id: bid.id,
-      bidderAlias: `bidder_${alias}`,
+      bidderAlias: bidderAlias(lotId, bid.bidderId),
       amount: bid.amount.toFixed(2),
       createdAt: bid.createdAt,
       isActive: bid.isActive,
