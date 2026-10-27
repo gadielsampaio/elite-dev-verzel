@@ -1,3 +1,4 @@
+import { WalletsModule } from './wallets/wallets.module.js';
 import { LotsModule } from './lots/lots.module.js';
 import { CatalogModule } from './catalog/catalog.module.js';
 import { Module } from '@nestjs/common';
@@ -17,6 +18,7 @@ import { AuthModule } from './auth/auth.module.js';
     AuthModule,
     CatalogModule,
     LotsModule,
+    WalletsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

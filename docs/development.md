@@ -5,7 +5,7 @@
 ## Requirements and configuration
 
 Install Docker with the Compose plugin and start its daemon. Use Node.js 24 and npm
-only if running backend commands on the host. Postman is optional. Run the Docker
+only if running backend/frontend commands on the host. Postman is optional. Run the Docker
 commands below from the repository root.
 
 For a new checkout, copy the root template once (keep an existing `.env`):
@@ -60,6 +60,7 @@ curl -i http://localhost:3000/health
 
 | Service    | Host access             | Container access         |
 | ---------- | ----------------------- | ------------------------ |
+| Frontend | `http://127.0.0.1:5175` | Vite proxies `/api` to `api:3000` |
 | API        | `http://localhost:3000` | API listens on port 3000 |
 | PostgreSQL | `127.0.0.1:5432`        | `db:5432` from the API   |
 
@@ -200,3 +201,49 @@ docker compose exec -e RUN_DATABASE_TESTS=1 api npm run test:e2e -- lots-databas
 Normal e2e runs skip this test. It verifies lifecycle persistence, public filtering,
 pagination, cancellation, existing-bid rejection and rollback; it does not prove
 future concurrent bid handling or settlement.
+
+## Initial frontend
+
+`docker compose up --build -d` also starts the React frontend at
+`http://127.0.0.1:5175`. Register a bidder to try simulated deposits; no demo
+accounts or lots are seeded automatically. Browse lots publicly, or log in to view
+your wallet. Seller publication/cancellation screens and bidding are still pending.
+
+For host development, stop the Docker web service, then:
+
+```sh
+docker compose stop web
+cd frontend
+npm ci
+npm run dev
+```
+
+Vite proxies `/api` to `http://127.0.0.1:3000` by default; Docker sets
+`API_PROXY_TARGET=http://api:3000`. No CORS change or browser secret is needed.
+The session token stays in memory (refresh logs out). A pending deposit's amount/
+retry UUID is kept in session storage per user until confirmed, preventing a
+network retry from generating a new credit. This is not payment processing.
+
+Frontend checks, from `frontend/`:
+
+```sh
+npm run build
+npx playwright install chromium
+npm run test:e2e
+```
+
+Browser tests use mocked API responses, including retry/session/mobile cases.
+To use installed Chrome, set `PLAYWRIGHT_CHANNEL=chrome` for the test command.
+The production build outputs `frontend/dist`; a deployed host must serve SPA routes
+and proxy `/api` separately. The Compose/Vite setup is development-only.
+
+For real wallet concurrency verification:
+
+```sh
+docker compose exec -e RUN_DATABASE_TESTS=1 api npm run test:e2e -- wallets-database.e2e-spec.ts
+```
+
+This opt-in test creates uniquely identified users and ledger/hold fixtures to test
+independent concurrent transactions. Cleanup removes only those test IDs, preserving
+existing data. It verifies single credit on repeated keys, cross-user conflicts and
+exact balances; it does not execute settlement.

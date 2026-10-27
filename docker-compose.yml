@@ -30,5 +30,17 @@ services:
       db:
         condition: service_healthy
 
+  web:
+    build: ./frontend
+    ports:
+      - "127.0.0.1:5175:5175"
+    environment:
+      API_PROXY_TARGET: http://api:3000
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - api
+
 volumes:
   postgres_data:

@@ -31,3 +31,7 @@ coverage/
 # Local reference documents (temporarily excluded)
 /docs/DESAFIO_ELITE_DEV_VERZEL.md
 /docs/PLANO_IMPLEMENTACAO_ELITE_DEV_VERZEL.md
+
+# Browser test output
+/frontend/test-results/
+/frontend/playwright-report/

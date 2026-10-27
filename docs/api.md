@@ -199,9 +199,36 @@ Future bidding must acquire the same row lock before validating state and writin
 a bid; a transaction alone is not the full bidding concurrency solution.
 Editing, bidding, settlement and realtime remain pending.
 
+## Wallet balances and simulated deposits
+
+Both routes require a valid JWT and use only the authenticated user's wallet.
+`GET /wallet` returns `walletId`, `currency`, `total`, `committed`, and `available`.
+No wallet yet: `walletId: null` and zero balances. Reads do not create a wallet.
+All amounts are decimal strings with two places; available = total − committed.
+Total adds deposits/sales/refunds and subtracts withdrawals/purchases; committed
+sums only active holds. A repeatable-read transaction keeps both sums consistent.
+
+`POST /wallet/deposits` is **bidder-only**, USD, simulated funds (no payment):
+
+```json
+{"amount":"100.00","idempotencyKey":"33333333-3333-4333-8333-333333333333"}
+```
+
+Use a fresh UUID for each intended deposit. Amount must be positive, with at most
+17 integer digits and two decimal places. The server creates a wallet on first
+deposit and returns 201 with the transaction receipt. Retrying the same key/user/
+amount returns the same receipt without another credit, including concurrent retries.
+Reusing a key for another user, amount or operation returns 409. Invalid input: 400;
+missing token: 401; non-bidder: 403. No client-supplied user/wallet IDs are accepted.
+
+Deposits lock the user then wallet row. Future bid/settlement writes must coordinate
+on wallet locks and a consistent lock order. Balance calculation supports existing
+hold/ledger records; bid reservation/release, withdrawal, refunds and settlement
+workflows are not implemented. No schema changes were needed.
+
 ## Planned modules
 
-The modules below remain planned, except the implemented user and lot operations above.
+The modules below remain planned, except the implemented user, lot and wallet operations above.
 These collection requests are placeholders, not mandatory challenge endpoints.
 Prioritize challenge workflows over blanket CRUD: deposits, holds, bids, settlement
 and audit must enforce their business rules, not expose arbitrary record edits.
@@ -209,7 +236,7 @@ and audit must enforce their business rules, not expose arbitrary record edits.
 | Module / proposed path                       | Purpose and requests in the collection          |
 | -------------------------------------------- | ----------------------------------------------- |
 | Users — `/users`                             | Only delete remains planned                     |
-| Wallets — `/wallets`                         | User wallets; list, get, create, patch, delete  |
+| Wallets — `/wallet` | Own balance/deposit implemented; generic `/wallets` CRUD remains planned |
 | Wallet Transactions — `/wallet-transactions` | Financial entries; list, get, create            |
 | Wallet Holds — `/wallet-holds`               | Bid reservations; list, get, create, patch      |
 | Lots — `/lots`                               | Create/list/get/cancel implemented; generic patch/delete remain planned |

@@ -9,6 +9,9 @@ provide the Art Institute integration with configurable mock/real data;
 reads its saved snapshot. `GET /lots` lists public lots; `PATCH /lots/:id/cancel`
 allows owner cancellation before bids. Lifecycle updates occur on list/detail reads. See [known limitations](../README.md#known-limitations).
 
+`GET /wallet` returns own balances; bidder-only `POST /wallet/deposits` records
+idempotent simulated deposits. Background settlement remains pending.
+
 See the [project documentation](../docs/README.md),
 [development setup](../docs/development.md), and
 [API and Postman guide](../docs/api.md).

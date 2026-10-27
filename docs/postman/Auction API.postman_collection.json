@@ -3,7 +3,7 @@
     "_postman_id": "aaf3c335-1bbb-4b6b-a8aa-f1b9e9bb99d0",
     "name": "Auction API",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented. Public lot listing, on-demand lifecycle and owner cancellation are implemented."
+    "description": "Auction API development collection. Health, user create/list/get/update, and auth registration are implemented. All other requests are planned. JWT login and user-route authorization are implemented. User requests require a Bearer token. baseUrl defaults to http://localhost:3000. Example UUIDs are placeholders. External health and Art Institute catalog search are implemented; catalog supports explicit mock/artic modes, with artwork details. Real provider failures return 503. Lot publication and persisted details are implemented. Public lot listing, on-demand lifecycle and owner cancellation are implemented. Own wallet balances and idempotent simulated deposits are implemented."
   },
   "variable": [
     {
@@ -341,8 +341,79 @@
     },
     {
       "name": "Wallets",
-      "description": "PLANNED \u2014 proposed contract, not implemented. One wallet per user. Currency update and deletion are proposed only for unused wallets; no balance field exists in Prisma.",
+      "description": "Own balance and simulated deposits implemented under /wallet; generic CRUD requests remain planned.",
       "item": [
+        {
+          "name": "[IMPLEMENTED] My wallet balance",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/wallet",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "description": "Own wallet only. Returns fixed decimal strings total/committed/available; zero if no wallet yet."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Simulated deposit",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/wallet/deposits",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": \"100.00\",\n  \"idempotencyKey\": \"{{depositKey}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Bidder only. Same key/amount safely retries. Clear depositKey in the environment before a new intended deposit."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.environment.get(\"depositKey\")) pm.environment.set(\"depositKey\", pm.variables.replaceIn(\"{{$guid}}\"));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"HTTP 201\", () => pm.response.to.have.status(201));"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "[PLANNED] List wallets",
           "request": {

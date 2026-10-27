@@ -15,12 +15,15 @@ JWT login, user-route authorization, external health checks, and Art Institute c
 
 NestJS 12, TypeScript with ESM (`.js` relative imports), Prisma 7 with the PostgreSQL
 driver adapter, PostgreSQL 18, and Docker Compose. The container uses Node.js 24;
-Vitest and Oxlint provide tests and linting.
+Vitest and Oxlint provide backend tests and linting. The initial React/Vite frontend
+uses React Router and Playwright browser tests.
 
 | Path                                                                                     | Purpose                                                          |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| [frontend/](../frontend/) | React login/registration, lot browsing and wallet/deposit UI |
+| [backend/src/wallets/](../backend/src/wallets/) | Own balances and idempotent simulated deposits |
 | [backend/src/main.ts](../backend/src/main.ts)                                            | Bootstrap; port 3000 by default; no global route prefix          |
-| [backend/src/app.module.ts](../backend/src/app.module.ts)                                | Registers Prisma, Health, Users, Auth, Catalog and Lots modules |
+| [backend/src/app.module.ts](../backend/src/app.module.ts)                                | Registers Prisma, Health, Users, Auth, Catalog, Lots and Wallets modules |
 | [backend/src/lots/](../backend/src/lots/) | Publication, listings/details, lifecycle and owner cancellation |
 | [backend/src/catalog/](../backend/src/catalog/) | Art Institute adapter, mock/HTTP transports, search/details and external health |
 | [backend/src/auth/](../backend/src/auth/) | Registration, login and JWT verification |
@@ -30,7 +33,7 @@ Vitest and Oxlint provide tests and linting.
 | [backend/prisma/schema.prisma](../backend/prisma/schema.prisma)                          | Database model source of truth                                   |
 | [backend/prisma/migrations/](../backend/prisma/migrations/)                              | Initial schema, password-hash migration and migration lock              |
 | [backend/prisma7.config.ts](../backend/prisma7.config.ts)                                | Prisma schema/migration paths and datasource URL                 |
-| [backend/Dockerfile](../backend/Dockerfile), [docker-compose.yml](../docker-compose.yml) | API and database development containers                          |
+| [backend/Dockerfile](../backend/Dockerfile), [docker-compose.yml](../docker-compose.yml) | Web, API and database development containers                          |
 | [backend/test/](../backend/test/)                                                        | HTTP tests for root, user authorization and catalog/provider failures                             |
 | [postman/](postman/)                                                                     | Importable collection and local environment                      |
 
