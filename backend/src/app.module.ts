@@ -1,3 +1,4 @@
+import { SettlementModule } from './settlement/settlement.module.js';
 import { BidsModule } from './bids/bids.module.js';
 import { WalletsModule } from './wallets/wallets.module.js';
 import { LotsModule } from './lots/lots.module.js';
@@ -21,6 +22,7 @@ import { AuthModule } from './auth/auth.module.js';
     LotsModule,
     WalletsModule,
     BidsModule,
+    SettlementModule,
   ],
   controllers: [AppController],
   providers: [AppService],

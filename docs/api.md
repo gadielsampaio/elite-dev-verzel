@@ -167,7 +167,7 @@ List/detail reads update lifecycle states from server time before returning:
 
 These are **on-demand updates**, not a background scheduler. Stored states can lag
 while no requests arrive. `closed` means the bidding window ended; it does not mean
-settlement occurred. No winner, transfer or result is created by this transition.
+settlement occurred. No winner, transfer or result is created by this read transition; the background worker settles expired lots separately.
 
 `PATCH /lots/:id/cancel` requires the owning auctioneer's JWT. Send `{}` or
 `{"reason":"No longer available"}` (trimmed, 1–500 characters if supplied).
@@ -179,7 +179,7 @@ Cancelled details subsequently return 404 publicly.
 
 Cancellation locks the lot row and checks ownership/state/bids in one transaction.
 Bid placement acquires the same lot lock before validating state and writing a bid.
-Editing, settlement and realtime remain pending.
+Editing and realtime remain pending; [background settlement](settlement.md) is implemented.
 
 ## Wallet balances and simulated deposits
 
@@ -205,8 +205,8 @@ missing token: 401; non-bidder: 403. No client-supplied user/wallet IDs are acce
 
 Deposits lock the user (`FOR NO KEY UPDATE`) then wallet row, allowing concurrent
 bid foreign-key checks. Bid placement locks the lot then affected wallets in ID
-order; future settlement must preserve a compatible lock order. Active bid holds
-contribute to committed balance. Withdrawal, refunds and settlement are not implemented. No schema changes were needed.
+order; settlement uses the same wallet lock order. Active bid holds
+contribute to committed balance. Withdrawal and refunds are not implemented. Settlement now captures holds and creates purchase/sale entries. No schema changes were needed.
 
 ## Bid placement
 
@@ -242,8 +242,9 @@ No payment, winning-bid designation or ledger debit is performed during bidding.
 Use a live lot and deposit funds first. Public lot details expose the updated
 `endTime`; a receipt does not imply the bid is still leading. History/current-leader reads are described below; bid UI, realtime events and
 tamper-evident history remain pending.
-Leading holds **remain committed after close** until settlement is implemented;
-closing the lot alone neither debits nor releases them.
+Leading holds remain committed until the [settlement worker](settlement.md) captures
+them and transfers funds. Closing the lot alone does not transfer money. Failed
+settlements retain reservations for investigation and retry.
 
 ## Bid history and position
 

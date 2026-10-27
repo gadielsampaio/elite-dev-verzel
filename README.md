@@ -8,7 +8,7 @@ Implemented: database schema/migrations, health checks, user create/read/update,
 password-hashed registration, JWT login, user authorization, catalog search/details, single-artwork lot publication, listing/details and owner-only cancellation.
 The initial frontend supports registration/login, lot browsing/details and wallet
 balances with simulated deposits. Bid placement and reservation/release now work
-through the API; bid UI and settlement remain pending.
+through the API. Background settlement is implemented; bid UI and shareable receipts remain pending.
 See [requirements and progress](docs/progress.md) for the remaining delivery scope.
 
 ## Run locally
@@ -39,10 +39,10 @@ database access, host execution, tests and troubleshooting.
 - Catalog uses Cleveland (`CATALOG_PROVIDER=cleveland`), with verified live search/detail.
   Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
-- Seller publication/cancellation UI, bid UI, settlement, required demo seeds and
+- Seller publication/cancellation UI, bid UI, shareable receipts, required demo seeds and
   verified public deployment remain pending.
-  Lifecycle states update on list/detail requests; no background closing or
-  settlement worker exists yet. Leading bids retain their holds after closing.
+  Lifecycle states update on reads and during background settlement. The worker
+  transfers funds and captures winning holds; failed settlements retain holds for retry.
   Schema tables do not constitute working auction features.
 - Sign in again after refreshing the page: tokens are kept in memory only.
 - Legacy passwordless users cannot log in. No admin seed or public admin signup exists.
