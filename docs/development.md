@@ -272,3 +272,26 @@ removes only its own fixture IDs. It checks concurrent equal bids, cross-lot fun
 leader changes, idempotent retries, deadline extension, cancellation races and
 concurrent deposits. It does not test settlement or audit integrity. No schema
 migration is needed for this increment.
+
+## Full local database and browser checks
+
+Run database suites sequentially: their isolated fixtures share public listing
+queries, so parallel suites can change totals between pagination assertions.
+
+```sh
+cd backend
+RUN_DATABASE_TESTS=1 node --env-file=.env ./node_modules/vitest/vitest.mjs run --config ./vitest.config.e2e.ts --no-file-parallelism
+```
+
+With the local API on port 3000, PostgreSQL accessible via `backend/.env`, and
+Cleveland available, run the opt-in browser journey from the repository root:
+
+```sh
+RUN_LIVE_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e --prefix frontend -- live-bidding.spec.ts
+```
+
+It creates a temporary seller and two bidders, publishes through Seller Studio,
+deposits simulated funds and verifies bidding/hold release in separate sessions.
+It advances only its own lot deadline, waits for the background worker, and checks
+seller credits, wins and a public receipt.
+Cleanup removes only that run's records. Other browser tests mock API responses.

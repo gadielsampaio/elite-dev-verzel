@@ -16,16 +16,18 @@ ignored by Git; this summary is available in a fresh checkout.
 | Public item API | Search, artwork details and explicit mock/real transport selection implemented. Cleveland live search/detail verified; Cleveland fixtures remain available. Snapshots are persisted during publication; connected seller search/selection UI implemented with text/type filters and mandatory images/CC0. |
 | Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; Public browsing/detail UI implemented; owner-scoped seller listing, publication and cancellation UI implemented; editing remains pending; background settlement is implemented. |
 | Wallet | Own balances and bidder-only simulated deposits implemented in API/UI. Concurrent retries are idempotent. Bid placement reserves leader funds and atomically releases the previous hold. |
-| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Bid UI and tamper-evident recording remain pending. |
-| Live room | API reads expose current bid, history, user position and deadline. Read-only HAUS room now shows server history, current bid, position and deadline with manual refresh. Bid entry and realtime updates remain pending. |
-| Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals and bidder participation/wins screens remain pending. |
+| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Tamper-evident recording remains pending. |
+| Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Bid submission refreshes history/position; manual refresh resynchronizes other changes. Realtime updates remain pending. |
+| Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
 | Public audit and privacy | Pending: detect edits/deletions/insertions, including direct database changes; explain verification; no login or personal-data exposure in audit/receipts. `AuditEvent` storage is not tamper detection. |
 | Demo seeds | Missing: one auctioneer, two clients and at least one published lot open for bidding. No seed command exists. |
 | Delivery | Local setup documented. Public deployment URL and repository visibility not verified; Initial React app available locally; complete auction demonstration and deployment pending. |
 
-The backend has reached the first backend slice of plan phase 08 (settlement), but phases 01–03 are
-not complete end to end. The HAUS homepage now covers backend auth, browsing, public room reads and wallets; seller totals, participation/wins UI and early public deployment remain gaps.
+Plan phase 08 is implemented end to end: background settlement, seller results/totals,
+bidder participation/wins and public receipts. Foundation/auth/catalog/lot/wallet/bid
+flows are connected. Phase 09 (audit), phase 10 (realtime), seeds and public
+deployment remain incomplete; completing phase 08 does not complete the challenge.
 The existing `admin` role is an implementation addition, not a required challenge role.
 
 The original local-state prototype remains at `/preview` for visual regression
@@ -36,10 +38,9 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Use the Cleveland catalog for publication; retain explicit mock mode for offline development.
-2. Connect bid submission to the existing room, with exact amounts, safe retries and server rejection reasons.
-3. Complete seller totals, bidder participation/wins and an early public deployment. Seller catalog/publication/cancellation are connected. Plan image availability during provider outages.
-4. Continue with lots → wallets → bids → settlement → public audit → realtime. Add the required demo seeds when those workflows exist.
+1. Phase 09: tamper-evident bid history with a trusted external checkpoint and public verification.
+2. Phase 10: Observer/WebSocket updates and HTTP resynchronization.
+3. Finish seeds, provider-outage image handling and public deployment; do not postpone deployment behind visual refinements.
 
 Adapter and Facade-style orchestration in `BidsService` are implemented. Observer/
 realtime remain planned. The proposed hash chain plus a trusted checkpoint outside PostgreSQL is
@@ -55,3 +56,15 @@ Docker and automated tests are optional challenge extras already present.
 Lot search/filtering, cancellation with automatic refunds and dark mode are optional.
 Cancellation **before any bids** is mandatory. Invoicing, resale, native mobile apps
 and password recovery are outside the required scope.
+
+## Latest verification
+
+Phase 08 live browser verification passed against real Cleveland data and local
+PostgreSQL: seller publishes now; two bidders deposit/bid; the test advances only
+its own lot deadline; the real worker settles; seller totals show the credit;
+the winner sees a win/receipt, the loser sees no win, and a logged-out browser
+opens the shared receipt. Test-owned records were removed.
+
+Backend: typecheck, lint, 76 unit tests and 214 e2e tests passed (database suites
+sequential). Frontend: production build, 42 standard browser tests and the opt-in
+live journey passed. Realtime and audit guarantees were not claimed or tested.
