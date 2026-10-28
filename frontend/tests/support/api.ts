@@ -45,6 +45,7 @@ export async function setup(
       status = 201;
     } else if (url.pathname === `/api/users/${user.id}`)
       body = { ...user, role };
+    else if (url.pathname === "/api/me/auction-summary") body = { lots: 0, live: 0, sold: 0, currency: "USD", totalReceived: "0.00" };
     else if (url.pathname === "/api/lots") {
       filters.push(url.searchParams.get("status") ?? "");
       body = { items: [lot], page: 1, limit: 9, total: 1 };

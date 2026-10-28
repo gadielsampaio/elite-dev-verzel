@@ -244,9 +244,20 @@ test("catalog supports type-only, text-only and combined filters while retaining
   await expect(
     page.getByRole("button", { name: `Select ${art.name}` }),
   ).toBeVisible();
+  await expect(page.locator(".hs-seller-art-card h4")).toHaveText(art.name);
+  await expect(page.locator(".hs-seller-art-id")).toHaveText("CMA / 141639");
+  await expect(page.locator(".hs-seller-art-action")).toContainText(
+    "SELECT WORK",
+  );
+  await expect(page.locator(".hs-seller-pagination > div button")).toHaveCount(
+    2,
+  );
+  await page.screenshot({ path: "/tmp/haus-seller-cards.png", fullPage: true });
   await page.getByLabel("ARTWORK / ARTIST").fill("Unsubmitted text");
   await page.getByRole("button", { name: "NEXT", exact: true }).click();
-  await expect(page.getByText("PAGE 2", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("PAGE 2 OF 3 · 20 WORKS", { exact: true }),
+  ).toBeVisible();
   expect(searches.at(-1)?.searchParams.get("q")).toBe("Monet");
   expect(searches.at(-1)?.searchParams.get("type")).toBe("Painting");
   await page.getByRole("button", { name: `Select ${art.name}` }).click();
@@ -254,5 +265,146 @@ test("catalog supports type-only, text-only and combined filters while retaining
   await expect(page.getByLabel("ARTWORK TYPE", { exact: true })).toHaveValue(
     "Painting",
   );
-  await expect(page.getByText("PAGE 2", { exact: true })).toBeVisible();
+  await expect(
+    page.getByText("PAGE 2 OF 3 · 20 WORKS", { exact: true }),
+  ).toBeVisible();
+});
+
+test("seller creation retains prototype layout on desktop and mobile", async ({
+  page,
+}) => {
+  await loginSeller(page);
+  await page.route("**/api/lots/mine?**", (route) =>
+    route.fulfill({ json: { items: [], total: 0, page: 1, limit: 1 } }),
+  );
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  await page.evaluate(() => {
+    location.hash = "/seller";
+  });
+  await page.getByRole("tab", { name: "CREATE A LOT" }).click();
+  await expect(page.locator(".hs-seller-stats")).toBeVisible();
+  await expect(page.getByLabel("Lot creation progress")).toBeVisible();
+  await expect(page.getByText("THE COLLECTION", { exact: true })).toBeVisible();
+  await expect(page.getByRole("tab", { name: "RESULTS" })).toBeVisible();
+  const text = await page.locator("#seller-search").boundingBox();
+  const category = await page.locator("#catalog-artwork-type").boundingBox();
+  expect(Math.abs(text!.y - category!.y)).toBeLessThan(3);
+  expect(category!.x).toBeGreaterThan(text!.x + text!.width);
+  await page.screenshot({
+    path: "/tmp/haus-connected-seller-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByText("THE COLLECTION", { exact: true })).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: "/tmp/haus-connected-seller-mobile.png",
+    fullPage: true,
+  });
+});
+
+test("auction details retain prototype panels and paired fields on desktop and stack on mobile", async ({
+  page,
+}) => {
+  await loginSeller(page);
+  await mockCatalog(page);
+  await page.setViewportSize({ width: 1710, height: 1124 });
+  await page.evaluate(() => {
+    location.hash = "/seller";
+  });
+  await page.getByRole("tab", { name: "CREATE A LOT" }).click();
+  await page.getByLabel("ARTWORK / ARTIST").fill("museum");
+  await page.getByRole("button", { name: "SEARCH", exact: true }).click();
+  await page.getByRole("button", { name: `Select ${art.name}` }).click();
+  await expect(page.locator(".hs-seller-artwork-caption h4")).toHaveText(
+    art.name,
+  );
+  await expect(
+    page.getByRole("button", { name: "BACK TO COLLECTION" }),
+  ).toBeVisible();
+  await expect(page.locator(".hs-seller-artwork-details > div")).toHaveCount(4);
+  const start = await page.getByLabel("START DATE & TIME").boundingBox();
+  const end = await page.getByLabel("END DATE & TIME").boundingBox();
+  expect(Math.abs(start!.y - end!.y)).toBeLessThan(3);
+  const opening = await page.getByLabel("STARTING BID (USD)").boundingBox();
+  const increment = await page
+    .getByLabel("MINIMUM INCREMENT (USD)")
+    .boundingBox();
+  expect(Math.abs(opening!.y - increment!.y)).toBeLessThan(3);
+  await expect(page.getByLabel("STARTING BID (USD)")).toHaveValue("$0.00");
+  const frame = await page.locator(".hs-seller-artwork-display").boundingBox();
+  const image = await page
+    .locator(".hs-seller-artwork-display img")
+    .boundingBox();
+  const caption = await page
+    .locator(".hs-seller-artwork-caption")
+    .boundingBox();
+  expect(image!.y + image!.height).toBeLessThanOrEqual(
+    frame!.y + frame!.height - 35,
+  );
+  expect(caption!.y).toBeGreaterThan(frame!.y + frame!.height);
+  await page.screenshot({
+    path: "/tmp/haus-seller-details-desktop.png",
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.locator(".hs-seller-detail-layout").scrollIntoViewIfNeeded();
+  await page.screenshot({
+    path: "/tmp/haus-seller-details-mobile.png",
+    fullPage: true,
+  });
+  await page
+    .locator(".hs-seller-form-panel")
+    .screenshot({ path: "/tmp/haus-seller-details-mobile-form.png" });
+});
+
+test("creation errors belong to their fields and Publish now omits a client start timestamp", async ({
+  page,
+}) => {
+  await loginSeller(page);
+  await mockCatalog(page);
+  let payload: Record<string, unknown> | undefined;
+  await page.route("**/api/lots", (route) => {
+    payload = route.request().postDataJSON();
+    return route.fulfill({
+      status: 201,
+      json: { ...lot, ...payload, status: "open" },
+    });
+  });
+  await page.evaluate(() => {
+    location.hash = "/seller";
+  });
+  await page.getByRole("tab", { name: "CREATE A LOT" }).click();
+  await page.getByLabel("ARTWORK / ARTIST").fill("museum");
+  await page.getByRole("button", { name: "SEARCH", exact: true }).click();
+  await page.getByRole("button", { name: `Select ${art.name}` }).click();
+  await page.getByLabel("PUBLICATION").selectOption("now");
+  await expect(page.getByLabel("START DATE & TIME")).toBeDisabled();
+  await page.getByLabel("LOT TITLE").fill(" ");
+  await page.getByRole("button", { name: "PUBLISH LOT", exact: true }).click();
+  await expect(page.locator("#seller-title-error")).toBeVisible();
+  await expect(page.locator("#seller-startingBid-error")).toBeVisible();
+  expect(payload).toBeUndefined();
+  await page.getByLabel("LOT TITLE").fill("Live artwork");
+  for (const label of [
+    "STARTING BID (USD)",
+    "MINIMUM INCREMENT (USD)",
+    "ESTIMATED VALUE (USD)",
+  ])
+    await page.getByLabel(label).fill("100.00");
+  await page.getByRole("button", { name: "PUBLISH LOT", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "LOT PUBLISHED" }),
+  ).toBeVisible();
+  expect(payload?.startMode).toBe("now");
+  expect(payload).not.toHaveProperty("startTime");
 });

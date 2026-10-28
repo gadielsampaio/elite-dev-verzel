@@ -613,9 +613,10 @@
 .hs-seller-detail-toolbar > span { color: var(--hs-muted); font: 600 10px Sora, sans-serif; letter-spacing: .1em; }
 .hs-seller-detail-layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: clamp(35px, 5vw, 76px); align-items: start; }
 .hs-seller-artwork-panel { min-width: 0; }
-.hs-seller-artwork-display { background: var(--hs-surface); height: clamp(320px, 42vw, 530px); padding: 36px; display: grid; place-items: center; }
+.hs-seller-artwork-display { background: var(--hs-surface); height: clamp(320px, 42vw, 530px); padding: 36px; display: grid; grid-template-rows: minmax(0, 1fr); grid-template-columns: minmax(0, 1fr); place-items: center; }
 .hs-seller-artwork-display img { max-height: 100%; max-width: 100%; width: 100%; height: 100%; object-fit: contain; }
 .hs-seller-artwork-display.image-error img { opacity: .18; }
+.hs-seller-artwork-caption, .hs-seller-artwork-details { text-transform: uppercase; }
 .hs-seller-artwork-caption { display: flex; align-items: start; justify-content: space-between; gap: 15px; margin-top: 20px; }
 .hs-seller-artwork-caption h4 { font: 500 20px/1.4 Sora, sans-serif; text-transform: uppercase; letter-spacing: -.035em; margin-top: 9px; }
 .hs-seller-artwork-caption p { margin-top: 8px; font-size: 12px; color: var(--hs-muted); line-height: 1.65; }

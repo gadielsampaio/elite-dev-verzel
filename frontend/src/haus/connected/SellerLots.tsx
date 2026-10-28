@@ -11,9 +11,13 @@ type OwnedLot = Omit<Lot, "status"> & {
 export function SellerLots({
   open,
   create,
+  resultsOnly = false,
+  onChanged,
 }: {
   open: (id: string) => void;
   create: () => void;
+  resultsOnly?: boolean;
+  onChanged?: () => void;
 }) {
   const { session } = useSession();
   const [page, setPage] = useState(1),
@@ -23,7 +27,7 @@ export function SellerLots({
   const pending = useRef(false);
   const query = useApiQuery<PageResult<OwnedLot>>(
     session?.user.role === "auctioneer"
-      ? `/lots/mine?page=${page}&limit=9`
+      ? `/lots/mine?page=${page}&limit=9${resultsOnly ? "&status=closed" : ""}`
       : null,
     session?.token,
   );
@@ -46,12 +50,15 @@ export function SellerLots({
       pending.current = false;
       setBusy(null);
       query.refresh();
+      onChanged?.();
     }
   }
   return (
     <>
       <div className="hs-seller-subheading">
-        <h2 className="hs-seller-section-title">YOUR COLLECTION</h2>
+        <h2 className="hs-seller-section-title">
+          {resultsOnly ? "CLOSED AUCTIONS" : "YOUR COLLECTION"}
+        </h2>
         <span className="hs-seller-muted">{query.data?.total ?? "—"} LOTS</span>
       </div>
       {notice && (
@@ -91,7 +98,14 @@ export function SellerLots({
               {dollars(lot.startingBid, lot.currency)}
             </div>
             <div className="hs-seller-action">
-              {lot.status === "closed" && <a className="hs-seller-text-link" href={`/#/receipt/${lot.id}`}>VIEW RESULT / RECEIPT ↗</a>}
+              {lot.status === "closed" && (
+                <a
+                  className="hs-seller-text-link"
+                  href={`/#/receipt/${lot.id}`}
+                >
+                  VIEW RESULT / RECEIPT ↗
+                </a>
+              )}
               {!["draft", "cancelled"].includes(lot.status) && (
                 <button
                   className="hs-seller-text-link"
@@ -115,7 +129,7 @@ export function SellerLots({
       ) : (
         query.data && (
           <div className="hs-seller-empty">
-            No lots yet.{" "}
+            {resultsOnly ? "No closed auctions yet." : "No lots yet."}{" "}
             <button className="hs-seller-text-link" onClick={create}>
               CREATE YOUR FIRST LOT ↗
             </button>
@@ -147,13 +161,17 @@ export function SellerLots({
       <button
         className="hs-seller-text-link"
         disabled={!!busy}
-        onClick={query.refresh}
+        onClick={() => {
+          query.refresh();
+          onChanged?.();
+        }}
       >
         REFRESH MY LOTS
       </button>
       <p className="hs-seller-notice">
         Cancellation is available only before any bid and before the deadline.
-        Closed lots link to their public result. Seller totals remain pending.
+        Closed lots link to their public result; the Results tab confirms
+        settlement.
       </p>
     </>
   );

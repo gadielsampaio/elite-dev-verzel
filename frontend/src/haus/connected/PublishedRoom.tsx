@@ -1,4 +1,5 @@
 import { useRef, useState } from "react";
+import { BidForm } from "./BidForm";
 import type { Lot } from "../../api";
 import { useSession } from "../../session";
 import { ArtworkScene } from "../LotRoom";
@@ -6,6 +7,7 @@ import { Modal } from "../shared";
 import { clock, useHaus } from "../model";
 import { dollars, useApiQuery, type BidSummary } from "./queries";
 type Position = {
+  bidderAlias?: string;
   position: number | null;
   isLeading: boolean;
   bestBid: unknown;
@@ -21,7 +23,8 @@ export function PublishedRoom({
     { session } = useSession();
   const [page, setPage] = useState(1),
     [tab, setTab] = useState("bids"),
-    [caption, setCaption] = useState(true);
+    [caption, setCaption] = useState(true),
+    [bidNotice, setBidNotice] = useState("");
   const detail = useApiQuery<Lot>(`/lots/${id}`);
   const history = useApiQuery<BidSummary>(
     detail.data ? `/lots/${id}/bids?page=${page}&limit=20` : null,
@@ -175,7 +178,10 @@ export function PublishedRoom({
                   {item?.sourceSnapshot?.mediumDisplay || "Medium not listed"}
                 </p>
                 <p>STARTS: {new Date(lot.startTime).toLocaleString()}</p>
-                <p>ENDS: {new Date(lot.endTime).toLocaleString()}</p>
+                <p>
+                  ENDS:{" "}
+                  {new Date(bids?.endTime ?? lot.endTime).toLocaleString()}
+                </p>
                 <p>
                   MINIMUM INCREMENT: {dollars(lot.bidIncrement, lot.currency)}
                 </p>
@@ -185,13 +191,43 @@ export function PublishedRoom({
               </div>
             ) : (
               <>
-                <p className="hs-p-mini" style={{ marginTop: 22 }}>
-                  Online bidding is not available in this release.
-                </p>
+                {session?.user.role === "bidder" ? (
+                  <BidForm
+                    key={`${id}:${session.user.id}`}
+                    lotId={id}
+                    userId={session.user.id}
+                    token={session.token}
+                    minimum={bids?.minimumNextBid ?? null}
+                    currency={lot.currency}
+                    eligible={
+                      bids?.status === "open" &&
+                      serverNow < Date.parse(bids.endTime) &&
+                      !!position.data &&
+                      !position.data.isLeading
+                    }
+                    refresh={(accepted) => {
+                      if (accepted)
+                        setBidNotice(
+                          "Bid accepted. Refreshing history and your position.",
+                        );
+                      history.refresh();
+                      position.refresh();
+                    }}
+                  />
+                ) : (
+                  <p className="hs-p-mini" style={{ marginTop: 22 }}>
+                    {session
+                      ? "Only bidder accounts can place bids."
+                      : "Sign in as a bidder to place a bid."}
+                  </p>
+                )}
                 {bids?.status === "closed" && (
                   <p className="hs-p-mini">
-                    Bidding has closed. Settlement and winner confirmation are
-                    not yet available.
+                    Bidding has closed.{" "}
+                    <a href={`#/receipt/${id}`} onClick={close}>
+                      View settlement result and receipt
+                    </a>
+                    .
                   </p>
                 )}
                 <div className="hs-p-line">
@@ -203,7 +239,9 @@ export function PublishedRoom({
                       bids.items.map((b) => (
                         <div className="hs-p-bid-row" key={b.id}>
                           <span style={{ overflowWrap: "anywhere" }}>
-                            {b.bidderAlias}
+                            {b.bidderAlias === position.data?.bidderAlias
+                              ? "You"
+                              : b.bidderLabel || "Bidder"}
                           </span>
                           <strong>{dollars(b.amount, bids.currency)}</strong>
                         </div>
@@ -232,6 +270,11 @@ export function PublishedRoom({
               </>
             )}
           </>
+        )}
+        {bidNotice && (
+          <p className="hs-p-feedback" role="status">
+            {bidNotice}
+          </p>
         )}
         {[detail.error, history.error, position.error]
           .filter(Boolean)

@@ -47,7 +47,7 @@ test("retains retry key after uncertain failure and navigation", async ({
   await expect(page.getByRole("alert")).toContainText("Cannot reach");
   await page.getByRole("link", { name: "Explore", exact: true }).click();
   await page.getByRole("link", { name: "Wallet", exact: true }).click();
-  await expect(page.getByLabel("Amount (USD)")).toHaveValue("50.00");
+  await expect(page.getByLabel("Amount (USD)")).toHaveValue("$50.00");
   await page.getByRole("button", { name: "Retry deposit" }).click();
   await expect(page.getByText("USD 130.00")).toBeVisible();
   expect(deposits[0]).toEqual(deposits[1]);

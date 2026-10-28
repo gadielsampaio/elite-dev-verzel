@@ -1,3 +1,4 @@
+import { MoneyInput } from "./MoneyInput";
 import { Navigate } from "react-router-dom";
 import { money } from "./api";
 import { useWallet } from "./useWallet";
@@ -78,13 +79,13 @@ function WalletContent({
           <form onSubmit={deposit}>
             <label>
               Amount (USD)
-              <input
+              <MoneyInput
                 required
                 inputMode="decimal"
                 pattern="(?:0|[1-9][0-9]{0,16})(?:\.[0-9]{1,2})?"
                 value={amount}
                 disabled={busy || !!pending}
-                onChange={(e) => setAmount(e.target.value)}
+                onValueChange={setAmount}
                 placeholder="100.00"
               />
             </label>

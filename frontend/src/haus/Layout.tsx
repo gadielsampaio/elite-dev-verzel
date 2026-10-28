@@ -111,7 +111,8 @@ export function SiteFooter({ connected = false }: { connected?: boolean }) {
               ([target]) =>
                 !connected ||
                 ["home", "wallet"].includes(target) ||
-                (target === "seller" && session?.user.role === "auctioneer"),
+                (target === "seller" && session?.user.role === "auctioneer") ||
+                (target === "activity" && session?.user.role === "bidder"),
             )
             .map(([target, label]) => (
               <button

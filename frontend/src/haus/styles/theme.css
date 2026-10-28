@@ -49,7 +49,7 @@ body, .hs-shell, .hs-header { background: var(--hs-bg); color: var(--hs-ink); }
 .hs-seller-btn:not(.ghost):hover, .hs-primary-link:hover, .ui-action-primary:hover { background: var(--hs-primary-hover); border-color: var(--hs-primary-hover); color: var(--hs-bg); }
 .hs-seller-btn.ghost { background: transparent; color: var(--hs-ink); border-color: var(--hs-border); }
 .hs-seller-btn.ghost:hover { background: var(--hs-hover); }
-.hs-seller-artwork-panel, .hs-seller-art-frame { background: var(--hs-surface); }
+.hs-seller-art-frame { background: var(--hs-surface); }
 .hs-seller-art-card.image-error .hs-seller-art-frame { background: var(--hs-surface); }
 .hs-seller-artwork-display, .hs-seller-row img, .hs-hero-art { background: var(--hs-surface); }
 .hs-seller-text-link, .ui-back { color: var(--hs-ink); }

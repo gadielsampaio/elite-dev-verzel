@@ -1,3 +1,6 @@
+import { MoneyInput } from "../../MoneyInput";
+import { useApiQuery, dollars } from "./queries";
+import { AccountResults } from "./AccountResults";
 import { sellerArtworkTypes } from "../fixtures";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, message, type Lot } from "../../api";
@@ -11,6 +14,8 @@ type Artwork = {
   imageUrl: string | null;
   isPublicDomain: boolean | null;
   artistDisplay: string | null;
+  dateDisplay?: string | null;
+  artworkType?: string | null;
   mediumDisplay?: string | null;
   provider?: string;
 };
@@ -22,9 +27,63 @@ type Search = {
 };
 const amountPattern = /^(?!0+(?:\.0{1,2})?$)\d{1,17}(?:\.\d{1,2})?$/;
 
+function localFuture(hours: number) {
+  const date = new Date(Date.now() + hours * 3600000);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+}
+function AuctionMoney({
+  name,
+  label,
+  help,
+  error,
+}: {
+  name: string;
+  label: string;
+  help?: string;
+  error?: string;
+}) {
+  return (
+    <div className="hs-seller-fieldset">
+      <label className="hs-seller-field" htmlFor={`seller-${name}`}>
+        {label}
+      </label>
+      <MoneyInput
+        id={`seller-${name}`}
+        className="hs-seller-input hs-money-input"
+        name={name}
+        aria-label={`${label} (USD)`}
+        aria-invalid={!!error}
+        aria-describedby={
+          error
+            ? `seller-${name}-error`
+            : help
+              ? `seller-${name}-help`
+              : undefined
+        }
+      />
+      {error && (
+        <span
+          id={`seller-${name}-error`}
+          className="hs-seller-field-error"
+          role="alert"
+        >
+          {error}
+        </span>
+      )}
+      {help && (
+        <span id={`seller-${name}-help`} className="hs-seller-field-hint">
+          {help}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function Seller({ open }: { open: (id: string) => void }) {
   const { session } = useSession();
-  const [tab, setTab] = useState<"lots" | "create">("lots");
+  const [tab, setTab] = useState<"lots" | "create" | "results">("lots");
   const [query, setQuery] = useState("");
   const [artworkType, setArtworkType] = useState("");
   const [results, setResults] = useState<Search | null>(null);
@@ -33,11 +92,34 @@ export function Seller({ open }: { open: (id: string) => void }) {
   const [cancelled, setCancelled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [startMode, setStartMode] = useState("scheduled");
+  const [startValue, setStartValue] = useState(() => localFuture(1));
+  const fieldError = (name: string) =>
+    fieldErrors[name] ? (
+      <span
+        id={`seller-${name}-error`}
+        className="hs-seller-field-error"
+        role="alert"
+      >
+        {fieldErrors[name]}
+      </span>
+    ) : null;
   const [uncertain, setUncertain] = useState(false);
   const pending = useRef(false);
   const controller = useRef<AbortController | null>(null);
   const searched = useRef({ q: "", type: "" });
   useEffect(() => () => controller.current?.abort(), []);
+  const summary = useApiQuery<{
+    lots: number;
+    live: number;
+    sold: number;
+    totalReceived: string;
+    currency: string;
+  }>(
+    session?.user.role === "auctioneer" ? "/me/auction-summary" : null,
+    session?.token,
+  );
   if (!session) return null;
   if (session.user.role !== "auctioneer")
     return (
@@ -95,28 +177,37 @@ export function Seller({ open }: { open: (id: string) => void }) {
     if (!session || !selected || pending.current || uncertain) return;
     const form = new FormData(event.currentTarget);
     const value = (key: string) => String(form.get(key) ?? "").trim();
-    const startingBid = value("startingBid"),
-      bidIncrement = value("bidIncrement"),
-      estimatedValue = value("estimatedValue");
-    if (
-      ![startingBid, bidIncrement, estimatedValue].every((x) =>
-        amountPattern.test(x),
-      )
-    ) {
-      setError(
-        "Enter positive USD amounts with at most 17 integer digits and two decimals.",
-      );
-      return;
+    const moneyValue = (name: string) => value(name).replace(/[$,]/g, "");
+    const startingBid = moneyValue("startingBid"),
+      bidIncrement = moneyValue("bidIncrement"),
+      estimatedValue = moneyValue("estimatedValue");
+    const errors: Record<string, string> = {};
+    if (!value("title") || value("title").length > 200)
+      errors.title = "Enter a title of 1–200 characters.";
+    for (const [name, amount] of Object.entries({
+      startingBid,
+      bidIncrement,
+      estimatedValue,
+    })) {
+      if (!amountPattern.test(amount))
+        errors[name] = "Enter an amount greater than $0.00.";
     }
-    const start = new Date(value("startTime")),
-      end = new Date(value("endTime"));
+    const start =
+      startMode === "now" ? new Date() : new Date(value("startTime"));
+    const end = new Date(value("endTime"));
     if (
       !Number.isFinite(start.getTime()) ||
-      !Number.isFinite(end.getTime()) ||
-      start.getTime() <= Date.now() ||
-      end <= start
-    ) {
-      setError("Choose a future start and an end after the start.");
+      (startMode !== "now" && start.getTime() <= Date.now())
+    )
+      errors.startTime = "Choose a future start time or Publish now.";
+    if (!Number.isFinite(end.getTime()) || end <= start)
+      errors.endTime = "End time must be after the start.";
+    setFieldErrors(errors);
+    setError("");
+    if (Object.keys(errors).length) {
+      event.currentTarget
+        .querySelector<HTMLElement>(`[name="${Object.keys(errors)[0]}"]`)
+        ?.focus();
       return;
     }
     pending.current = true;
@@ -131,11 +222,14 @@ export function Seller({ open }: { open: (id: string) => void }) {
           startingBid,
           bidIncrement,
           estimatedValue,
-          startTime: start.toISOString(),
+          ...(startMode === "now"
+            ? { startMode: "now" }
+            : { startTime: start.toISOString() }),
           endTime: end.toISOString(),
         }),
       });
       setPublished(result);
+      summary.refresh();
     } catch (e) {
       if (!(e instanceof ApiError) || e.status >= 500) {
         setUncertain(true);
@@ -159,6 +253,7 @@ export function Seller({ open }: { open: (id: string) => void }) {
         body: "{}",
       });
       setCancelled(true);
+      summary.refresh();
     } catch (e) {
       setError(message(e));
     } finally {
@@ -177,12 +272,47 @@ export function Seller({ open }: { open: (id: string) => void }) {
         <div className="hs-seller-heading">
           <div>
             <p className="hs-seller-eyebrow">PRIVATE AREA / AUCTIONEER</p>
-            <h1>SELLER STUDIO</h1>
+            <h2>SELLER STUDIO</h2>
             <p className="hs-seller-intro">
-              Manage your collection and publish auctions.
+              Manage your collection, live auctions and final results.
             </p>
           </div>
+          <button
+            className="hs-seller-btn"
+            disabled={busy}
+            onClick={() => setTab("create")}
+          >
+            CREATE LOT<span>+</span>
+          </button>
         </div>
+        <div className="hs-seller-stats">
+          {[
+            ["YOUR LOTS", summary.data?.lots ?? "—"],
+            ["LIVE NOW", summary.data?.live ?? "—"],
+            ["LOTS SOLD", summary.data?.sold ?? "—"],
+            [
+              "TOTAL RECEIVED",
+              summary.data
+                ? dollars(summary.data.totalReceived, summary.data.currency)
+                : "—",
+            ],
+          ].map(([label, value]) => (
+            <div className="hs-seller-stat" key={label}>
+              <label>{label}</label>
+              <strong title={value === "—" ? "Not available" : undefined}>
+                {value}
+              </strong>
+            </div>
+          ))}
+        </div>
+        {summary.error && (
+          <p className="hs-seller-error" role="alert">
+            Summary unavailable: {summary.error}
+          </p>
+        )}
+        <button className="hs-seller-text-link" onClick={summary.refresh}>
+          REFRESH SUMMARY
+        </button>
         <div className="hs-seller-tabs" role="tablist">
           <button
             role="tab"
@@ -200,12 +330,56 @@ export function Seller({ open }: { open: (id: string) => void }) {
           >
             CREATE A LOT
           </button>
+          <button
+            role="tab"
+            aria-selected={tab === "results"}
+            disabled={busy}
+            onClick={() => setTab("results")}
+          >
+            RESULTS
+          </button>
         </div>
+        {tab === "results" && (
+          <AccountResults seller open={open} onRefresh={summary.refresh} />
+        )}
         {tab === "lots" && (
-          <SellerLots open={open} create={() => setTab("create")} />
+          <SellerLots
+            open={open}
+            create={() => setTab("create")}
+            onChanged={summary.refresh}
+          />
         )}
         <div hidden={tab !== "create"}>
-          {error && (
+          <div className="hs-seller-create-intro">
+            <div>
+              <p className="hs-seller-eyebrow">
+                NEW AUCTION / {selected ? "STEP 02 OF 02" : "STEP 01 OF 02"}
+              </p>
+              <h3>CREATE A LOT</h3>
+              <p>
+                {selected
+                  ? "Set the conditions for your selected work."
+                  : "Choose a work from the public collection to begin."}
+              </p>
+            </div>
+            <div
+              className="hs-seller-progress"
+              aria-label="Lot creation progress"
+            >
+              <div className={selected ? "is-done" : "is-active"}>
+                <span className="hs-seller-step-number">
+                  {selected ? "✓" : "01"}
+                </span>
+                <span>SELECT ARTWORK</span>
+              </div>
+              <span className="hs-seller-progress-line" aria-hidden="true" />
+              <div className={selected ? "is-active" : ""}>
+                <span className="hs-seller-step-number">02</span>
+                <span>LOT DETAILS</span>
+              </div>
+            </div>
+          </div>
+          {error && (!selected || published) && (
             <p role="alert" className="hs-seller-error">
               {error}
             </p>
@@ -250,128 +424,319 @@ export function Seller({ open }: { open: (id: string) => void }) {
               </button>
             </div>
           ) : selected ? (
-            <div className="hs-seller-detail-layout">
-              <aside className="hs-seller-artwork-panel">
-                <img
-                  src={selected.imageUrl!}
-                  alt={selected.name}
-                  style={{ maxWidth: "100%" }}
-                />
-                <h2>{selected.name}</h2>
-                <p>{selected.artistDisplay}</p>
-                <p>{selected.mediumDisplay}</p>
-                <p>Source: {selected.provider}</p>
-              </aside>
-              <section className="hs-seller-form-panel">
-                <h2>CONFIGURE THE AUCTION</h2>
-                <form onSubmit={(event) => void publish(event)}>
-                  <fieldset
-                    disabled={busy || uncertain}
-                    style={{ border: 0, padding: 0 }}
-                  >
-                    <label className="hs-seller-field">
-                      LOT TITLE
-                      <input
-                        className="hs-seller-input"
-                        name="title"
-                        defaultValue={selected.name}
-                        maxLength={200}
-                        required
-                      />
-                    </label>
-                    {[
-                      ["startTime", "START DATE & TIME"],
-                      ["endTime", "END DATE & TIME"],
-                    ].map(([name, label]) => (
-                      <label className="hs-seller-field" key={name}>
-                        {label}
-                        <input
-                          className="hs-seller-input"
-                          type="datetime-local"
-                          name={name}
-                          required
-                        />
-                      </label>
-                    ))}
-                    <p>Times use your device's local time zone.</p>
-                    {[
-                      ["startingBid", "STARTING BID (USD)"],
-                      ["bidIncrement", "MINIMUM INCREMENT (USD)"],
-                      ["estimatedValue", "ESTIMATED VALUE (USD)"],
-                    ].map(([name, label]) => (
-                      <label className="hs-seller-field" key={name}>
-                        {label}
-                        <input
-                          className="hs-seller-input"
-                          name={name}
-                          inputMode="decimal"
-                          required
-                        />
-                      </label>
-                    ))}
-                    <button className="hs-seller-btn" type="submit">
-                      {busy ? "PUBLISHING…" : "PUBLISH LOT"}
+            <>
+              <div className="hs-seller-detail-toolbar">
+                <button
+                  className="hs-seller-text-link"
+                  type="button"
+                  disabled={busy || uncertain}
+                  onClick={() => {
+                    setSelected(null);
+                    setError("");
+                  }}
+                >
+                  ← BACK TO COLLECTION
+                </button>
+                <span>02 / LOT DETAILS</span>
+              </div>
+              <div className="hs-seller-detail-layout">
+                <aside
+                  className="hs-seller-artwork-panel"
+                  aria-label="Selected artwork"
+                >
+                  <div className="hs-seller-artwork-display">
+                    <img
+                      src={selected.imageUrl!}
+                      alt={selected.name}
+                      onError={(e) =>
+                        e.currentTarget.parentElement?.classList.add(
+                          "image-error",
+                        )
+                      }
+                    />
+                  </div>
+                  <div className="hs-seller-artwork-caption">
+                    <div>
+                      <span className="hs-seller-art-id">
+                        SELECTED ARTWORK · CMA {selected.articArtworkId}
+                      </span>
+                      <h4>{selected.name}</h4>
+                      <p>{selected.artistDisplay}</p>
+                    </div>
+                    <button
+                      className="hs-seller-text-link"
+                      aria-label="CHANGE ARTWORK"
+                      type="button"
+                      disabled={busy || uncertain}
+                      onClick={() => {
+                        setSelected(null);
+                        setError("");
+                      }}
+                    >
+                      CHANGE ↗
                     </button>
-                  </fieldset>
-                </form>
-                {!uncertain && (
-                  <button
-                    className="hs-seller-text-link"
-                    disabled={busy}
-                    onClick={() => {
-                      setSelected(null);
-                      setError("");
-                    }}
+                  </div>
+                  <dl className="hs-seller-artwork-details">
+                    {[
+                      ["YEAR", selected.dateDisplay || "Not listed"],
+                      ["MEDIUM", selected.mediumDisplay || "Not listed"],
+                      ["TYPE", selected.artworkType || "Not listed"],
+                      [
+                        "SOURCE",
+                        selected.provider === "mock"
+                          ? "Cleveland / offline fixtures"
+                          : "Cleveland / open access",
+                      ],
+                    ].map(([label, value]) => (
+                      <div key={label}>
+                        <dt>{label}</dt>
+                        <dd>{value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </aside>
+                <section
+                  className="hs-seller-form-panel"
+                  aria-labelledby="seller-form-title"
+                >
+                  <h3
+                    id="seller-form-title"
+                    className="hs-seller-section-title"
                   >
-                    CHANGE ARTWORK
-                  </button>
-                )}
-              </section>
-            </div>
+                    CONFIGURE THE AUCTION
+                  </h3>
+                  <p className="hs-seller-notice">
+                    Artwork information is provided by the museum. Set the
+                    schedule and bidding conditions below.
+                  </p>
+                  <form noValidate onSubmit={(event) => void publish(event)}>
+                    <fieldset
+                      disabled={busy || uncertain}
+                      style={{ border: 0, padding: 0, minWidth: 0 }}
+                    >
+                      <div className="hs-seller-fieldset">
+                        <label
+                          className="hs-seller-field"
+                          htmlFor="seller-title"
+                        >
+                          LOT TITLE
+                        </label>
+                        <input
+                          id="seller-title"
+                          className="hs-seller-input"
+                          name="title"
+                          aria-invalid={!!fieldErrors.title}
+                          aria-describedby="seller-title-error"
+                          defaultValue={selected.name}
+                          maxLength={200}
+                          required
+                        />
+                        {fieldError("title")}
+                      </div>
+                      <div className="hs-seller-fieldset">
+                        <label
+                          className="hs-seller-field"
+                          htmlFor="seller-start-mode"
+                        >
+                          PUBLICATION
+                        </label>
+                        <select
+                          id="seller-start-mode"
+                          className="hs-seller-input"
+                          value={startMode}
+                          onChange={(event) => {
+                            setStartMode(event.target.value);
+                            if (event.target.value === "scheduled")
+                              setStartValue(localFuture(1));
+                            setFieldErrors({});
+                          }}
+                        >
+                          <option value="now">Publish now</option>
+                          <option value="scheduled">
+                            Schedule — one hour from now
+                          </option>
+                        </select>
+                      </div>
+                      <div className="hs-seller-form-grid">
+                        {[
+                          ["startTime", "START DATE & TIME", 1],
+                          ["endTime", "END DATE & TIME", 25],
+                        ].map(([name, label, hours]) => (
+                          <div className="hs-seller-fieldset" key={name}>
+                            <label
+                              className="hs-seller-field"
+                              htmlFor={`seller-${name}`}
+                            >
+                              {label}
+                            </label>
+                            <input
+                              id={`seller-${name}`}
+                              className="hs-seller-input"
+                              type="datetime-local"
+                              name={String(name)}
+                              {...(name === "startTime"
+                                ? {
+                                    value: startValue,
+                                    onChange: (
+                                      event: React.ChangeEvent<HTMLInputElement>,
+                                    ) => setStartValue(event.target.value),
+                                    disabled: startMode === "now",
+                                  }
+                                : { defaultValue: localFuture(Number(hours)) })}
+                              aria-invalid={!!fieldErrors[String(name)]}
+                              aria-describedby={`seller-${name}-error`}
+                              required
+                            />
+                            {name === "startTime" && startMode === "now" && (
+                              <span className="hs-seller-field-hint">
+                                Starts when the server publishes the lot.
+                              </span>
+                            )}
+                            {fieldError(String(name))}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="hs-seller-field-hint hs-seller-time-hint">
+                        Times use your device's local time zone.
+                      </p>
+                      <div className="hs-seller-form-grid">
+                        <AuctionMoney
+                          name="startingBid"
+                          label="STARTING BID"
+                          error={fieldErrors.startingBid}
+                        />
+                        <AuctionMoney
+                          error={fieldErrors.bidIncrement}
+                          name="bidIncrement"
+                          label="MINIMUM INCREMENT"
+                        />
+                      </div>
+                      <AuctionMoney
+                        error={fieldErrors.estimatedValue}
+                        name="estimatedValue"
+                        label="ESTIMATED VALUE"
+                        help="Reference value for the artwork; not the starting bid."
+                      />
+                      <div className="hs-seller-form-actions">
+                        <button className="hs-seller-btn" type="submit">
+                          {busy ? "PUBLISHING…" : "PUBLISH LOT"}
+                          <span aria-hidden="true">↗</span>
+                        </button>
+                      </div>
+                    </fieldset>
+                    {error && (
+                      <p className="hs-seller-error" role="alert">
+                        {error}
+                      </p>
+                    )}
+                  </form>
+                  <p className="hs-seller-notice hs-seller-local-note">
+                    This publishes an auction with your selected start option.
+                    Amounts are in USD; deposits and settlement use simulated
+                    funds.
+                  </p>
+                </section>
+              </div>
+            </>
           ) : (
-            <section className="hs-seller-search-panel">
+            <section aria-labelledby="seller-search-title">
+              <div className="hs-seller-subheading hs-seller-search-head">
+                <div>
+                  <h3
+                    className="hs-seller-section-title"
+                    id="seller-search-title"
+                  >
+                    01 / SELECT AN ARTWORK
+                  </h3>
+                  <p className="hs-seller-notice">
+                    Explore public-domain works from the Cleveland Museum of
+                    Art. Only works with images are shown.
+                  </p>
+                </div>
+                <span className="hs-seller-source-tag">
+                  CLEVELAND / OPEN ACCESS
+                </span>
+              </div>
               <form
+                className="hs-seller-search-form"
                 onSubmit={(event) => {
                   event.preventDefault();
                   void search(1, { q: query, type: artworkType });
                 }}
               >
-                <label className="hs-seller-field">
-                  ARTWORK / ARTIST
-                  <input
-                    className="hs-seller-input"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    maxLength={100}
-                  />
-                </label>
-                <label
-                  className="hs-seller-field"
-                  htmlFor="catalog-artwork-type"
-                >
-                  ARTWORK TYPE
-                </label>
-                <select
-                  id="catalog-artwork-type"
-                  className="hs-seller-input"
-                  value={artworkType}
-                  onChange={(e) => setArtworkType(e.target.value)}
-                >
-                  <option value="">ALL TYPES</option>
-                  {sellerArtworkTypes.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="hs-seller-btn"
-                  disabled={busy || (!query.trim() && !artworkType)}
-                  type="submit"
-                >
-                  {busy ? "LOADING…" : "SEARCH"}
-                </button>
+                <div className="hs-seller-search-controls">
+                  <div className="hs-seller-fieldset">
+                    <label className="hs-seller-field" htmlFor="seller-search">
+                      ARTWORK / ARTIST{" "}
+                      <span className="hs-seller-optional">OPTIONAL</span>
+                    </label>
+                    <input
+                      id="seller-search"
+                      className="hs-seller-input"
+                      type="search"
+                      placeholder="e.g. Claude Monet"
+                      autoComplete="off"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      maxLength={100}
+                    />
+                  </div>
+                  <div className="hs-seller-fieldset">
+                    <label
+                      className="hs-seller-field"
+                      htmlFor="catalog-artwork-type"
+                    >
+                      ARTWORK TYPE
+                    </label>
+                    <select
+                      id="catalog-artwork-type"
+                      className="hs-seller-input hs-seller-select"
+                      value={artworkType}
+                      onChange={(e) => setArtworkType(e.target.value)}
+                    >
+                      <option value="">ALL TYPES</option>
+                      {sellerArtworkTypes.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    className="hs-seller-btn"
+                    disabled={busy || (!query.trim() && !artworkType)}
+                    type="submit"
+                  >
+                    {busy ? (
+                      "SEARCHING…"
+                    ) : (
+                      <>
+                        SEARCH <span aria-hidden="true">↗</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <p className="hs-seller-field-hint">
+                  Search by artwork/artist, select a type, or combine both
+                  filters.
+                </p>
               </form>
+              <div
+                role="status"
+                aria-live="polite"
+                className="hs-seller-search-meta"
+              >
+                {busy ? "Searching the collection…" : ""}
+              </div>
+              {!results && !busy && !error && (
+                <div className="hs-seller-empty hs-seller-result-empty">
+                  <span>THE COLLECTION</span>
+                  <p>
+                    Search by artwork / artist or choose an artwork type to
+                    explore the collection.
+                  </p>
+                </div>
+              )}
               {results && (
                 <>
                   <p role="status">
@@ -395,16 +760,30 @@ export function Seller({ open }: { open: (id: string) => void }) {
                             <img
                               src={art.imageUrl!}
                               alt={art.name}
+                              loading="lazy"
                               onError={(event) => {
                                 const button =
                                   event.currentTarget.closest("button");
-                                if (button) button.disabled = true;
+                                if (button) {
+                                  button.disabled = true;
+                                  button.classList.add("image-error");
+                                }
+                                event.currentTarget.alt = "Image unavailable";
                               }}
                             />
                           </div>
                           <div className="hs-seller-art-info">
-                            <h3>{art.name}</h3>
-                            <p>{art.artistDisplay}</p>
+                            <span className="hs-seller-art-id">
+                              CMA / {art.articArtworkId}
+                            </span>
+                            <h4>{art.name}</h4>
+                            <p>
+                              {art.artistDisplay}
+                              {art.dateDisplay && ` · ${art.dateDisplay}`}
+                            </p>
+                            <span className="hs-seller-art-action">
+                              SELECT WORK <span aria-hidden="true">↗</span>
+                            </span>
                           </div>
                         </button>
                       ))}
@@ -412,27 +791,38 @@ export function Seller({ open }: { open: (id: string) => void }) {
                   {!results.items.some(
                     (art) => art.imageUrl && art.isPublicDomain === true,
                   ) && <p>No artworks found. Try another search.</p>}
-                  <div className="hs-seller-pagination">
-                    <button
-                      className="hs-seller-btn ghost"
-                      disabled={busy || results.page <= 1}
-                      onClick={() => void search(results.page - 1)}
-                    >
-                      PREVIOUS
-                    </button>
-                    <span>PAGE {results.page}</span>
-                    <button
-                      className="hs-seller-btn ghost"
-                      disabled={
-                        busy ||
-                        results.page >= 100 ||
-                        results.page * 9 >= results.total
-                      }
-                      onClick={() => void search(results.page + 1)}
-                    >
-                      NEXT
-                    </button>
-                  </div>
+                  {results.total > 9 && (
+                    <div className="hs-seller-pagination">
+                      <span>
+                        PAGE {results.page} OF {Math.ceil(results.total / 9)} ·{" "}
+                        {results.total.toLocaleString("en-US")} WORKS
+                      </span>
+                      <div>
+                        <button
+                          type="button"
+                          aria-label="PREVIOUS"
+                          className="hs-seller-btn ghost"
+                          disabled={busy || results.page <= 1}
+                          onClick={() => void search(results.page - 1)}
+                        >
+                          ← PREVIOUS
+                        </button>
+                        <button
+                          type="button"
+                          aria-label="NEXT"
+                          className="hs-seller-btn ghost"
+                          disabled={
+                            busy ||
+                            results.page >= 100 ||
+                            results.page * 9 >= results.total
+                          }
+                          onClick={() => void search(results.page + 1)}
+                        >
+                          NEXT →
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </section>

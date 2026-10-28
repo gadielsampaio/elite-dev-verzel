@@ -18,6 +18,7 @@ export type BidSummary = {
   items: {
     id: string;
     bidderAlias: string;
+    bidderLabel?: string;
     amount: string;
     createdAt: string;
     isActive: boolean;

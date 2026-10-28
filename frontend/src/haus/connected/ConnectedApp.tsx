@@ -1,3 +1,4 @@
+import { AccountResults } from "./AccountResults";
 import { Receipt } from "./Receipt";
 import { Seller } from "./Seller";
 import { useEffect, useState } from "react";
@@ -20,9 +21,12 @@ import "../styles/react.css";
 function ConnectedScreens() {
   const { page, go } = useHaus(),
     { session, login, notice } = useSession();
-  const [receiptId, setReceiptId] = useState(() => location.hash.match(/^#\/receipt\/([^/]+)$/)?.[1] ?? null);
+  const [receiptId, setReceiptId] = useState(
+    () => location.hash.match(/^#\/receipt\/([^/]+)$/)?.[1] ?? null,
+  );
   useEffect(() => {
-    const update = () => setReceiptId(location.hash.match(/^#\/receipt\/([^/]+)$/)?.[1] ?? null);
+    const update = () =>
+      setReceiptId(location.hash.match(/^#\/receipt\/([^/]+)$/)?.[1] ?? null);
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
@@ -70,6 +74,13 @@ function ConnectedScreens() {
             <Seller key={session?.user.id ?? "guest"} open={setActive} />
           ) : page === "wallet" ? (
             <Wallet />
+          ) : page === "activity" ? (
+            <div
+              className="hs-tools-preview hs-utility-page hs-seller-page"
+              style={{ display: "block" }}
+            >
+              <AccountResults key={session?.user.id} open={setActive} />
+            </div>
           ) : (
             <section
               className="hs-tools-preview hs-utility-page"

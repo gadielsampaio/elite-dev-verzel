@@ -69,6 +69,7 @@ test("published lots use server filters/pagination and saved details while museu
             {
               id: "bid1",
               bidderAlias: "bidder_public_alias",
+              bidderLabel: "Bidder A",
               amount: "9007199254740994.09",
               createdAt: new Date().toISOString(),
               isActive: true,
@@ -100,7 +101,7 @@ test("published lots use server filters/pagination and saved details while museu
     .getByRole("button", { name: "View Saved collection", exact: true })
     .click();
   const room = page.getByRole("dialog");
-  await expect(room.getByText("bidder_public_alias")).toBeVisible();
+  await expect(room.getByText("Bidder A")).toBeVisible();
   await expect(
     room.getByText("$9,007,199,254,740,994.09").first(),
   ).toBeVisible();
@@ -218,7 +219,7 @@ test("wallet retains a deposit key across navigation and sends decimal strings",
     .locator(".hs-footer-links")
     .getByRole("button", { name: "WALLET" })
     .click();
-  await expect(page.getByLabel("DEPOSIT AMOUNT (USD)")).toHaveValue("50.00");
+  await expect(page.getByLabel("DEPOSIT AMOUNT (USD)")).toHaveValue("$50.00");
   await page
     .getByRole("button", { name: "RETRY DEPOSIT", exact: false })
     .click();

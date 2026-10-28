@@ -1,3 +1,4 @@
+import { MoneyInput } from "../../MoneyInput";
 import { useWallet } from "../../useWallet";
 import { useSession } from "../../session";
 import { BackButton } from "../shared";
@@ -85,7 +86,7 @@ function WalletContent({
             <label htmlFor="deposit-amount" className="hs-seller-field">
               DEPOSIT AMOUNT (USD)
             </label>
-            <input
+            <MoneyInput
               id="deposit-amount"
               className="hs-seller-input"
               inputMode="decimal"
@@ -95,7 +96,7 @@ function WalletContent({
               placeholder="100.00"
               value={amount}
               disabled={busy || !!pending}
-              onChange={(e) => setAmount(e.target.value)}
+              onValueChange={setAmount}
             />
             {pending && (
               <p className="hs-seller-notice">
