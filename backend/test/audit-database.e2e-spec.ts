@@ -1,3 +1,4 @@
+import { AuctionEvents } from '../src/events/auction-events.js';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -24,7 +25,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       vi.stubEnv('AUDIT_CHECKPOINT_DIR', directory);
       db = new PrismaService();
       audit = new AuditService(db);
-      bids = new BidsService(db);
+      bids = new BidsService(db, new AuctionEvents());
       ownerId = (
         await db.user.create({
           data: {

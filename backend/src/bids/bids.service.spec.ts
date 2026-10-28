@@ -1,3 +1,5 @@
+import { Logger } from '@nestjs/common';
+import { AuctionEvents } from '../events/auction-events.js';
 import { vi } from 'vitest';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -23,7 +25,9 @@ describe('Bid transaction rules', () => {
     walletTransaction: { groupBy: vi.fn() },
     bidAuditEntry: { findFirst: vi.fn(), create: vi.fn() },
   };
-  const service = new BidsService(db as unknown as PrismaService);
+  const events = new AuctionEvents();
+  const notification = vi.fn();
+  const service = new BidsService(db as unknown as PrismaService, events);
   const data = { amount: '100.00', idempotencyKey: 'key' };
   const bid = {
     id: '22222222-2222-4222-8222-222222222222',
@@ -48,6 +52,8 @@ describe('Bid transaction rules', () => {
     vi.useFakeTimers();
     vi.setSystemTime(now);
     vi.resetAllMocks();
+    events.onModuleDestroy();
+    events.subscribe(notification);
     lot = {
       id: lotId,
       ownerId: 'seller',
@@ -75,6 +81,7 @@ describe('Bid transaction rules', () => {
     db.walletHold.aggregate.mockResolvedValue({ _sum: { amount: null } });
   });
   afterEach(() => {
+    events.onModuleDestroy();
     vi.useRealTimers();
     vi.unstubAllEnvs();
   });
@@ -94,6 +101,97 @@ describe('Bid transaction rules', () => {
       where: { id: lotId },
       data: { status: 'open', endTime: lot.endTime },
     });
+  });
+  it('publishes only after the transaction promise confirms commit', async () => {
+    let confirmCommit!: () => void;
+    let bodyFinished!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      bodyFinished = resolve;
+    });
+    db.$transaction.mockImplementation(
+      async (fn: (tx: typeof db) => Promise<unknown>) => {
+        const result = await fn(db);
+        expect(notification).not.toHaveBeenCalled();
+        await new Promise<void>((resolve) => {
+          confirmCommit = resolve;
+          bodyFinished();
+        });
+        return result;
+      },
+    );
+    const pending = service.place(lotId, bidderId, data);
+    await ready;
+    expect(confirmCommit).toBeTypeOf('function');
+    expect(notification).not.toHaveBeenCalled();
+    confirmCommit();
+    await pending;
+    expect(notification).toHaveBeenCalledExactlyOnceWith({
+      type: 'bid.accepted',
+      lotId,
+      bidId: bid.id,
+      endTime: lot.endTime.toISOString(),
+    });
+  });
+  it('does not publish when commit fails after the transaction body succeeds', async () => {
+    db.$transaction.mockImplementation(
+      async (fn: (tx: typeof db) => Promise<unknown>) => {
+        await fn(db);
+        throw new Error('Commit failed');
+      },
+    );
+    await expect(service.place(lotId, bidderId, data)).rejects.toThrow(
+      'Commit failed',
+    );
+    expect(notification).not.toHaveBeenCalled();
+  });
+  it('does not publish a concurrent idempotency-conflict replay', async () => {
+    db.$transaction.mockRejectedValue(
+      new Prisma.PrismaClientKnownRequestError('Duplicate key', {
+        code: 'P2002',
+        clientVersion: 'test',
+      }),
+    );
+    db.bid.findUnique.mockResolvedValue(bid);
+    await expect(service.place(lotId, bidderId, data)).resolves.toMatchObject({
+      id: bid.id,
+    });
+    expect(notification).not.toHaveBeenCalled();
+  });
+  it('keeps a committed bid successful when a subscriber fails', async () => {
+    const warning = vi
+      .spyOn(Logger.prototype, 'warn')
+      .mockImplementation(() => {});
+    const unsubscribe = events.subscribe(() => {
+      throw new Error('Transport unavailable');
+    });
+    try {
+      await expect(service.place(lotId, bidderId, data)).resolves.toMatchObject(
+        { id: bid.id },
+      );
+      expect(notification).toHaveBeenCalledTimes(1);
+    } finally {
+      unsubscribe();
+      warning.mockRestore();
+    }
+  });
+  it('does not publish when the audit write fails', async () => {
+    db.bidAuditEntry.create.mockRejectedValue(new Error('Audit write failed'));
+    await expect(service.place(lotId, bidderId, data)).rejects.toThrow(
+      'Audit write failed',
+    );
+    expect(notification).not.toHaveBeenCalled();
+  });
+  it('publishes the committed extension after bid acceptance', async () => {
+    lot.endTime = new Date(now.getTime() + 60000);
+    await service.place(lotId, bidderId, data);
+    expect(notification.mock.calls.map(([event]) => event.type)).toEqual([
+      'bid.accepted',
+      'lot.extended',
+    ]);
+    for (const [event] of notification.mock.calls)
+      expect(event.endTime).toBe(
+        new Date(lot.endTime.getTime() + 120000).toISOString(),
+      );
   });
   it.each([
     ['start', 0, 600000, true],
@@ -115,6 +213,7 @@ describe('Bid transaction rules', () => {
       status: 409,
     });
     expect(db.bid.create).not.toHaveBeenCalled();
+    expect(notification).not.toHaveBeenCalled();
   });
   it('rejects self-owned lot', async () => {
     lot.ownerId = bidderId;
@@ -232,6 +331,7 @@ describe('Bid transaction rules', () => {
     });
     expect(db.walletHold.create).not.toHaveBeenCalled();
     expect(db.lot.update).not.toHaveBeenCalled();
+    expect(notification).not.toHaveBeenCalled();
   });
   it.each([
     { bidderId: 'other' },

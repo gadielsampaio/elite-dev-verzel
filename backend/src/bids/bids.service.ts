@@ -1,3 +1,4 @@
+import { AuctionEvents } from '../events/auction-events.js';
 import { recordBidAudit } from '../audit/record-bid-audit.js';
 import {
   BadRequestException,
@@ -13,7 +14,10 @@ import { PlaceBidDto } from './place-bid.dto.js';
 
 @Injectable()
 export class BidsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: AuctionEvents,
+  ) {}
 
   private receipt(bid: Bid) {
     return {
@@ -59,14 +63,14 @@ export class BidsService {
     if (amount.lte(0))
       throw new BadRequestException('Bid must be greater than zero');
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      const result = await this.prisma.$transaction(async (tx) => {
         // Shared with cancellation. All bids for a lot serialize here.
         const locked = await tx.$queryRaw<
           { id: string }[]
         >`SELECT id FROM lots WHERE id = ${lotId}::uuid FOR UPDATE`;
         if (!locked.length) throw new NotFoundException('Lot not found');
         const replay = await this.replay(tx, lotId, bidderId, data, amount);
-        if (replay) return replay;
+        if (replay) return { receipt: replay, change: null };
         const lot = await tx.lot.findUniqueOrThrow({ where: { id: lotId } });
         if (lot.ownerId === bidderId)
           throw new ForbiddenException('You cannot bid on your own lot');
@@ -147,8 +151,24 @@ export class BidsService {
           data: { status: 'open', endTime },
         });
         await recordBidAudit(tx, bid, lot.currency, endTime);
-        return this.receipt(bid);
+        return {
+          receipt: this.receipt(bid),
+          change: {
+            lotId,
+            bidId: bid.id,
+            endTime: endTime.toISOString(),
+            extended: endTime.getTime() !== lot.endTime.getTime(),
+          },
+        };
       });
+      // Prisma resolves only after COMMIT. Replays and failed transactions never
+      // reach publication with a new change; transport stays outside this Facade.
+      if (result.change) {
+        this.events.publish({ type: 'bid.accepted', ...result.change });
+        if (result.change.extended)
+          this.events.publish({ type: 'lot.extended', ...result.change });
+      }
+      return result.receipt;
     } catch (error) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&

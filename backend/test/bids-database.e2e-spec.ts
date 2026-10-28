@@ -1,3 +1,7 @@
+import {
+  AuctionEvents,
+  type AuctionEvent,
+} from '../src/events/auction-events.js';
 import { hashBidAudit } from '../src/audit/bid-hash.js';
 import { Prisma } from '../src/generated/prisma/client.js';
 import { randomUUID } from 'node:crypto';
@@ -52,7 +56,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
     ) => bids.place(lotId, userId, { amount, idempotencyKey: key });
     beforeEach(async () => {
       db = new PrismaService();
-      bids = new BidsService(db);
+      bids = new BidsService(db, new AuctionEvents());
       wallets = new WalletsService(db);
       lots = new LotsService(db, {} as CatalogService);
       userIds = [];
@@ -83,6 +87,42 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       } finally {
         await db.$disconnect();
       }
+    });
+    it('notifies observers only after bid, hold, audit and deadline are committed', async () => {
+      const user = await bidder(),
+        l = await lot(60000);
+      const events = new AuctionEvents();
+      const observed: Promise<unknown>[] = [];
+      const notification = vi.fn((event: AuctionEvent) => {
+        if (event.type === 'bid.accepted') {
+          // These are independent pool reads, never the bid transaction client.
+          observed.push(
+            Promise.all([
+              db.bid.findUnique({ where: { id: event.bidId } }),
+              db.walletHold.findUnique({ where: { bidId: event.bidId } }),
+              db.bidAuditEntry.findUnique({ where: { bidId: event.bidId } }),
+              db.lot.findUniqueOrThrow({ where: { id: l.id } }),
+            ]).then(([bid, hold, audit, lot]) => {
+              expect(bid?.amount.toFixed(2)).toBe('100.00');
+              expect(hold?.status).toBe('active');
+              expect(audit?.bidId).toBe(event.bidId);
+              expect(lot.endTime.toISOString()).toBe(event.endTime);
+            }),
+          );
+        }
+      });
+      events.subscribe(notification);
+      const service = new BidsService(db, events);
+      const data = { amount: '100.00', idempotencyKey: randomUUID() };
+      await service.place(l.id, user, data);
+      await Promise.all(observed);
+      expect(notification.mock.calls.map(([event]) => event.type)).toEqual([
+        'bid.accepted',
+        'lot.extended',
+      ]);
+      await service.place(l.id, user, data);
+      expect(notification).toHaveBeenCalledTimes(2);
+      events.onModuleDestroy();
     });
     it('persists a canonical chain and keeps bid deletion from erasing its snapshot', async () => {
       const a = await bidder(),
@@ -125,26 +165,29 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         l = await lot(60000);
       await place(l.id, a, '100.00');
       const before = await db.lot.findUniqueOrThrow({ where: { id: l.id } });
-      const broken = new BidsService({
-        $transaction: (
-          fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
-        ) =>
-          db.$transaction((tx) =>
-            fn(
-              new Proxy(tx, {
-                get(target, key) {
-                  if (key === 'bidAuditEntry')
-                    return {
-                      ...target.bidAuditEntry,
-                      create: () =>
-                        Promise.reject(new Error('Audit storage failed')),
-                    };
-                  return Reflect.get(target, key);
-                },
-              }),
+      const broken = new BidsService(
+        {
+          $transaction: (
+            fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
+          ) =>
+            db.$transaction((tx) =>
+              fn(
+                new Proxy(tx, {
+                  get(target, key) {
+                    if (key === 'bidAuditEntry')
+                      return {
+                        ...target.bidAuditEntry,
+                        create: () =>
+                          Promise.reject(new Error('Audit storage failed')),
+                      };
+                    return Reflect.get(target, key);
+                  },
+                }),
+              ),
             ),
-          ),
-      } as unknown as PrismaService);
+        } as unknown as PrismaService,
+        new AuctionEvents(),
+      );
       await expect(
         broken.place(l.id, b, {
           amount: '105.00',

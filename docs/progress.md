@@ -17,17 +17,17 @@ ignored by Git; this summary is available in a fresh checkout.
 | Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; Public browsing/detail UI implemented; owner-scoped seller listing, publication and cancellation UI implemented; editing remains pending; background settlement is implemented. |
 | Wallet | Own balances and bidder-only simulated deposits implemented in API/UI. Concurrent retries are idempotent. Bid placement reserves leader funds and atomically releases the previous hold. |
 | Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Accepted bids have atomic snapshots and external witnesses. |
-| Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Bid submission refreshes history/position; manual refresh resynchronizes other changes. Realtime updates remain pending. |
+| Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Bid submission refreshes history/position; manual refresh resynchronizes other changes. Post-commit Observer notifications are implemented; WebSocket delivery and automatic browser updates remain pending. |
 | Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
 | Public audit and privacy | Implemented: atomic SHA-256 snapshots, protected checkpoints outside PostgreSQL, public verification and browser hash checks. Database changes/deletions/insertions are detected against confirmed evidence; legacy, interrupted and uncovered history is not verifiable. No personal identity exposure. See [audit guarantees](audit.md). |
 | Demo seeds | Missing: one auctioneer, two clients and at least one published lot open for bidding. No seed command exists. |
-| Delivery | Local setup documented. Public deployment URL and repository visibility not verified; Initial React app available locally; complete auction demonstration and deployment pending. |
+| Delivery | Vercel frontend and Render API/PostgreSQL deployed. CORS, public lot reads and all three Render migrations verified. Required demo seeds, durable Render audit storage, full production journey and repository-visibility verification remain pending. |
 
 Plan phase 08 is implemented end to end: background settlement, seller results/totals,
 bidder participation/wins and public receipts. Foundation/auth/catalog/lot/wallet/bid
 flows are connected. Phase 09 now includes external checkpoints and public verification. Phase 10
-(realtime), seeds and public deployment remain incomplete; completing phase 08 does not complete the challenge.
+(realtime) is in progress. Seeds, production audit persistence and full deployment validation remain incomplete; the challenge is not yet complete.
 The existing `admin` role is an implementation addition, not a required challenge role.
 
 The original local-state prototype remains at `/preview` for visual regression
@@ -38,11 +38,11 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Phase 10: Observer/WebSocket updates and HTTP resynchronization.
-2. Finish seeds, provider-outage image handling and public deployment; do not postpone deployment behind visual refinements.
+1. Phase 10: connect the Observer to per-lot WebSocket rooms and refresh HTTP state on events/reconnection.
+2. Finish demo seeds, durable Render audit storage, provider-outage image handling and the full deployed journey.
 
-Adapter and Facade-style orchestration in `BidsService` are implemented. Observer/
-realtime remain planned. Hash chains, protected filesystem checkpoints and public verification are implemented.
+Adapter, Facade-style orchestration in `BidsService`, and process-local Observer notifications are implemented.
+WebSocket transport and browser subscriptions remain planned. Hash chains, protected filesystem checkpoints and public verification are implemented.
 Legacy and interrupted histories remain not verifiable; see [audit limits](audit.md).
 
 ## Submission checklist
@@ -56,7 +56,7 @@ Lot search/filtering, cancellation with automatic refunds and dark mode are opti
 Cancellation **before any bids** is mandatory. Invoicing, resale, native mobile apps
 and password recovery are outside the required scope.
 
-## Latest verification
+## Previous verification milestones
 
 Phase 08 live browser verification passed against real Cleveland data and local
 PostgreSQL: seller publishes now; two bidders deposit/bid; the test advances only
@@ -64,7 +64,7 @@ its own lot deadline; the real worker settles; seller totals show the credit;
 the winner sees a win/receipt, the loser sees no win, and a logged-out browser
 opens the shared receipt. Test-owned records were removed.
 
-Current audit validation: backend typecheck, lint, 117 unit tests and 228 e2e
+Audit milestone validation: backend typecheck, lint, 117 unit tests and 228 e2e
 tests passed (database suites sequential); frontend production build and 47
 standard browser tests passed. External checkpoint attack/failure cases and browser
 hash verification are covered. Realtime remains pending.
@@ -72,3 +72,21 @@ hash verification are covered. Realtime remains pending.
 The live publish → bid → settle → logged-out audit journey also passed after
 restarting the API with checkpoint storage configured. Compose API/web and the
 frontend health proxy are running. Test-owned records and checkpoints were removed.
+
+## Phase 10 — first increment
+
+`AuctionEvents` uses Node's EventEmitter. `BidsService` publishes `bid.accepted`
+and, when anti-sniping extends the deadline, `lot.extended` **after Prisma confirms
+commit**. Rejections, rollback and idempotent replays publish nothing. Subscriber
+failures cannot fail an accepted bid or prevent other observers from receiving it.
+
+Payloads contain only `type`, `lotId`, `bidId` and the committed `endTime`.
+Subscriptions return an unsubscribe function. These are best-effort process-local
+signals, not durable delivery or a cross-instance broker; HTTP remains authoritative.
+There is no WebSocket endpoint or automatic browser update yet. The next increment
+adds the gateway and client resynchronization; settlement/lifecycle notifications
+must follow before phase 10 is complete.
+
+Validation: 126 unit tests and 235 e2e tests passed, including separate PostgreSQL
+reads proving that bids, holds, audit snapshots and deadlines are committed before
+observers run. Build, typecheck and lint passed. No frontend changes in this increment.

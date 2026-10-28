@@ -41,7 +41,8 @@ database access, host execution, tests and troubleshooting.
   Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
 - Public audit uses protected external checkpoints; legacy/unconfirmed history stays not verifiable.
-  Realtime delivery, required demo seeds and verified public deployment remain pending.
+  Post-commit Observer notifications are implemented; WebSocket delivery and required demo seeds remain pending.
+  Public frontend/API access is verified; durable audit storage on Render and the full production journey remain pending.
   Other bidders’ updates currently require Refresh lot. Museum image hosting remains an external dependency.
   Lifecycle states update on reads and during background settlement. The worker
   transfers funds and captures winning holds; failed settlements retain holds for retry.
@@ -51,5 +52,6 @@ database access, host execution, tests and troubleshooting.
 - Watch mode can leave stale processes (`EADDRINUSE`); restart only the API with
   `docker compose restart api`. Stop the API before building on the host.
 
+[Live frontend](https://elite-dev-verzel-delta.vercel.app) ·
 [API and Postman](docs/api.md) · [Database](docs/database.md) ·
 [Documentation index](docs/README.md)

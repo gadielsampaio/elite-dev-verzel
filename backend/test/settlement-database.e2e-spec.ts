@@ -1,3 +1,4 @@
+import { AuctionEvents } from '../src/events/auction-events.js';
 import { AccountResultsService } from '../src/settlement/account-results.service.js';
 import { ResultsService } from '../src/settlement/results.service.js';
 import { randomUUID } from 'node:crypto';
@@ -18,7 +19,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       db = new PrismaService();
       settlement = new SettlementService(db);
       wallets = new WalletsService(db);
-      bids = new BidsService(db);
+      bids = new BidsService(db, new AuctionEvents());
       users = [];
       lots = [];
       for (const role of ['auctioneer', 'bidder'] as const) {
