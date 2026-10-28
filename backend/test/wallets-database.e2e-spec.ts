@@ -1,3 +1,4 @@
+import { AuctionEvents } from '../src/events/auction-events.js';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
 import { ValidationPipe, type INestApplication } from '@nestjs/common';
@@ -45,6 +46,14 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
           userIds.map((sub) => jwt.signAsync({ sub })),
         );
         const key = randomUUID();
+        const notifications: string[] = [];
+        const committed: Promise<number>[] = [];
+        module.get(AuctionEvents).subscribeAccount((userId) => {
+          notifications.push(userId);
+          committed.push(
+            db.walletTransaction.count({ where: { idempotencyKey: key } }),
+          );
+        });
         const deposit = (
           token: string,
           amount: string,
@@ -59,6 +68,8 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         );
         expect(results.map((r) => r.status)).toEqual([201, 201, 201, 201]);
         expect(new Set(results.map((r) => r.body.id)).size).toBe(1);
+        expect(notifications).toEqual([userIds[0]]);
+        expect(await Promise.all(committed)).toEqual([1]);
         expect(
           await db.walletTransaction.count({ where: { idempotencyKey: key } }),
         ).toBe(1);

@@ -58,6 +58,7 @@ model User {
   bids         Bid[]
   wonAuctions  AuctionResult[] @relation("AuctionWinner")
   soldAuctions AuctionResult[] @relation("AuctionOwner")
+  refreshSessions RefreshSession[]
   auditEvents  AuditEvent[]
 
   @@map("users")
@@ -260,4 +261,21 @@ model BidAuditHistory {
 
   @@index([lotId, id])
   @@map("bid_audit_history")
+}
+
+
+// Opaque refresh secrets are never stored; consumed rows detect token reuse.
+model RefreshSession {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  familyId String @map("family_id") @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  tokenHash String @unique @map("token_hash") @db.Char(64)
+  expiresAt DateTime @map("expires_at") @db.Timestamptz(3)
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz(3)
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz(3)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([familyId])
+  @@index([userId])
+  @@map("refresh_sessions")
 }

@@ -1,3 +1,5 @@
+import { JwtService } from '@nestjs/jwt';
+import { isUUID } from 'class-validator';
 import { type OnModuleDestroy } from '@nestjs/common';
 import {
   ConnectedSocket,
@@ -19,16 +21,115 @@ export class AuctionGateway
   implements OnGatewayInit<Namespace>, OnModuleDestroy
 {
   private unsubscribe?: () => void;
+  private unsubscribeAccount?: () => void;
   private readonly pending = new WeakSet<Socket>();
   constructor(
     private readonly events: AuctionEvents,
     private readonly prisma: PrismaService,
+    private readonly jwt: JwtService,
   ) {}
 
   afterInit(server: Namespace) {
     this.unsubscribe = this.events.subscribe((event) => {
       server.to(`lot:${event.lotId}`).emit('lot.changed', event);
+      server
+        .to('collection')
+        .emit('collection.changed', { lotId: event.lotId, type: event.type });
     });
+    this.unsubscribeAccount = this.events.subscribeAccount(async (userId) => {
+      const user = await this.prisma.user.findUnique({
+        where: { id: userId },
+        select: { isActive: true },
+      });
+      for (const client of await server
+        .in(`account:${userId}`)
+        .fetchSockets()) {
+        if (
+          !user?.isActive ||
+          client.data.accountExpiresAt <= Date.now() ||
+          (client.data.accountSessionId &&
+            !(await this.prisma.refreshSession.findFirst({
+              where: {
+                familyId: client.data.accountSessionId,
+                userId,
+                revokedAt: null,
+                consumedAt: null,
+                expiresAt: { gt: new Date() },
+              },
+              select: { id: true },
+            })))
+        ) {
+          client.leave(`account:${userId}`);
+          client.emit('account.expired');
+        } else client.emit('account.changed');
+      }
+    });
+  }
+
+  @SubscribeMessage('collection.subscribe')
+  async collection(@ConnectedSocket() client: Socket) {
+    await client.join('collection');
+    return { ok: true };
+  }
+
+  @SubscribeMessage('account.subscribe')
+  async account(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() body: unknown,
+  ) {
+    // Identity comes only from a verified JWT, never a client-supplied user ID.
+    if (this.pending.has(client)) return { ok: false };
+    this.pending.add(client);
+    try {
+      for (const room of client.rooms)
+        if (room.startsWith('account:')) await client.leave(room);
+      if (
+        !body ||
+        typeof body !== 'object' ||
+        !('token' in body) ||
+        typeof body.token !== 'string'
+      )
+        return { ok: false };
+      const payload = await this.jwt.verifyAsync<{
+        sub: string;
+        exp: number;
+        sid?: string;
+      }>(body.token, { algorithms: ['HS256'] });
+      if (
+        !isUUID(payload.sub) ||
+        typeof payload.exp !== 'number' ||
+        payload.exp * 1000 <= Date.now()
+      )
+        return { ok: false };
+      const user = await this.prisma.user.findUnique({
+        where: { id: payload.sub },
+        select: { isActive: true },
+      });
+      if (!user?.isActive || !client.connected) return { ok: false };
+      if (
+        payload.sid &&
+        (!isUUID(payload.sid) ||
+          !(await this.prisma.refreshSession.findFirst({
+            where: {
+              familyId: payload.sid,
+              userId: payload.sub,
+              revokedAt: null,
+              consumedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+            select: { id: true },
+          })))
+      )
+        return { ok: false };
+      client.data.accountSessionId = payload.sid;
+      client.data.accountExpiresAt = payload.exp * 1000;
+      await client.join(`account:${payload.sub}`);
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    } finally {
+      this.pending.delete(client);
+    }
   }
 
   @SubscribeMessage('lot.subscribe')
@@ -74,5 +175,6 @@ export class AuctionGateway
 
   onModuleDestroy() {
     this.unsubscribe?.();
+    this.unsubscribeAccount?.();
   }
 }

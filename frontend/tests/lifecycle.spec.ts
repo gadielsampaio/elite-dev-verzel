@@ -34,7 +34,7 @@ test("room follows lifecycle signals, confirms settlement and clears cancelled d
     socket.send(
       "42/auctions," +
         JSON.stringify([
-          "lot.changed",
+          "collection.changed",
           { type, lotId: lot.id, endTime: lot.endTime },
         ]),
     );

@@ -1,4 +1,5 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useLiveRefresh } from "./haus/connected/useLiveRefresh";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, message, type Wallet } from "./api";
 type Pending = { amount: string; idempotencyKey: string };
 export function useWallet({
@@ -24,26 +25,37 @@ export function useWallet({
     [amount, setAmount] = useState(pending?.amount ?? ""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
+    [balanceError, setBalanceError] = useState(""),
     [notice, setNotice] = useState("");
+  const refreshVersion = useRef(0);
+  const depositConfirmed = useRef(false);
+  const activeToken = useRef(token);
+  activeToken.current = token;
   async function refresh() {
-    setError("");
+    const version = ++refreshVersion.current;
+    setBalanceError("");
     try {
-      setWallet(await api<Wallet>("/wallet", token));
+      const balance = await api<Wallet>("/wallet", token);
+      if (version === refreshVersion.current && activeToken.current === token) {
+        setWallet(balance);
+        depositConfirmed.current = false;
+      }
     } catch (err) {
-      setError(message(err));
+      if (version === refreshVersion.current && activeToken.current === token)
+        setBalanceError(
+          depositConfirmed.current
+            ? "Deposit recorded, but the balance could not refresh. Use Refresh balance."
+            : message(err),
+        );
     }
   }
+  useLiveRefresh(() => {
+    void refresh();
+  }, token);
   useEffect(() => {
-    let active = true;
-    api<Wallet>("/wallet", token)
-      .then((data) => {
-        if (active) setWallet(data);
-      })
-      .catch((err) => {
-        if (active) setError(message(err));
-      });
+    void refresh();
     return () => {
-      active = false;
+      refreshVersion.current++;
     };
   }, [token]);
   function clearPending() {
@@ -54,6 +66,8 @@ export function useWallet({
     event.preventDefault();
     if (busy) return;
     setBusy(true);
+    setBalanceError("");
+    depositConfirmed.current = false;
     setError("");
     setNotice("");
     const attempt = pending ?? {
@@ -67,15 +81,25 @@ export function useWallet({
         method: "POST",
         body: JSON.stringify(attempt),
       });
+      depositConfirmed.current = true;
       clearPending();
       setAmount("");
       setNotice("Simulated deposit recorded.");
+      const version = ++refreshVersion.current;
       try {
-        setWallet(await api<Wallet>("/wallet", token));
+        const balance = await api<Wallet>("/wallet", token);
+        if (
+          version === refreshVersion.current &&
+          activeToken.current === token
+        ) {
+          setWallet(balance);
+          depositConfirmed.current = false;
+        }
       } catch {
-        setError(
-          "Deposit recorded, but the balance could not refresh. Use Refresh balance.",
-        );
+        if (version === refreshVersion.current && activeToken.current === token)
+          setBalanceError(
+            "Deposit recorded, but the balance could not refresh. Use Refresh balance.",
+          );
       }
     } catch (err) {
       if (err instanceof ApiError && [400, 403, 409].includes(err.status))
@@ -91,7 +115,7 @@ export function useWallet({
     amount,
     setAmount,
     busy,
-    error,
+    error: error || balanceError,
     notice,
     pending,
     refresh,

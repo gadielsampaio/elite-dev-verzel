@@ -4,7 +4,15 @@ import { EventEmitter } from 'node:events';
 export type AuctionEvent = Readonly<
   { lotId: string; endTime: string } & (
     | { type: 'bid.accepted' | 'lot.extended'; bidId: string }
-    | { type: 'lot.opened' | 'lot.closed' | 'lot.cancelled' | 'lot.settled' | 'audit.confirmed' }
+    | {
+        type:
+          | 'lot.created'
+          | 'lot.opened'
+          | 'lot.closed'
+          | 'lot.cancelled'
+          | 'lot.settled'
+          | 'audit.confirmed';
+      }
   )
 >;
 type Observer = (event: AuctionEvent) => void | Promise<void>;
@@ -42,6 +50,24 @@ export class AuctionEvents implements OnModuleDestroy {
         endTime: event.endTime,
       }),
     );
+  }
+
+  subscribeAccount(observer: (userId: string) => void | Promise<void>) {
+    const listener = (userId: string) => {
+      try {
+        void Promise.resolve(observer(userId)).catch(() => this.failed());
+      } catch {
+        this.failed();
+      }
+    };
+    this.emitter.on('account', listener);
+    return () => {
+      this.emitter.off('account', listener);
+    };
+  }
+
+  publishAccount(userId: string) {
+    this.emitter.emit('account', userId);
   }
 
   private failed() {

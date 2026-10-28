@@ -110,8 +110,7 @@ export function Audit({ lotId }: { lotId: string | null }) {
       <div className="hs-seller">
         <h1>PUBLIC AUDIT</h1>
         <p>
-          Verify a lot’s bid history against checkpoints stored outside the
-          database. No login required.
+          Verify a lot’s bid history against protected audit snapshots. No login required.
         </p>
         <form
           onSubmit={(event) => {
@@ -144,7 +143,7 @@ export function Audit({ lotId }: { lotId: string | null }) {
                   ? "Checking hashes in your browser…"
                   : proof?.valid === null
                     ? "Browser verification is unavailable. Use HTTPS or localhost."
-                    : "The browser could not match the chain to the external checkpoint."
+                    : "The browser could not match the chain to the audit checkpoint."
                 : data.reason}
             </p>
             <p>
@@ -152,13 +151,13 @@ export function Audit({ lotId }: { lotId: string | null }) {
               point-in-time check; refresh for new bids.
             </p>
             <p>
-              Trust boundary: the API and protected checkpoint storage.
-              Database-only changes are detected; server or checkpoint-storage
-              compromise is outside this guarantee.
+              Trust boundary: the API, audit history and database triggers.
+              Direct history edits are detected; an administrator who disables
+              these protections is outside this guarantee.
             </p>
             {data.checkpoint && (
               <details>
-                <summary>EXTERNAL CHECKPOINT</summary>
+                <summary>AUDIT CHECKPOINT</summary>
                 <p>Sequence {data.checkpoint.sequence}</p>
                 <code style={{ overflowWrap: "anywhere" }}>
                   {data.checkpoint.hash}

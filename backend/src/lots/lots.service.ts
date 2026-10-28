@@ -76,7 +76,7 @@ export class LotsService {
       throw new BadRequestException('End must be after start');
     if (data.startMode !== 'now' && startTime.getTime() <= Date.now())
       throw new BadRequestException('Start must be in the future');
-    return this.prisma.lot.create({
+    const lot = await this.prisma.lot.create({
       data: {
         ownerId,
         title: data.title,
@@ -103,6 +103,12 @@ export class LotsService {
       },
       include: { items: { orderBy: { position: 'asc' } } },
     });
+    this.events.publish({
+      type: 'lot.created',
+      lotId: lot.id,
+      endTime: lot.endTime.toISOString(),
+    });
+    return lot;
   }
 
   // Reconcile on reads: timestamps are authoritative, not a background timer.

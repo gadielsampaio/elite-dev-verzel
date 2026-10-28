@@ -16,7 +16,7 @@ test("browses status filters and saved lot details", async ({ page }) => {
     ),
   ).toBeVisible();
 });
-test("protects wallet and deposits without exposing tokens in storage", async ({
+test("protects wallet and deposits with tab-scoped session persistence", async ({
   page,
 }) => {
   const { deposits } = await setup(page);
@@ -29,7 +29,7 @@ test("protects wallet and deposits without exposing tokens in storage", async ({
   expect(deposits).toHaveLength(1);
   expect(deposits[0].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
   expect(await page.evaluate(() => localStorage.length)).toBe(0);
-  expect(await page.evaluate(() => sessionStorage.length)).toBe(0);
+  expect(await page.evaluate(() => sessionStorage.getItem("auction-session-token"))).toBeNull();
   await page.screenshot({
     path: "/tmp/auction-wallet-desktop.png",
     fullPage: true,

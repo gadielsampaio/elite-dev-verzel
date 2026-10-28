@@ -56,7 +56,7 @@ describe('Configured browser CORS', () => {
     expect(result.headers['access-control-allow-headers']).toBe(
       'authorization,content-type',
     );
-    expect(result.headers['access-control-allow-credentials']).toBeUndefined();
+    expect(result.headers['access-control-allow-credentials']).toBe('true');
   });
   it('does not allow another Vercel project or a suffix attack', async () => {
     for (const other of [
@@ -81,7 +81,7 @@ describe('Configured browser CORS', () => {
     vi.stubEnv('CORS_ORIGINS', '');
     const enableCors = vi.fn();
     configureCors({ enableCors } as unknown as INestApplication);
-    expect(enableCors).toHaveBeenCalledWith({ origin: [] });
+    expect(enableCors).toHaveBeenCalledWith({ origin: [], credentials: true });
   });
   it('rejects wildcards and URLs containing paths or credentials', () => {
     for (const value of [

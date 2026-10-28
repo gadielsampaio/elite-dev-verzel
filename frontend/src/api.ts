@@ -11,16 +11,25 @@ export class ApiError extends Error {
     super(message);
   }
 }
+let renewSession: ((token: string) => Promise<string>) | undefined;
+export function setSessionRenewal(
+  handler?: (token: string) => Promise<string>,
+) {
+  renewSession = handler;
+}
 export async function api<T>(
   path: string,
   token?: string,
   init: RequestInit = {},
+  retrySession = true,
 ): Promise<T> {
   let response: Response;
   try {
     response = await fetch(`${apiBaseUrl}${path}`, {
       ...init,
+      credentials: path.startsWith("/auth/") ? "include" : "omit",
       headers: {
+        ...(path.startsWith("/auth/") ? { "X-Session-Request": "1" } : {}),
         ...(init.body ? { "Content-Type": "application/json" } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...init.headers,
@@ -31,8 +40,14 @@ export async function api<T>(
   }
   const body = await response.json().catch(() => null);
   if (!response.ok) {
+    if (response.status === 401 && token && retrySession && renewSession) {
+      const renewed = await renewSession(token);
+      return api<T>(path, renewed, init, false);
+    }
     if (response.status === 401 && token)
-      window.dispatchEvent(new Event("session-expired"));
+      window.dispatchEvent(
+        new CustomEvent("session-expired", { detail: token }),
+      );
     const message = body?.message;
     throw new ApiError(
       Array.isArray(message)

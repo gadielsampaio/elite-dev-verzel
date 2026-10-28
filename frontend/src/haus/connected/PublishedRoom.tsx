@@ -1,5 +1,5 @@
 import type { Result } from "./Receipt";
-import { useLotRealtime } from "./useLotRealtime";
+import { useLiveRefresh } from "./useLiveRefresh";
 import { useEffect, useRef, useState } from "react";
 import { BidForm } from "./BidForm";
 import type { Lot } from "../../api";
@@ -58,7 +58,7 @@ export function PublishedRoom({
     position.refresh();
     result.refresh();
   };
-  const liveUpdates = useLotRealtime(id, refresh);
+  const liveUpdates = useLiveRefresh(() => {}, undefined, id);
   useEffect(() => {
     if (!bids || !lot || !["scheduled", "open"].includes(bids.status)) return;
     const boundary = bids.status === "scheduled" ? lot.startTime : bids.endTime;

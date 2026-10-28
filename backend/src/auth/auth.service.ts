@@ -5,6 +5,7 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { RefreshService } from './refresh.service.js';
 import { LoginDto } from './dto/login.dto.js';
 import { compare, hash, truncates } from 'bcryptjs';
 import { Prisma } from '../generated/prisma/client.js';
@@ -31,11 +32,7 @@ export class AuthService {
     ) {
       throw new UnauthorizedException('Invalid credentials');
     }
-    return {
-      accessToken: await this.jwt.signAsync({ sub: user.id, role: user.role }),
-      tokenType: 'Bearer',
-      expiresIn: 900,
-    };
+    return new RefreshService(this.prisma, this.jwt).issue(user);
   }
 
   async register({ password, name, email, role }: RegisterDto) {

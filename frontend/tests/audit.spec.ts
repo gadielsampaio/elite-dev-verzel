@@ -53,7 +53,7 @@ function fixture() {
 test("public audit recomputes hashes logged out, preserves exact money and survives reload", async ({
   page,
 }) => {
-  await page.route("**/api/**", (route) => {
+  await page.route("**/api/lots/**", (route) => {
     expect(route.request().url()).toContain(`/lots/${lotId}/audit`);
     expect(route.request().headers().authorization).toBeUndefined();
     return route.fulfill({ json: fixture() });
@@ -72,7 +72,7 @@ test("browser rejects a forged intact response with invalid hashes", async ({
 }) => {
   const data = fixture();
   data.entries[0].amount = "1.00";
-  await page.route("**/api/**", (route) => route.fulfill({ json: data }));
+  await page.route("**/api/lots/**", (route) => route.fulfill({ json: data }));
   await page.goto(`/#/audit/${lotId}`);
   await expect(page.getByRole("status")).toHaveText("TAMPERED");
 });
@@ -80,7 +80,7 @@ test("pending verification refreshes into verified history", async ({
   page,
 }) => {
   let pending = true;
-  await page.route("**/api/**", (route) =>
+  await page.route("**/api/lots/**", (route) =>
     route.fulfill({
       json: pending
         ? {
@@ -100,7 +100,7 @@ test("pending verification refreshes into verified history", async ({
 test("database tampering is not overridden by a matching browser hash", async ({
   page,
 }) => {
-  await page.route("**/api/**", (route) =>
+  await page.route("**/api/lots/**", (route) =>
     route.fulfill({
       json: {
         ...fixture(),
@@ -116,7 +116,7 @@ test("database tampering is not overridden by a matching browser hash", async ({
 test("public audit form and server failure never substitute demo history", async ({
   page,
 }) => {
-  await page.route("**/api/**", (route) =>
+  await page.route("**/api/lots/**", (route) =>
     route.fulfill({ status: 503, json: { message: "Audit unavailable" } }),
   );
   await page.goto("/#/audit");
@@ -126,4 +126,8 @@ test("public audit form and server failure never substitute demo history", async
   await expect(
     page.getByRole("heading", { name: "INTACT", exact: true }),
   ).toHaveCount(0);
+});
+
+test.beforeEach(async ({page}) => {
+  await page.route('**/api/auth/refresh', route => route.fulfill({status:401,json:{message:'Unauthorized'}}));
 });

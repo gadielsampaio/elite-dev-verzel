@@ -6,7 +6,9 @@ export const user = {
 };
 export const token =
   "x." +
-  Buffer.from(JSON.stringify({ sub: user.id })).toString("base64url") +
+  Buffer.from(
+    JSON.stringify({ sub: user.id, exp: Math.floor(Date.now() / 1000) + 900 }),
+  ).toString("base64url") +
   ".x";
 export const lot = {
   id: "22222222-2222-4222-8222-222222222222",
@@ -33,19 +35,36 @@ export async function setup(
 ) {
   const deposits: { amount: string; idempotencyKey: string }[] = [];
   let deposited = false;
+  let signedIn = false;
   let filters: string[] = [];
   await page.route("**/api/**", async (route) => {
     const req = route.request(),
       url = new URL(req.url());
     let body: unknown;
     let status = 200;
-    if (url.pathname === "/api/auth/login") body = { accessToken: token };
-    else if (url.pathname === "/api/auth/register") {
+    if (url.pathname === "/api/auth/login") {
+      signedIn = true;
+      body = { accessToken: token };
+    } else if (url.pathname === "/api/auth/refresh") {
+      status = signedIn ? 200 : 401;
+      body = signedIn ? { accessToken: token } : { message: "Unauthorized" };
+    } else if (url.pathname === "/api/auth/logout") {
+      signedIn = false;
+      status = 204;
+      body = null;
+    } else if (url.pathname === "/api/auth/register") {
       body = user;
       status = 201;
     } else if (url.pathname === `/api/users/${user.id}`)
       body = { ...user, role };
-    else if (url.pathname === "/api/me/auction-summary") body = { lots: 0, live: 0, sold: 0, currency: "USD", totalReceived: "0.00" };
+    else if (url.pathname === "/api/me/auction-summary")
+      body = {
+        lots: 0,
+        live: 0,
+        sold: 0,
+        currency: "USD",
+        totalReceived: "0.00",
+      };
     else if (url.pathname === "/api/lots") {
       filters.push(url.searchParams.get("status") ?? "");
       body = { items: [lot], page: 1, limit: 9, total: 1 };

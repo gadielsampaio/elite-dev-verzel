@@ -1,5 +1,10 @@
 import { test, expect, type Page } from "@playwright/test";
 import { setup, lot, token, user } from "./support/api";
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/auth/refresh", (route) =>
+    route.fulfill({ status: 401, json: { message: "Unauthorized" } }),
+  );
+});
 async function signIn(page: Page) {
   await page.goto("/#/login");
   await page.getByLabel("EMAIL ADDRESS").fill("bidder@example.com");
@@ -45,6 +50,8 @@ test("published lots use server filters/pagination and saved details while museu
   await page.route("**/api/**", async (route) => {
     const url = new URL(route.request().url());
     requests.push(url.pathname + url.search);
+    if (url.pathname === "/api/auth/refresh")
+      return route.fulfill({ status: 401, json: { message: "Unauthorized" } });
     if (url.pathname === "/api/lots")
       await route.fulfill({
         json: {
@@ -111,7 +118,7 @@ test("published lots use server filters/pagination and saved details while museu
   await expect(room.getByText("Oil on canvas")).toBeVisible();
   expect(museumRequests).toBe(0);
 });
-test("registers the selected role and establishes an in-memory session", async ({
+test("registers the selected role and restores a tab-scoped session after reload", async ({
   page,
 }) => {
   await setup(page, { role: "auctioneer" });
@@ -143,12 +150,11 @@ test("registers the selected role and establishes an in-memory session", async (
   });
   await expect(page.getByRole("button", { name: "SIGN OUT" })).toBeVisible();
   expect(
-    await page.evaluate(() =>
-      JSON.stringify({ ...localStorage, ...sessionStorage }),
-    ),
+    await page.evaluate(() => JSON.stringify({ ...localStorage })),
   ).not.toContain(token);
   await page.reload();
-  await expect(page).toHaveURL(/#\/login$/);
+  await expect(page.getByRole("button", { name: "SIGN OUT" })).toBeVisible();
+  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
 });
 test("registration validation, conflict feedback and partial login failure do not resubmit registration", async ({
   page,

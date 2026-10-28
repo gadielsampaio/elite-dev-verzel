@@ -216,7 +216,7 @@ export function Storefront({ open }: { open: (id: string) => void }) {
         .toLowerCase()
         .includes(query.trim().toLowerCase()),
     ) || [];
-  // Public lists are re-read on filter/pagination or explicit refresh; no mock fallback.
+  // Initial HTTP load plus WebSocket invalidation; filters and pagination stay applied.
   useEffect(() => {
     setQuery("");
   }, [filter, page]);

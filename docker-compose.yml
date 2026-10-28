@@ -20,6 +20,7 @@ services:
     ports:
       - "3000:3000"
     environment:
+      AUTH_COOKIE_SECURE: "false"
       AUDIT_CHECKPOINT_DIR: /var/lib/auction-audit
       CORS_ORIGINS: ${CORS_ORIGINS:-}
       CATALOG_PROVIDER: ${CATALOG_PROVIDER:-cleveland}

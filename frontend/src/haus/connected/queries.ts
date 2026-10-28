@@ -1,3 +1,4 @@
+import { useLiveRefresh } from "./useLiveRefresh";
 import { useEffect, useState } from "react";
 import { api, message, ApiError } from "../../api";
 export type PageResult<T> = {
@@ -34,6 +35,10 @@ export function useApiQuery<T>(
   keepPreviousData = false,
 ) {
   const [revision, setRevision] = useState(0);
+  const refresh = () => setRevision((n) => n + 1);
+  const live = !!path && /^\/(lots(?:[/?]|$)|me\/)/.test(path);
+  const lotId = path?.match(/^\/lots\/([0-9a-f-]{36})(?:[/?]|$)/)?.[1];
+  useLiveRefresh(refresh, token, lotId, live);
   const resource = `${path}|${token || ""}`;
   const key = `${resource}|${revision}`;
   const [state, setState] = useState<{
@@ -68,13 +73,11 @@ export function useApiQuery<T>(
   }, [path, token, key, resource, keepPreviousData]);
   const current = state.key === key;
   return {
-    data:
-      current || (keepPreviousData && state.resource === resource)
-        ? state.data
-        : null,
+    data: current || state.resource === resource ? state.data : null,
     error: current ? state.error : "",
-    loading: !!path && (!current || (!state.data && !state.error)),
-    refresh: () => setRevision((n) => n + 1),
+    loading:
+      !!path && (state.resource !== resource || (!state.data && !state.error)),
+    refresh,
   };
 }
 // Decimal strings stay exact, including amounts beyond Number.MAX_SAFE_INTEGER.

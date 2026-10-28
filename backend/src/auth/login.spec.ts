@@ -14,7 +14,10 @@ describe('Login', () => {
     signOptions: { expiresIn: 900, algorithm: 'HS256' },
   });
   const service = new AuthService(
-    { user: { findUnique } } as unknown as PrismaService,
+    {
+      user: { findUnique },
+      refreshSession: { create: vi.fn() },
+    } as unknown as PrismaService,
     jwt,
   );
   const password = 'test-password-123';
@@ -24,7 +27,7 @@ describe('Login', () => {
   });
   beforeEach(() => vi.resetAllMocks());
 
-  it('issues a signed, expiring token containing only identity and role', async () => {
+  it('issues a signed, expiring token containing identity, role and a revocable session ID', async () => {
     findUnique.mockResolvedValue({
       id: 'user-id',
       role: 'bidder',
@@ -39,6 +42,7 @@ describe('Login', () => {
     expect(payload).toEqual({
       sub: 'user-id',
       role: 'bidder',
+      sid: expect.any(String),
       iat: expect.any(Number),
       exp: expect.any(Number),
     });

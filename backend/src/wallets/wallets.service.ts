@@ -1,8 +1,10 @@
+import { AuctionEvents } from '../events/auction-events.js';
 import { walletBalance } from './wallet-balance.js';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Optional,
 } from '@nestjs/common';
 import { Prisma, type WalletTransaction } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -10,7 +12,10 @@ import { DepositDto } from './deposit.dto.js';
 
 @Injectable()
 export class WalletsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    @Optional() private readonly events?: AuctionEvents,
+  ) {}
 
   async balance(userId: string) {
     return this.prisma.$transaction(
@@ -79,7 +84,8 @@ export class WalletsService {
     if (amount.lte(0))
       throw new BadRequestException('Deposit must be greater than zero');
     try {
-      return await this.prisma.$transaction(async (tx) => {
+      let created = false;
+      const receipt = await this.prisma.$transaction(async (tx) => {
         // Serialize first-wallet creation; NO KEY UPDATE permits bid foreign-key checks.
         await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
         const existing = await this.replay(tx, userId, data, amount);
@@ -101,8 +107,11 @@ export class WalletsService {
             description: 'Simulated deposit',
           },
         });
+        created = true;
         return this.receipt(entry);
       });
+      if (created) this.events?.publishAccount(userId);
+      return receipt;
     } catch (error) {
       // Different users can race on the globally unique key. Never expose another receipt.
       if (

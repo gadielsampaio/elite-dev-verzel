@@ -29,10 +29,12 @@ export class JwtAuthGuard implements CanActivate {
     if (!match) throw new UnauthorizedException();
 
     let subject: string;
+    let sessionId: string | undefined;
     try {
       const payload = await this.jwt.verifyAsync<{
         sub?: unknown;
         exp?: unknown;
+        sid?: unknown;
       }>(match[1], {
         algorithms: ['HS256'],
       });
@@ -44,6 +46,11 @@ export class JwtAuthGuard implements CanActivate {
         throw new Error('Invalid token claims');
       }
       subject = payload.sub;
+      if (payload.sid !== undefined) {
+        if (typeof payload.sid !== 'string' || !isUUID(payload.sid))
+          throw new Error('Invalid session');
+        sessionId = payload.sid;
+      }
     } catch {
       throw new UnauthorizedException();
     }
@@ -54,6 +61,20 @@ export class JwtAuthGuard implements CanActivate {
       select: { id: true, role: true, isActive: true },
     });
     if (!user?.isActive) throw new UnauthorizedException();
+    if (
+      sessionId &&
+      !(await this.prisma.refreshSession.findFirst({
+        where: {
+          familyId: sessionId,
+          userId: subject,
+          consumedAt: null,
+          revokedAt: null,
+          expiresAt: { gt: new Date() },
+        },
+        select: { id: true },
+      }))
+    )
+      throw new UnauthorizedException();
     request.user = { id: user.id, role: user.role };
     return true;
   }

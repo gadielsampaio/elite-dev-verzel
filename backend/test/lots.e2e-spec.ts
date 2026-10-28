@@ -84,6 +84,7 @@ describe('Lot publication (HTTP)', () => {
     catalog.findOne.mockResolvedValue(artwork);
     prisma.lot.create.mockResolvedValue({
       id: lotId,
+      endTime: new Date(data.endTime),
       status: 'scheduled',
       ownerId,
     });

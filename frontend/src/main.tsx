@@ -11,7 +11,7 @@ const isHaus = ["/preview", "/preview/"].includes(location.pathname);
 const isConnected = location.pathname === "/";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <SessionProvider>
+    <SessionProvider restoreSession={!isHaus}>
       <Suspense fallback={null}>
         {isConnected ? (
           <ConnectedApp />

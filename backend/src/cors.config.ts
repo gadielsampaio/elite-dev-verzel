@@ -23,7 +23,7 @@ export function corsOrigins() {
 }
 
 export function configureCors(app: INestApplication) {
-  // Bearer-token authentication does not require cross-origin cookies.
+  // Refresh sessions use HttpOnly cookies; only explicit origins may send credentials.
   // No wildcard: an unset allowlist permits only same-origin browser usage.
-  app.enableCors({ origin: corsOrigins() });
+  app.enableCors({ origin: corsOrigins(), credentials: true });
 }
