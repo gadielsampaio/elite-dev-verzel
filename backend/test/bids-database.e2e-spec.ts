@@ -148,12 +148,25 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         status: 'open',
       });
       expect(history.items).toHaveLength(2);
+      expect(history.items.map((x) => x.bidderLabel)).toEqual([
+        'Bidder B',
+        'Bidder A',
+      ]);
+      const older = await reads.history(l.id, { page: 2, limit: 2 });
+      expect(older.items.map((x) => x.bidderLabel)).toEqual([
+        'Bidder B',
+        'Bidder A',
+      ]);
+      expect((await reads.mine(l.id, a)).bidderAlias).toBe(
+        history.items[1].bidderAlias,
+      );
       expect(history.items.map((x) => x.amount)).toEqual(['115.00', '110.00']);
       expect(JSON.stringify(history)).not.toContain(a);
       expect(JSON.stringify(history)).not.toContain(b);
       expect(Object.keys(history.items[0]).sort()).toEqual([
         'amount',
         'bidderAlias',
+        'bidderLabel',
         'createdAt',
         'id',
         'isActive',

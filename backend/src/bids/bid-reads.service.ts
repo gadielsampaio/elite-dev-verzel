@@ -84,10 +84,31 @@ export class BidReadsService {
           take: limit,
           select: publicSelect,
         });
+        const participants = await tx.bid.groupBy({
+          by: ['bidderId'],
+          where: { lotId },
+          _min: { createdAt: true },
+          orderBy: [{ _min: { createdAt: 'asc' } }, { bidderId: 'asc' }],
+        });
+        const labels = new Map(
+          participants.map((bid, index) => {
+            let n = index + 1,
+              label = '';
+            while (n > 0) {
+              n--;
+              label = String.fromCharCode(65 + (n % 26)) + label;
+              n = Math.floor(n / 26);
+            }
+            return [bid.bidderId, 'Bidder ' + label];
+          }),
+        );
         const total = await tx.bid.count({ where: { lotId } });
         return {
           ...this.summary(lot, leader, new Date()),
-          items: bids.map((bid) => this.publicBid(lotId, bid)),
+          items: bids.map((bid) => ({
+            ...this.publicBid(lotId, bid),
+            bidderLabel: labels.get(bid.bidderId),
+          })),
           total,
           page,
           limit,
@@ -119,6 +140,7 @@ export class BidReadsService {
           : [];
         return {
           ...this.summary(lot, leader, new Date()),
+          bidderAlias: bidderAlias(lotId, bidderId),
           bestBid: best ? this.publicBid(lotId, best) : null,
           position: best ? higherBidders.length + 1 : null,
           isLeading: leader !== null && leader.bidderId === bidderId,

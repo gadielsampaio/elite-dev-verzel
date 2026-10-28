@@ -283,7 +283,10 @@ changing state. Missing/draft/cancelled lots return 404. History includes inacti
 bids, but only active bids determine leadership and position. Closed lots have no
 minimum next bid; the current leader is not a settled winner.
 
-Public bid fields are `id`, `bidderAlias`, `amount`, `createdAt`, `isActive`.
+Public history fields are `id`, `bidderAlias`, `bidderLabel`, `amount`, `createdAt`, `isActive`.
+Labels (Bidder A, B, …, AA) follow first participation within the lot and remain
+consistent across pages. The protected own-position response includes your
+`bidderAlias`, allowing the room to display “You” for your bids.
 Aliases are scoped to each lot using HMAC with `JWT_SECRET`; rotating that secret
 changes aliases. No user IDs, names, emails or idempotency keys are exposed.
 This pseudonymization does **not** provide tamper detection; public audit remains pending.
