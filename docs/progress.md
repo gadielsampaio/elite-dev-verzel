@@ -38,7 +38,7 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Deploy and verify the realtime journey on Render/Vercel.
+1. Complete the deployed multi-user bidding/settlement journey after preparing demo data.
 2. Run demo seeds on the target deployment, finish durable Render audit storage, provider-outage image handling and the full deployed journey.
 
 Adapter, Facade-style orchestration in `BidsService`, and process-local Observer notifications are implemented.
@@ -116,3 +116,13 @@ An initial live run hit a stale Nest watch process (`EADDRINUSE`); restarting on
 the API resolved it and the rerun passed. Vite socket-close warnings and the existing
 pg concurrent-query deprecation remain. No database reset, production deployment
 or remote seed execution was performed.
+
+## Production deployment — 2026-10-28
+
+Application commit `59da414` is live on Render and Vercel. Render startup reported
+no pending migrations and registered the auction WebSocket gateway. Verified:
+API/database health 200, public lots 200, Vercel-origin CORS and preflight 204,
+and a real WebSocket connection to `/auctions` with an unavailable-lot rejection.
+The Vercel storefront loads without console errors and correctly shows zero lots.
+These are deployment smoke checks, not a full production bidding/settlement test.
+Demo seeding, durable audit storage and the complete production journey remain pending.
