@@ -304,6 +304,22 @@ Reads use PostgreSQL only. Frontend link: `/#/receipt/:lotId`, accessible withou
 login and linked from closed lots in Seller Studio. No integrity guarantee is
 claimed. See [settlement](settlement.md).
 
+## Private account results — implemented
+
+All three endpoints require JWT; identity is always derived from the token.
+
+| Endpoint | Role | Response |
+| --- | --- | --- |
+| `GET /me/auction-summary` | Auctioneer | `lots`, `live`, `sold`, `currency`, decimal-string `totalReceived` from settled sale credits. |
+| `GET /me/auction-results?page=1&limit=9` | Auctioneer | Ended owned lots and their confirmed/pending/no-winner results. |
+| `GET /me/participations?filter=all&page=1&limit=9` | Bidder | Distinct lots the account bid on. Use `filter=wins` for confirmed wins only. |
+
+Lists return `items`, `total`, `page`, `limit` (page 1–1,000,000; limit 1–50).
+Each item includes `lotId`, title/currency, saved artwork, deadline, status/outcome,
+nullable settled amount/date/receiptPath. Participation adds `myBestBid` and `won`.
+No account IDs or personal data are returned. Missing JWT: 401; wrong role: 403;
+invalid list filters/pagination: 400. No mutations or provider requests occur.
+
 ## Planned modules
 
 The modules below remain planned, except the implemented user, lot, wallet and bid operations above.

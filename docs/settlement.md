@@ -24,8 +24,8 @@ and draft lots are excluded. A closed status alone does not prove settlement.
 No public settlement mutation is exposed. `GET /lots/:lotId/result` returns a
 public result and, after settlement, a privacy-safe receipt. The frontend
 `/#/receipt/:lotId` is shareable without login; closed Seller Studio lots link to
-it. Seller totals, participation/wins screens and audit integrity remain pending. No external museum
-requests occur during settlement. No schema changes are required.
+it. Seller totals and bidder participation/wins are connected through protected
+account reads. Audit integrity remains pending. No external museum requests occur during settlement. No schema changes are required.
 
 Validation (uses only test-created records and removes those fixtures):
 
@@ -47,3 +47,16 @@ cancelled lots return 404; invalid UUIDs return 400.
 Reads use a consistent database snapshot and never contact Cleveland or trigger
 settlement. A receipt records simulated funds; it does not claim tamper detection.
 Aliases match public bid history and change when `JWT_SECRET` rotates.
+
+
+## Account results (Stage 08)
+
+- Auctioneers: `GET /me/auction-summary` returns owned/live/sold counts and exact USD
+  total received from settled `auction_sale` credits. `GET /me/auction-results`
+  lists ended owned lots, distinguishing pending, no-winner and settled outcomes.
+- Bidders: `GET /me/participations?filter=all|wins` lists distinct lots they bid on;
+  wins require a settled result naming that bidder. Lists accept `page` and `limit`.
+- Identity comes from JWT; role guards prevent access to the other account view.
+  Consistent database snapshots avoid partially observed settlement.
+- Seller Studio’s RESULTS tab and `/#/activity` show these reads and public receipt
+  links. Empty/error/retry states never infer a sale from closed status.

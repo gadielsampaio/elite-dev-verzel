@@ -1228,7 +1228,7 @@
     },
     {
       "name": "Auction Results",
-      "description": "Per-lot public result implemented. Generic auction-results routes remain planned.",
+      "description": "Public receipt and protected seller/bidder account results are implemented. Generic CRUD routes remain planned.",
       "item": [
         {
           "name": "[IMPLEMENTED] Public lot result and receipt",
@@ -1284,6 +1284,78 @@
               ]
             },
             "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Seller summary",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/me/auction-summary",
+            "description": "Auctioneer JWT. Settled sale credits and owned/live/sold counts."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Seller results",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/me/auction-results?page=1&limit=9",
+            "description": "Auctioneer JWT. Paginated ended owned lots and confirmed/pending/no-winner results."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] My participation",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/me/participations?filter=all&page=1&limit=9",
+            "description": "Bidder JWT. Distinct participated lots."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] My wins",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/me/participations?filter=wins&page=1&limit=9",
+            "description": "Bidder JWT. Confirmed settled wins and public receipt paths."
           }
         }
       ]

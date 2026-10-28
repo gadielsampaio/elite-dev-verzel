@@ -1,3 +1,4 @@
+import { AccountResultsService } from '../src/settlement/account-results.service.js';
 import { ResultsService } from '../src/settlement/results.service.js';
 import { randomUUID } from 'node:crypto';
 import { PrismaService } from '../src/prisma/prisma.service.js';
@@ -79,6 +80,89 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         where: { id },
         data: { endTime: new Date(Date.now() - 1000) },
       });
+    it('reads seller credits and distinct participation only after settlement, scoped to each account', async () => {
+      const reads = new AccountResultsService(db);
+      const l = await lot();
+      const empty = await lot(false);
+      expect(await reads.summary(seller)).toMatchObject({
+        lots: 2,
+        live: 2,
+        sold: 0,
+        totalReceived: '0.00',
+      });
+      expect(
+        (
+          await reads.participations(buyer, {
+            page: 1,
+            limit: 10,
+            filter: 'all',
+          })
+        ).total,
+      ).toBe(1);
+      expect(
+        (
+          await reads.participations(buyer, {
+            page: 1,
+            limit: 10,
+            filter: 'wins',
+          })
+        ).total,
+      ).toBe(0);
+      await expire(l.id);
+      await expire(empty.id);
+      expect(
+        (await reads.seller(seller, { page: 1, limit: 10 })).items.every(
+          (x) => x.amount === null,
+        ),
+      ).toBe(true);
+      await settlement.settle(l.id);
+      await settlement.settle(empty.id);
+      await settlement.settle(l.id);
+      expect(await reads.summary(seller)).toMatchObject({
+        sold: 1,
+        live: 0,
+        totalReceived: '100.00',
+      });
+      expect(await reads.summary(buyer)).toMatchObject({
+        sold: 0,
+        totalReceived: '0.00',
+        lots: 0,
+      });
+      const results = await reads.seller(seller, { page: 1, limit: 10 });
+      expect(results.items.find((x) => x.lotId === empty.id)?.outcome).toBe(
+        'no_winner',
+      );
+      expect(results.items.find((x) => x.lotId === l.id)).toMatchObject({
+        outcome: 'settled',
+        amount: '100.00',
+        receiptPath: `/#/receipt/${l.id}`,
+      });
+      expect((await reads.seller(buyer, { page: 1, limit: 10 })).total).toBe(0);
+      const wins = await reads.participations(buyer, {
+        page: 1,
+        limit: 1,
+        filter: 'wins',
+      });
+      expect(wins.items[0]).toMatchObject({
+        lotId: l.id,
+        won: true,
+        myBestBid: '100.00',
+      });
+      expect(
+        (
+          await reads.participations(seller, {
+            page: 1,
+            limit: 10,
+            filter: 'all',
+          })
+        ).total,
+      ).toBe(0);
+      expect(
+        (await reads.seller(seller, { page: 2, limit: 1 })).items,
+      ).toHaveLength(1);
+      expect(JSON.stringify(results)).not.toContain(buyer);
+      expect(JSON.stringify(wins)).not.toContain(seller);
+    });
     it('settles concurrent retries exactly once with balanced entries and a captured hold', async () => {
       const l = await lot();
       await expire(l.id);
