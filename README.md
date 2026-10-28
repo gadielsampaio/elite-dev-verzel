@@ -1,57 +1,58 @@
-# Auction API
+# Plataforma de Leilões — Desafio Técnico Elite Dev | Verzel
 
-An online art-auction project for the Elite Dev / Verzel challenge, using items
-from the Cleveland Museum of Art API. NestJS, TypeScript ESM, Prisma 7,
-PostgreSQL 18 and Docker Compose power the backend; React, TypeScript and Vite power the frontend.
+Aplicação de leilões com catálogo de obras obtido de uma API externa, lances em tempo real, carteira virtual e histórico auditável. O projeto prioriza **consistência dos dados, rastreabilidade e simplicidade de manutenção**, evitando complexidade desnecessária.
 
-Implemented: database schema/migrations, health checks, user create/read/update,
-password-hashed registration, JWT login, user authorization, catalog search/details, single-artwork lot publication, listing/details and owner-only cancellation.
-The initial frontend supports registration/login, lot browsing/details and wallet
-balances with simulated deposits. Bid placement and reservation/release now work
-through the API. Background settlement is implemented; public results and shareable receipts are implemented. Bid entry, seller totals and bidder participation/wins are connected.
-Public bid audit and browser hash verification are implemented; see [audit guarantees](docs/audit.md).
-See [requirements and progress](docs/progress.md) for the remaining delivery scope.
+## Tecnologias
 
-## Run locally
+- **NestJS + TypeScript:** estrutura modular, injeção de dependências e recursos nativos para validação e organização da API.
+- **PostgreSQL + Prisma:** persistência relacional, tipagem e transações para operações críticas.
+- **WebSocket:** atualização de eventos e lances em tempo real.
+- **Docker Compose:** ambiente local reproduzível para os serviços.
+- **Testes unitários:** validação isolada das regras de negócio.
 
-Requires Docker with Compose. From the repository root, on a new checkout:
+## Decisões de arquitetura
 
-```sh
+Foi adotada uma arquitetura modular, com responsabilidades bem definidas. O objetivo foi usar padrões onde eles resolvem problemas concretos, sem adicionar abstrações apenas por formalidade.
+
+| Padrão | Aplicação | Benefício |
+| --- | --- | --- |
+| **Facade** | Orquestração dos fluxos de negócio, como lances e encerramento de leilões | Centraliza operações que envolvem múltiplos serviços e simplifica seu consumo |
+| **Adapter** | Integração com o catálogo de obras externo | Isola o formato da API terceira e permite substituir o provedor sem alterar a regra de negócio |
+| **Observer** | Publicação de eventos de leilão para clientes conectados via WebSocket | Desacopla ações de negócio da entrega de atualizações em tempo real |
+
+### Histórico auditável
+
+O histórico auditável foi um dos principais desafios do projeto, especialmente pela necessidade de registrar operações de **criação, atualização e exclusão**. Após avaliar alternativas, optamos por uma **tabela de auditoria no PostgreSQL alimentada por triggers**.
+
+Essa abordagem registra as operações diretamente no banco de dados, inclusive exclusões, sem depender de chamadas explícitas dos serviços da aplicação. A solução concentra a responsabilidade da auditoria em um só lugar e reduz o risco de algum fluxo deixar de registrar uma alteração.
+
+A auditoria permite rastrear as operações cobertas pelas triggers, mas não constitui, por si só, um mecanismo à prova de adulterações por usuários com acesso privilegiado ao banco.
+
+## Desafios e aprendizados
+
+- **API externa:** a integração inicialmente prevista com a API do Art Institute of Chicago apresentou bloqueios relacionados ao Cloudflare. Durante a investigação, foram encontrados relatos públicos do problema no GitHub. O uso do Adapter facilitou a substituição da fonte de dados e a normalização dos campos consumidos pela aplicação.
+- **Auditoria:** como era um requisito com o qual eu não havia trabalhado diretamente, estudei diferentes abordagens e adotei uma tabela de auditoria com triggers no PostgreSQL. Isso permitiu registrar alterações e exclusões diretamente na camada de persistência, com menos acoplamento à aplicação.
+- **WebSocket:** tive a oportunidade de aplicar comunicação em tempo real em um fluxo de leilões, aprofundando meu conhecimento sobre eventos e atualização dos clientes.
+- **NestJS:** optei por explorar o framework por seus recursos nativos, organização e padrões amplamente utilizados na indústria. Isso reduziu o código de infraestrutura e manteve o foco nas regras de negócio.
+- **Testes:** priorizei a testabilidade dos serviços e a cobertura das regras críticas com testes unitários.
+
+## Execução local
+
+**Pré-requisitos:** Docker e Docker Compose. Execute na raiz do repositório:
+
+```bash
 cp .env.example .env
-openssl rand -hex 32
-```
-
-Set `JWT_SECRET` in `.env` to the generated value and configure the PostgreSQL
-variables. Keep existing environment files; never commit secrets. Then:
-
-```sh
-docker compose up --build -d
+# Configure POSTGRES_USER, POSTGRES_PASSWORD, POSTGRES_DB e JWT_SECRET no .env.
+# Para gerar um JWT_SECRET: openssl rand -hex 32
+docker compose up -d --build
 docker compose exec api npx prisma migrate deploy --config prisma7.config.ts
-curl -i http://localhost:3000/health
+docker compose exec api npx prisma generate --config prisma7.config.ts
 ```
 
-Frontend: `http://127.0.0.1:5175`; API: `http://localhost:3000`; PostgreSQL: `127.0.0.1:5432`. Startup generates the
-Prisma Client but does not apply migrations. Stop safely with `docker compose stop`;
-do not remove database volumes. See [development setup](docs/development.md) for
-database access, host execution, tests and troubleshooting.
+Frontend: http://127.0.0.1:5175 · API: http://localhost:3000
 
-## Known limitations
+**Testes unitários:** `docker compose exec api npm test`.
+Para parar sem remover os dados: `docker compose stop`.
 
-- Catalog uses Cleveland (`CATALOG_PROVIDER=cleveland`), with verified live search/detail.
-  Offline Cleveland fixtures remain available through explicit `mock` mode.
-  Mock external health reports `not_checked`, not real provider availability.
-- Public audit uses protected trigger history; external witnesses are optional. Pre-migration/unconfirmed history stays not verifiable.
-  Post-commit WebSocket bid, lifecycle and settlement updates are implemented; production demo accounts and an open lot are seeded; the full production journey remains pending.
-  Public frontend/API access is verified; deployment of the trigger-history migration and the full production journey remain pending.
-  Lists, summaries, wallets, results and audit refresh through WebSocket invalidation after their initial HTTP load. Museum image hosting remains an external dependency.
-  Lifecycle states update on reads and during background settlement. The worker
-  transfers funds and captures winning holds; failed settlements retain holds for retry.
-  Schema tables do not constitute working auction features.
-- Sessions survive reload with a rotating HttpOnly refresh cookie (7 days). Access JWTs stay in memory and renew automatically; logout revokes the session.
-- Legacy passwordless users cannot log in. No admin seed or public admin signup exists.
-- Watch mode can leave stale processes (`EADDRINUSE`); restart only the API with
-  `docker compose restart api`. Stop the API before building on the host.
-
-[Live frontend](https://elite-dev-verzel-delta.vercel.app) ·
-[API and Postman](docs/api.md) · [Database](docs/database.md) ·
-[Documentation index](docs/README.md)
+[Configuração e testes](docs/development.md) · [API e Postman](docs/api.md) ·
+[Auditoria e limites](docs/audit.md) · [Progresso](docs/progress.md)
