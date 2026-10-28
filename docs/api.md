@@ -191,7 +191,7 @@ Cancelled details subsequently return 404 publicly.
 
 Cancellation locks the lot row and checks ownership/state/bids in one transaction.
 Bid placement acquires the same lot lock before validating state and writing a bid.
-Editing and lifecycle notifications remain pending; [background settlement](settlement.md) is implemented.
+Editing remains pending; [background settlement](settlement.md) is implemented.
 
 ## Seller lot management
 
@@ -386,12 +386,17 @@ Public read-only subscriptions require no JWT. Emit `lot.subscribe` with
 `{"ok":false,"error":"..."}`. Only existing scheduled/open/closed lots are accepted;
 joining another lot leaves the previous room.
 
-Listen for `lot.changed`: `{type, lotId, bidId, endTime}`. Type is `bid.accepted`
-or `lot.extended`; events contain no account identity and are emitted after commit.
+Listen for `lot.changed`: `{type, lotId, endTime}` with `bidId` on
+`bid.accepted` / `lot.extended`. Lifecycle types are `lot.opened`, `lot.closed`,
+`lot.cancelled` and `lot.settled`. Events contain no account identity and are emitted
+after commit. `lot.closed` means bidding ended; only the HTTP result confirms settlement.
 The client re-fetches public details/history and its protected position over HTTP.
 It also resynchronizes after reconnect, at schedule boundaries, on returning to the
 visible tab, and every 30 seconds while connected (10 seconds while disconnected).
 Current bid input survives refreshes. HTTP remains authoritative.
 
 Delivery is best-effort and process-local: multiple API instances would require a
-shared broker. Settlement/cancellation push events are not implemented yet.
+shared broker. Lifecycle reconciliation runs on reads and in the existing 10-second
+worker. Repeated reads, cancellation retries and settled replays do not re-emit
+transitions. The room and public receipt refresh result data on these signals.
+A cancelled lot returns 404 and clears stale room data.

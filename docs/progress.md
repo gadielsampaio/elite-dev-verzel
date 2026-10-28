@@ -21,13 +21,13 @@ ignored by Git; this summary is available in a fresh checkout.
 | Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
 | Public audit and privacy | Implemented: atomic SHA-256 snapshots, protected checkpoints outside PostgreSQL, public verification and browser hash checks. Database changes/deletions/insertions are detected against confirmed evidence; legacy, interrupted and uncovered history is not verifiable. No personal identity exposure. See [audit guarantees](audit.md). |
-| Demo seeds | Missing: one auctioneer, two clients and at least one published lot open for bidding. No seed command exists. |
+| Demo seeds | Explicit `db:remote` script creates one auctioneer, two bidders, empty wallets and a lot open for bidding. Local isolated-schema tests pass; production seeding remains pending. |
 | Delivery | Vercel frontend and Render API/PostgreSQL deployed. CORS, public lot reads and all three Render migrations verified. Required demo seeds, durable Render audit storage, full production journey and repository-visibility verification remain pending. |
 
 Plan phase 08 is implemented end to end: background settlement, seller results/totals,
 bidder participation/wins and public receipts. Foundation/auth/catalog/lot/wallet/bid
 flows are connected. Phase 09 now includes external checkpoints and public verification. Phase 10
-(realtime) is in progress. Seeds, production audit persistence and full deployment validation remain incomplete; the challenge is not yet complete.
+(realtime) is implemented locally, including lifecycle and settlement notifications. Seeds, production audit persistence and full deployment validation remain incomplete; the challenge is not yet complete.
 The existing `admin` role is an implementation addition, not a required challenge role.
 
 The original local-state prototype remains at `/preview` for visual regression
@@ -38,8 +38,8 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Phase 10: add settlement/lifecycle notifications, then verify the deployed realtime journey.
-2. Finish demo seeds, durable Render audit storage, provider-outage image handling and the full deployed journey.
+1. Deploy and verify the realtime journey on Render/Vercel.
+2. Run demo seeds on the target deployment, finish durable Render audit storage, provider-outage image handling and the full deployed journey.
 
 Adapter, Facade-style orchestration in `BidsService`, and process-local Observer notifications are implemented.
 Per-lot WebSocket transport and browser subscriptions are implemented. Hash chains, protected filesystem checkpoints and public verification are implemented.
@@ -80,12 +80,12 @@ and, when anti-sniping extends the deadline, `lot.extended` **after Prisma confi
 commit**. Rejections, rollback and idempotent replays publish nothing. Subscriber
 failures cannot fail an accepted bid or prevent other observers from receiving it.
 
-Payloads contain only `type`, `lotId`, `bidId` and the committed `endTime`.
+Payloads contain only `type`, `lotId` and the committed `endTime`, plus `bidId` for bid events.
 Subscriptions return an unsubscribe function. These are best-effort process-local
 signals, not durable delivery or a cross-instance broker; HTTP remains authoritative.
 The gateway now delivers these signals to public per-lot rooms. The browser resynchronizes
 over HTTP on subscription, reconnection and events, with periodic fallback reads.
-Settlement/lifecycle notifications remain pending. See [realtime contract](api.md#realtime-auction-rooms).
+Opening, closing, cancellation and settlement notifications are implemented after commit. See [realtime contract](api.md#realtime-auction-rooms).
 
 Observer foundation validation: 126 unit tests and 235 e2e tests passed, including separate PostgreSQL
 reads proving that bids, holds, audit snapshots and deadlines are committed before
@@ -100,3 +100,19 @@ room switching, invalid subscriptions and reconnect. Documentation links passed.
 Vite reports transient EPIPE/ECONNRESET warnings when test sockets close; the
 final API health check passed. An overlapping browser run lost its shared dev
 server; the standalone rerun passed. This increment is validated locally, not yet deployed.
+
+## Lifecycle and settlement notification validation
+
+Opening, closing, cancellation and settlement signals now drive room/receipt HTTP
+refreshes. Post-commit database reads verify the transfer and captured hold are
+visible before settlement notification; concurrent retries notify once. Commit
+failure and settlement rollback tests verify no notification escapes. Cancelled
+lots clear retained UI data; closure alone never implies a completed sale.
+
+Passed locally: both builds, backend lint/typecheck, 127 unit tests, 240 backend
+e2e tests and 48 standard browser tests. The real publish/bid/reconnect/settle/audit
+journey also passed, including automatic settlement confirmation in an open room.
+An initial live run hit a stale Nest watch process (`EADDRINUSE`); restarting only
+the API resolved it and the rerun passed. Vite socket-close warnings and the existing
+pg concurrent-query deprecation remain. No database reset, production deployment
+or remote seed execution was performed.

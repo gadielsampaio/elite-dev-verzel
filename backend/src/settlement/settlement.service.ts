@@ -1,3 +1,4 @@
+import { AuctionEvents, type AuctionEvent } from '../events/auction-events.js';
 import { randomUUID } from 'node:crypto';
 import { ConflictException, Injectable } from '@nestjs/common';
 import { Prisma } from '../generated/prisma/client.js';
@@ -6,10 +7,14 @@ import { walletBalance } from '../wallets/wallet-balance.js';
 
 @Injectable()
 export class SettlementService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly events: AuctionEvents,
+  ) {}
 
   async settle(lotId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    const changes: AuctionEvent[] = [];
+    const settled = await this.prisma.$transaction(async (tx) => {
       const locked = await tx.$queryRaw<
         { id: string }[]
       >`SELECT id FROM lots WHERE id = ${lotId}::uuid FOR UPDATE`;
@@ -33,6 +38,11 @@ export class SettlementService {
       const holds = await tx.walletHold.findMany({
         where: { bid: { lotId }, status: 'active' },
       });
+      const closed: AuctionEvent = {
+        type: 'lot.closed',
+        lotId,
+        endTime: lot.endTime.toISOString(),
+      };
       if (!winner) {
         if (holds.length)
           throw new ConflictException(
@@ -42,6 +52,7 @@ export class SettlementService {
           where: { id: lotId },
           data: { status: 'closed' },
         });
+        if (lot.status !== 'closed') changes.push(closed);
         return null;
       }
       if (
@@ -117,7 +128,11 @@ export class SettlementService {
         data: { isWinner: true },
       });
       await tx.lot.update({ where: { id: lotId }, data: { status: 'closed' } });
+      if (lot.status !== 'closed') changes.push(closed);
+      changes.push({ ...closed, type: 'lot.settled' });
       return result;
     });
+    changes.forEach((change) => this.events.publish(change));
+    return settled;
   }
 }

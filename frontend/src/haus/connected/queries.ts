@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { api, message } from "../../api";
+import { api, message, ApiError } from "../../api";
 export type PageResult<T> = {
   items: T[];
   total: number;
@@ -56,7 +56,9 @@ export function useApiQuery<T>(
             key,
             resource,
             data:
-              keepPreviousData && previous.resource === resource
+              keepPreviousData &&
+              previous.resource === resource &&
+              !(error instanceof ApiError && [404, 410].includes(error.status))
                 ? previous.data
                 : null,
             error: message(error),

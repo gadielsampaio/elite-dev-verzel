@@ -12,7 +12,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
   const prisma = {
     user: { findUnique: vi.fn() },
     lot: {
-      updateMany: vi.fn(),
+      updateManyAndReturn: vi.fn(),
       findMany: vi.fn(),
       count: vi.fn(),
       findUniqueOrThrow: vi.fn(),
@@ -52,6 +52,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+    prisma.lot.updateManyAndReturn.mockResolvedValue([]);
     lot = {
       id: lotId,
       ownerId,
@@ -101,7 +102,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
     expect(prisma.lot.count).toHaveBeenCalledWith({
       where: { status: 'open' },
     });
-    const [close, open] = prisma.lot.updateMany.mock.calls.map(
+    const [close, open] = prisma.lot.updateManyAndReturn.mock.calls.map(
       ([query]) => query,
     );
     expect(close).toMatchObject({
@@ -161,7 +162,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
     );
     expect(prisma.lot.count).toHaveBeenCalledWith({ where: { ownerId } });
     expect(
-      prisma.lot.updateMany.mock.calls.every(
+      prisma.lot.updateManyAndReturn.mock.calls.every(
         ([args]) => args.where.ownerId === ownerId,
       ),
     ).toBe(true);

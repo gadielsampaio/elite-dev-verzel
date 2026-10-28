@@ -1,3 +1,4 @@
+import { AuctionEvents, type AuctionEvent } from '../events/auction-events.js';
 import { ListLotsDto } from './list-lots.dto.js';
 import { CancelLotDto } from './cancel-lot.dto.js';
 import {
@@ -17,7 +18,30 @@ export class LotsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly catalog: CatalogService,
+    private readonly events: AuctionEvents,
   ) {}
+
+  private async withEvents<T>(
+    operation: (
+      tx: Prisma.TransactionClient,
+      changes: AuctionEvent[],
+    ) => Promise<T>,
+    options?: { isolationLevel: Prisma.TransactionIsolationLevel },
+  ): Promise<T> {
+    const changes: AuctionEvent[] = [];
+    const result = await this.prisma.$transaction(
+      (tx) => operation(tx, changes),
+      options,
+    );
+    changes.forEach((change) => this.events.publish(change));
+    return result;
+  }
+
+  async reconcileLifecycle() {
+    await this.withEvents((tx, changes) =>
+      this.refreshLifecycle(tx, new Date(), changes),
+    );
+  }
 
   async create(ownerId: string, data: CreateLotDto) {
     let startTime =
@@ -86,10 +110,11 @@ export class LotsService {
   private async refreshLifecycle(
     tx: Prisma.TransactionClient,
     now: Date,
+    changes: AuctionEvent[],
     id?: string,
     ownerId?: string,
   ) {
-    await tx.lot.updateMany({
+    const closed = await tx.lot.updateManyAndReturn({
       where: {
         id,
         ownerId,
@@ -97,8 +122,9 @@ export class LotsService {
         endTime: { lte: now },
       },
       data: { status: 'closed' },
+      select: { id: true, endTime: true },
     });
-    await tx.lot.updateMany({
+    const opened = await tx.lot.updateManyAndReturn({
       where: {
         id,
         ownerId,
@@ -107,12 +133,25 @@ export class LotsService {
         endTime: { gt: now },
       },
       data: { status: 'open' },
+      select: { id: true, endTime: true },
     });
+    for (const lot of closed)
+      changes.push({
+        type: 'lot.closed',
+        lotId: lot.id,
+        endTime: lot.endTime.toISOString(),
+      });
+    for (const lot of opened)
+      changes.push({
+        type: 'lot.opened',
+        lotId: lot.id,
+        endTime: lot.endTime.toISOString(),
+      });
   }
 
   async findAll({ status, page, limit }: ListLotsDto) {
-    return this.prisma.$transaction(async (tx) => {
-      await this.refreshLifecycle(tx, new Date());
+    return this.withEvents(async (tx, changes) => {
+      await this.refreshLifecycle(tx, new Date(), changes);
       const where: Prisma.LotWhereInput = {
         status: status ?? { in: ['scheduled', 'open', 'closed'] },
       };
@@ -129,10 +168,10 @@ export class LotsService {
   }
 
   async findMine(ownerId: string, { status, page, limit }: ListLotsDto) {
-    return this.prisma.$transaction(
-      async (tx) => {
+    return this.withEvents(
+      async (tx, changes) => {
         const now = new Date();
-        await this.refreshLifecycle(tx, now, undefined, ownerId);
+        await this.refreshLifecycle(tx, now, changes, undefined, ownerId);
         const where: Prisma.LotWhereInput = {
           ownerId,
           ...(status ? { status } : {}),
@@ -163,8 +202,8 @@ export class LotsService {
   }
 
   async findOne(id: string) {
-    return this.prisma.$transaction(async (tx) => {
-      await this.refreshLifecycle(tx, new Date(), id);
+    return this.withEvents(async (tx, changes) => {
+      await this.refreshLifecycle(tx, new Date(), changes, id);
       const lot = await tx.lot.findFirst({
         where: { id, status: { in: ['scheduled', 'open', 'closed'] } },
         include: { items: { orderBy: { position: 'asc' } } },
@@ -175,7 +214,7 @@ export class LotsService {
   }
 
   async cancel(id: string, ownerId: string, { reason }: CancelLotDto) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.withEvents(async (tx, changes) => {
       // All future bid writes must take this same lot lock before checking state.
       const locked = await tx.$queryRaw<
         { id: string }[]
@@ -199,7 +238,7 @@ export class LotsService {
           'A lot that has received bids cannot be cancelled',
         );
       }
-      return tx.lot.update({
+      const cancelled = await tx.lot.update({
         where: { id },
         data: {
           status: 'cancelled',
@@ -208,6 +247,12 @@ export class LotsService {
         },
         include: { items: { orderBy: { position: 'asc' } } },
       });
+      changes.push({
+        type: 'lot.cancelled',
+        lotId: id,
+        endTime: lot.endTime.toISOString(),
+      });
+      return cancelled;
     });
   }
 }

@@ -1,6 +1,7 @@
+import { useLotRealtime } from "./useLotRealtime";
 import { dollars, useApiQuery } from './queries';
 import { BackButton } from '../shared';
-type Result = {
+export type Result = {
   lotId: string; title: string; currency: string; endTime: string;
   status: 'settled' | 'awaiting_close' | 'pending_settlement' | 'no_winner';
   items: { name: string; imageUrl: string | null }[];
@@ -8,6 +9,7 @@ type Result = {
 };
 export function Receipt({ lotId }: { lotId: string }) {
   const query = useApiQuery<Result>(`/lots/${encodeURIComponent(lotId)}/result`);
+  useLotRealtime(lotId, query.refresh);
   const result = query.data;
   const shareUrl = `${location.origin}/#/receipt/${encodeURIComponent(lotId)}`;
   return <section className="hs-utility-page hs-seller-page" aria-label="Auction result">

@@ -1,3 +1,4 @@
+import { LotsService } from '../lots/lots.service.js';
 import { Logger } from '@nestjs/common';
 import { vi } from 'vitest';
 import { SettlementWorker } from './settlement.worker.js';
@@ -22,6 +23,9 @@ describe('Settlement worker', () => {
       const worker = new SettlementWorker(
         { lot: { findMany } } as unknown as PrismaService,
         { settle } as unknown as SettlementService,
+        {
+          reconcileLifecycle: vi.fn().mockResolvedValue(undefined),
+        } as unknown as LotsService,
       );
       await worker.runBatch();
       expect(settle).toHaveBeenCalledTimes(50);
@@ -47,6 +51,9 @@ describe('Settlement worker', () => {
     const worker = new SettlementWorker(
       { lot: { findMany } } as unknown as PrismaService,
       {} as SettlementService,
+      {
+        reconcileLifecycle: vi.fn().mockResolvedValue(undefined),
+      } as unknown as LotsService,
     );
     try {
       worker.onApplicationBootstrap();

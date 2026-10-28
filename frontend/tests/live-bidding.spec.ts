@@ -162,6 +162,10 @@ test("live publication, bidding, settlement and account results journey", async 
       ).toHaveText(available);
     }
 
+    await open(pageA);
+    await expect(
+      pageA.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+    ).toBeVisible();
     // Advance only this test-owned lot's deadline; let the real background worker settle it.
     const expired = await db.query(
       "UPDATE lots SET end_time = now() - interval '1 second' WHERE id = $1 AND owner_id = $2 AND title = $3",
@@ -179,6 +183,10 @@ test("live publication, bidding, settlement and account results journey", async 
       )
       .toBe("settled");
 
+    await expect(
+      pageA.getByText("SETTLED — RECEIPT AVAILABLE.", { exact: false }),
+    ).toBeVisible();
+    await pageA.getByRole("button", { name: "Close artwork room" }).click();
     await pageB.getByRole("button", { name: "REFRESH BALANCE" }).click();
     await expect(
       pageB

@@ -1,4 +1,9 @@
-import { AuctionEvents } from '../src/events/auction-events.js';
+import { LotsService } from '../src/lots/lots.service.js';
+import { CatalogService } from '../src/catalog/catalog.service.js';
+import {
+  AuctionEvents,
+  type AuctionEvent,
+} from '../src/events/auction-events.js';
 import { AccountResultsService } from '../src/settlement/account-results.service.js';
 import { ResultsService } from '../src/settlement/results.service.js';
 import { randomUUID } from 'node:crypto';
@@ -14,10 +19,16 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       settlement: SettlementService,
       wallets: WalletsService,
       bids: BidsService;
+    let events: AuctionEvents, notifications: AuctionEvent[];
     let users: string[], lots: string[], seller: string, buyer: string;
     beforeEach(async () => {
       db = new PrismaService();
-      settlement = new SettlementService(db);
+      events = new AuctionEvents();
+      notifications = [];
+      events.subscribe((event) => {
+        notifications.push(event);
+      });
+      settlement = new SettlementService(db, events);
       wallets = new WalletsService(db);
       bids = new BidsService(db, new AuctionEvents());
       users = [];
@@ -81,6 +92,78 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         where: { id },
         data: { endTime: new Date(Date.now() - 1000) },
       });
+    it('publishes settled evidence after commit, once across concurrent retries', async () => {
+      const l = await lot();
+      await expire(l.id);
+      const evidence: Promise<unknown>[] = [];
+      events.subscribe((event) => {
+        if (event.type === 'lot.settled')
+          evidence.push(
+            Promise.all([
+              db.auctionResult.findUnique({ where: { lotId: l.id } }),
+              db.walletTransaction.count({
+                where: { auctionResult: { lotId: l.id } },
+              }),
+              db.walletHold.findFirst({ where: { bid: { lotId: l.id } } }),
+            ]),
+          );
+      });
+      await Promise.all([settlement.settle(l.id), settlement.settle(l.id)]);
+      expect(notifications.map((event) => event.type)).toEqual([
+        'lot.closed',
+        'lot.settled',
+      ]);
+      expect(await Promise.all(evidence)).toEqual([
+        [
+          expect.objectContaining({ settledAt: expect.any(Date) }),
+          2,
+          expect.objectContaining({ status: 'captured' }),
+        ],
+      ]);
+      expect(Object.keys(notifications[1]).sort()).toEqual([
+        'endTime',
+        'lotId',
+        'type',
+      ]);
+    });
+    it('publishes lifecycle transitions and cancellation once, after committed reads', async () => {
+      const service = new LotsService(db, {} as CatalogService, events);
+      const l = await lot(false);
+      await db.lot.update({
+        where: { id: l.id },
+        data: { status: 'scheduled' },
+      });
+      const evidence: Promise<unknown>[] = [];
+      events.subscribe((event) => {
+        evidence.push(db.lot.findUnique({ where: { id: event.lotId } }));
+      });
+      await service.findOne(l.id);
+      await service.findOne(l.id);
+      expect(notifications.map((event) => event.type)).toEqual(['lot.opened']);
+      await Promise.all(evidence);
+      await expect(service.cancel(l.id, buyer, {})).rejects.toMatchObject({
+        status: 403,
+      });
+      await service.cancel(l.id, seller, {});
+      await service.cancel(l.id, seller, {});
+      expect(notifications.map((event) => event.type)).toEqual([
+        'lot.opened',
+        'lot.cancelled',
+      ]);
+      expect(await Promise.all(evidence)).toEqual([
+        expect.objectContaining({ status: 'open' }),
+        expect.objectContaining({ status: 'cancelled' }),
+      ]);
+      const expired = await lot(false);
+      await expire(expired.id);
+      await service.findOne(expired.id);
+      await settlement.settle(expired.id);
+      expect(notifications.map((event) => event.type)).toEqual([
+        'lot.opened',
+        'lot.cancelled',
+        'lot.closed',
+      ]);
+    });
     it('reads seller credits and distinct participation only after settlement, scoped to each account', async () => {
       const reads = new AccountResultsService(db);
       const l = await lot();
@@ -284,6 +367,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       expect(
         await db.wallet.findUnique({ where: { userId: seller } }),
       ).toBeNull();
+      expect(notifications).toEqual([]);
       expect(await db.auctionResult.count({ where: { lotId: l.id } })).toBe(0);
       expect(await db.bid.findFirst({ where: { lotId: l.id } })).toMatchObject({
         isWinner: false,

@@ -1,3 +1,4 @@
+import { AuctionEventsModule } from '../events/auction-events.module.js';
 import { Module } from '@nestjs/common';
 import { AuthModule } from '../auth/auth.module.js';
 import { CatalogModule } from '../catalog/catalog.module.js';
@@ -7,8 +8,9 @@ import { LotsController } from './lots.controller.js';
 import { LotsService } from './lots.service.js';
 
 @Module({
-  imports: [AuthModule, CatalogModule, PrismaModule],
+  imports: [AuctionEventsModule, AuthModule, CatalogModule, PrismaModule],
   controllers: [LotsController],
+  exports: [LotsService],
   providers: [LotsService, AuctioneerGuard],
 })
 export class LotsModule {}

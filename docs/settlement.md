@@ -25,7 +25,7 @@ No public settlement mutation is exposed. `GET /lots/:lotId/result` returns a
 public result and, after settlement, a privacy-safe receipt. The frontend
 `/#/receipt/:lotId` is shareable without login; closed Seller Studio lots link to
 it. Seller totals and bidder participation/wins are connected through protected
-account reads. Audit integrity remains pending. No external museum requests occur during settlement. No schema changes are required.
+account reads. Audit integrity is covered by [public verification](audit.md). No external museum requests occur during settlement. No schema changes are required.
 
 Validation (uses only test-created records and removes those fixtures):
 
@@ -60,3 +60,16 @@ Aliases match public bid history and change when `JWT_SECRET` rotates.
   Consistent database snapshots avoid partially observed settlement.
 - Seller Studio’s RESULTS tab and `/#/activity` show these reads and public receipt
   links. Empty/error/retry states never infer a sale from closed status.
+
+## Notifications
+
+The existing worker reconciles scheduled/expired lot states before each settlement
+batch. Reads also reconcile lifecycle. Actual transitions publish `lot.opened` or
+`lot.closed` after commit; owner cancellation publishes `lot.cancelled` once.
+Successful winner settlement publishes `lot.settled` only after the result,
+transfer and captured hold commit. Failed transactions and retries publish nothing.
+Empty lots close without a settlement event or invented receipt.
+
+Signals contain public lot metadata only. Rooms and shared receipt pages re-read
+HTTP state; closure alone is never labelled a completed sale. Delivery is process-local
+and best-effort, with reconnect/periodic HTTP recovery. See [protocol](api.md#realtime-auction-rooms).

@@ -58,7 +58,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       db = new PrismaService();
       bids = new BidsService(db, new AuctionEvents());
       wallets = new WalletsService(db);
-      lots = new LotsService(db, {} as CatalogService);
+      lots = new LotsService(db, {} as CatalogService, new AuctionEvents());
       userIds = [];
       lotIds = [];
       const owner = await db.user.create({

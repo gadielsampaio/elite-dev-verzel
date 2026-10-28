@@ -1,12 +1,12 @@
 import { Injectable, Logger, type OnModuleDestroy } from '@nestjs/common';
 import { EventEmitter } from 'node:events';
 
-export type AuctionEvent = Readonly<{
-  type: 'bid.accepted' | 'lot.extended';
-  lotId: string;
-  bidId: string;
-  endTime: string;
-}>;
+export type AuctionEvent = Readonly<
+  { lotId: string; endTime: string } & (
+    | { type: 'bid.accepted' | 'lot.extended'; bidId: string }
+    | { type: 'lot.opened' | 'lot.closed' | 'lot.cancelled' | 'lot.settled' }
+  )
+>;
 type Observer = (event: AuctionEvent) => void | Promise<void>;
 
 // Process-local invalidation signals; HTTP remains the source of truth.
@@ -38,7 +38,7 @@ export class AuctionEvents implements OnModuleDestroy {
       Object.freeze({
         type: event.type,
         lotId: event.lotId,
-        bidId: event.bidId,
+        ...('bidId' in event ? { bidId: event.bidId } : {}),
         endTime: event.endTime,
       }),
     );

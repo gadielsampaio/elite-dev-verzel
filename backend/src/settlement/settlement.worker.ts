@@ -1,3 +1,4 @@
+import { LotsService } from '../lots/lots.service.js';
 import {
   Injectable,
   Logger,
@@ -18,6 +19,7 @@ export class SettlementWorker
   constructor(
     private readonly prisma: PrismaService,
     private readonly settlement: SettlementService,
+    private readonly lifecycle: LotsService,
   ) {}
 
   onApplicationBootstrap() {
@@ -37,6 +39,7 @@ export class SettlementWorker
       });
   }
   async runBatch() {
+    await this.lifecycle.reconcileLifecycle();
     const lots = await this.prisma.lot.findMany({
       where: {
         id: this.cursor ? { gt: this.cursor } : undefined,
@@ -44,7 +47,19 @@ export class SettlementWorker
         result: { is: null },
         OR: [
           { status: { in: ['scheduled', 'open'] } },
-          { status: 'closed', bids: { some: { isActive: true } } },
+          {
+            status: 'closed',
+            // Reconciliation may close the lot before this scan. Keep inconsistent
+            // active holds eligible for diagnosis/retry even if no bid is eligible.
+            bids: {
+              some: {
+                OR: [
+                  { isActive: true },
+                  { hold: { is: { status: 'active' } } },
+                ],
+              },
+            },
+          },
         ],
       },
       select: { id: true },

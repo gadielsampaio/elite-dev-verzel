@@ -1,3 +1,5 @@
+import { LotsModule } from '../lots/lots.module.js';
+import { AuctionEventsModule } from '../events/auction-events.module.js';
 import { AuthModule } from '../auth/auth.module.js';
 import { AccountResultsController } from './account-results.controller.js';
 import { AccountResultsService } from './account-results.service.js';
@@ -8,7 +10,7 @@ import { Module } from '@nestjs/common';
 import { SettlementService } from './settlement.service.js';
 import { SettlementWorker } from './settlement.worker.js';
 @Module({
-  imports: [PrismaModule, AuthModule],
+  imports: [LotsModule, AuctionEventsModule, PrismaModule, AuthModule],
   controllers: [ResultsController, AccountResultsController],
   providers: [
     SettlementService,

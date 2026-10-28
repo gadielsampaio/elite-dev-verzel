@@ -1,3 +1,4 @@
+import type { Result } from "./Receipt";
 import { useLotRealtime } from "./useLotRealtime";
 import { useEffect, useRef, useState } from "react";
 import { BidForm } from "./BidForm";
@@ -37,6 +38,11 @@ export function PublishedRoom({
     session?.token,
     true,
   );
+  const result = useApiQuery<Result>(
+    history.data?.status === "closed" ? `/lots/${id}/result` : null,
+    undefined,
+    true,
+  );
   const received = useRef({ data: history.data, at: now });
   if (received.current.data !== history.data)
     received.current = { data: history.data, at: now };
@@ -50,6 +56,7 @@ export function PublishedRoom({
     detail.refresh();
     history.refresh();
     position.refresh();
+    result.refresh();
   };
   const liveUpdates = useLotRealtime(id, refresh);
   useEffect(() => {
@@ -246,7 +253,11 @@ export function PublishedRoom({
                 )}
                 {bids?.status === "closed" && (
                   <p className="hs-p-mini">
-                    Bidding has closed.{" "}
+                    {result.data?.status === "settled"
+                      ? "SETTLED — RECEIPT AVAILABLE. "
+                      : result.data?.status === "no_winner"
+                        ? "CLOSED WITHOUT A WINNER. "
+                        : "BIDDING CLOSED — SETTLEMENT PENDING. "}
                     <a href={`#/receipt/${id}`} onClick={close}>
                       View settlement result and receipt
                     </a>

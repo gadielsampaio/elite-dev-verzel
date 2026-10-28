@@ -56,9 +56,13 @@ RUN_LIVE_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e --prefix frontend --
 
 Other bidders’ updates now trigger automatic HTTP resynchronization through per-lot
 WebSocket subscriptions. Reconnection refreshes missed state; manual refresh remains available.
-Lifecycle notifications, required seeds, independent image availability and full production
+Production demo seeding, independent image availability and full production
 journey verification remain pending. No integrity claim is made by the receipt or readable bid history.
 
 Public audit is connected at `/#/audit/:id`, with room/receipt links, complete
 pseudonymous history and browser SHA-256 verification against the external head.
 See [audit coverage and limits](audit.md).
+
+Rooms now distinguish pending settlement, confirmed receipts and no-winner closure.
+Lifecycle/settlement signals refresh room and receipt HTTP state; cancelled or missing
+lots clear retained room data.

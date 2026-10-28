@@ -18,7 +18,7 @@ describe('Lot publication (HTTP)', () => {
   const lotId = '22222222-2222-4222-8222-222222222222';
   const prisma = {
     user: { findUnique: vi.fn() },
-    lot: { create: vi.fn(), findFirst: vi.fn(), updateMany: vi.fn() },
+    lot: { create: vi.fn(), findFirst: vi.fn(), updateManyAndReturn: vi.fn() },
     $transaction: vi.fn(),
   };
   const catalog = { findOne: vi.fn() };
@@ -63,6 +63,7 @@ describe('Lot publication (HTTP)', () => {
   });
   beforeEach(() => {
     vi.resetAllMocks();
+    prisma.lot.updateManyAndReturn.mockResolvedValue([]);
     prisma.$transaction.mockImplementation(
       (callback: (tx: typeof prisma) => unknown) => callback(prisma),
     );
