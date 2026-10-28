@@ -8,6 +8,7 @@ JWT login, user-route authorization, external health checks, and Cleveland catal
 
 - [Challenge requirements, progress and next steps](progress.md)
 - [Frontend integration inventory and verification](frontend-integration.md)
+- [Public audit format and remaining work](audit.md)
 - [Development setup and commands](development.md)
 - [Database entities, relationships, and constraints](database.md)
 - [Implemented API, planned modules, and Postman](api.md)
