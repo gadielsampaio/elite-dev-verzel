@@ -1,4 +1,5 @@
-import { ConflictException } from '@nestjs/common';
+import { CheckpointStore } from './checkpoint-store.js';
+import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
 import type { Bid, Prisma } from '../generated/prisma/client.js';
 import { bidderAlias } from '../bids/bidder-alias.js';
 import { hashBidAudit } from './bid-hash.js';
@@ -37,12 +38,32 @@ export async function recordBidAudit(
     acceptedAt: bid.createdAt.toISOString(),
     endTime: endTime.toISOString(),
   };
+  const hash = hashBidAudit(payload);
   await tx.bidAuditEntry.create({
     data: {
       ...payload,
-      hash: hashBidAudit(payload),
+      hash,
       acceptedAt: bid.createdAt,
       endTime,
     },
   });
+  if (process.env.AUDIT_CHECKPOINT_DIR) {
+    try {
+      const store = new CheckpointStore();
+      // Durable external witness BEFORE commit. A rollback can leave an orphan;
+      // never silently discard it or certify the affected history as intact.
+      await store.prepare({
+        version: 1,
+        entry: { ...payload, hash },
+        bidderId: bid.bidderId,
+        completeHistory:
+          (await tx.bid.count({ where: { lotId: bid.lotId } })) ===
+          payload.sequence,
+      });
+    } catch {
+      throw new ServiceUnavailableException(
+        'Audit checkpoint unavailable; bid was not accepted',
+      );
+    }
+  }
 }

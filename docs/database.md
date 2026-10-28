@@ -74,7 +74,7 @@ Transactions store financial entries, holds represent reservations associated
 with bids, and results link the winning bid to the lot and settlement timestamps.
 Audit events can record before/after state and request context. These structures
 exist. Simulated deposits and ledger/active-hold balance calculation are implemented.
-Bid placement reserves/releases holds atomically. Capture and settlement are implemented; accepted bids now also persist hash-linked snapshots. Public audit verification remains pending; `isWinner` is not set just because a bid leads.
+Bid placement reserves/releases holds atomically. Capture and settlement are implemented; accepted bids now also persist hash-linked snapshots. External checkpoints and public verification are implemented; `isWinner` is not set just because a bid leads.
 
 The schema and initial migration do not enforce positive amounts, sufficient
 funds, matching currencies, auction time ordering, role permissions, one

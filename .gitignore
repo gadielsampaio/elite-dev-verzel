@@ -38,3 +38,6 @@ coverage/
 
 # Local visual migration comparisons
 /frontend/verification/
+
+# Protected local audit checkpoints (retain separately from Git/PostgreSQL)
+/.local/

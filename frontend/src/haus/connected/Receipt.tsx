@@ -26,9 +26,10 @@ export function Receipt({ lotId }: { lotId: string }) {
             <div><dt>RECEIPT ID</dt><dd>{result.receipt.id}</dd></div>
           </dl>
           <label className="hs-seller-field">SHAREABLE RECEIPT LINK<input className="hs-seller-input" readOnly value={shareUrl} onFocus={e => e.currentTarget.select()} /></label>
-          <p>This receipt records a simulated auction settlement. History integrity verification is not yet available.</p>
+          <p>This receipt records a simulated auction settlement. Verify the bid history using the public audit.</p>
         </> : <p role="status">{result.status === 'no_winner' ? 'Closed without a winner. No funds were transferred.' : result.status === 'awaiting_close' ? 'This auction has not ended. No receipt is available yet.' : 'Settlement is pending. No completed sale is confirmed yet.'}</p>}
       </>}
+      <p><a href={`#/audit/${lotId}`}>VERIFY BID HISTORY</a></p>
       <button className="hs-seller-btn ghost" disabled={query.loading} onClick={query.refresh}>REFRESH RESULT</button>
     </div>
   </section>;

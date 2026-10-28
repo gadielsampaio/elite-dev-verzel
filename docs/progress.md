@@ -1,6 +1,6 @@
 # Challenge requirements and progress
 
-[Documentation index](README.md) · Reviewed 2026-10-27
+[Documentation index](README.md) · Reviewed 2026-10-28
 
 This checklist follows the local challenge reference `DESAFIO_ELITE_DEV_VERZEL.md`;
 the implementation plan `PLANO_IMPLEMENTACAO_ELITE_DEV_VERZEL.md` proposes the
@@ -16,18 +16,18 @@ ignored by Git; this summary is available in a fresh checkout.
 | Public item API | Search, artwork details and explicit mock/real transport selection implemented. Cleveland live search/detail verified; Cleveland fixtures remain available. Snapshots are persisted during publication; connected seller search/selection UI implemented with text/type filters and mandatory images/CC0. |
 | Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; Public browsing/detail UI implemented; owner-scoped seller listing, publication and cancellation UI implemented; editing remains pending; background settlement is implemented. |
 | Wallet | Own balances and bidder-only simulated deposits implemented in API/UI. Concurrent retries are idempotent. Bid placement reserves leader funds and atomically releases the previous hold. |
-| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Tamper-evident recording remains pending. |
+| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Accepted bids have atomic snapshots and external witnesses. |
 | Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Bid submission refreshes history/position; manual refresh resynchronizes other changes. Realtime updates remain pending. |
 | Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
-| Public audit and privacy | Canonical SHA-256 snapshots are now persisted atomically with new accepted bids; legacy bids remain unaudited. Still pending: detect edits/deletions/insertions, including direct database changes; explain verification; no login or personal-data exposure in audit/receipts. `AuditEvent` storage is not tamper detection. |
+| Public audit and privacy | Implemented: atomic SHA-256 snapshots, protected checkpoints outside PostgreSQL, public verification and browser hash checks. Database changes/deletions/insertions are detected against confirmed evidence; legacy, interrupted and uncovered history is not verifiable. No personal identity exposure. See [audit guarantees](audit.md). |
 | Demo seeds | Missing: one auctioneer, two clients and at least one published lot open for bidding. No seed command exists. |
 | Delivery | Local setup documented. Public deployment URL and repository visibility not verified; Initial React app available locally; complete auction demonstration and deployment pending. |
 
 Plan phase 08 is implemented end to end: background settlement, seller results/totals,
 bidder participation/wins and public receipts. Foundation/auth/catalog/lot/wallet/bid
-flows are connected. Phase 09 (audit), phase 10 (realtime), seeds and public
-deployment remain incomplete; completing phase 08 does not complete the challenge.
+flows are connected. Phase 09 now includes external checkpoints and public verification. Phase 10
+(realtime), seeds and public deployment remain incomplete; completing phase 08 does not complete the challenge.
 The existing `admin` role is an implementation addition, not a required challenge role.
 
 The original local-state prototype remains at `/preview` for visual regression
@@ -38,13 +38,12 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Phase 09: add a trusted external checkpoint and public verification for the recorded bid chain. See [audit progress](audit.md).
-2. Phase 10: Observer/WebSocket updates and HTTP resynchronization.
-3. Finish seeds, provider-outage image handling and public deployment; do not postpone deployment behind visual refinements.
+1. Phase 10: Observer/WebSocket updates and HTTP resynchronization.
+2. Finish seeds, provider-outage image handling and public deployment; do not postpone deployment behind visual refinements.
 
 Adapter and Facade-style orchestration in `BidsService` are implemented. Observer/
-realtime remain planned. The proposed hash chain plus a trusted checkpoint outside PostgreSQL is
-also unimplemented; a rewritable database-only chain cannot prove integrity.
+realtime remain planned. Hash chains, protected filesystem checkpoints and public verification are implemented.
+Legacy and interrupted histories remain not verifiable; see [audit limits](audit.md).
 
 ## Submission checklist
 
@@ -65,6 +64,11 @@ its own lot deadline; the real worker settles; seller totals show the credit;
 the winner sees a win/receipt, the loser sees no win, and a logged-out browser
 opens the shared receipt. Test-owned records were removed.
 
-Backend: typecheck, lint, 76 unit tests and 214 e2e tests passed (database suites
-sequential). Frontend: production build, 42 standard browser tests and the opt-in
-live journey passed. Realtime and audit guarantees were not claimed or tested.
+Current audit validation: backend typecheck, lint, 117 unit tests and 228 e2e
+tests passed (database suites sequential); frontend production build and 47
+standard browser tests passed. External checkpoint attack/failure cases and browser
+hash verification are covered. Realtime remains pending.
+
+The live publish → bid → settle → logged-out audit journey also passed after
+restarting the API with checkpoint storage configured. Compose API/web and the
+frontend health proxy are running. Test-owned records and checkpoints were removed.

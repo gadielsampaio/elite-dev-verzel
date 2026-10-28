@@ -9,6 +9,7 @@ password-hashed registration, JWT login, user authorization, catalog search/deta
 The initial frontend supports registration/login, lot browsing/details and wallet
 balances with simulated deposits. Bid placement and reservation/release now work
 through the API. Background settlement is implemented; public results and shareable receipts are implemented. Bid entry, seller totals and bidder participation/wins are connected.
+Public bid audit and browser hash verification are implemented; see [audit guarantees](docs/audit.md).
 See [requirements and progress](docs/progress.md) for the remaining delivery scope.
 
 ## Run locally
@@ -39,7 +40,8 @@ database access, host execution, tests and troubleshooting.
 - Catalog uses Cleveland (`CATALOG_PROVIDER=cleveland`), with verified live search/detail.
   Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
-- Public audit, realtime delivery, required demo seeds and verified public deployment remain pending.
+- Public audit uses protected external checkpoints; legacy/unconfirmed history stays not verifiable.
+  Realtime delivery, required demo seeds and verified public deployment remain pending.
   Other bidders’ updates currently require Refresh lot. Museum image hosting remains an external dependency.
   Lifecycle states update on reads and during background settlement. The worker
   transfers funds and captures winning holds; failed settlements retain holds for retry.

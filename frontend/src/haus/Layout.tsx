@@ -110,7 +110,7 @@ export function SiteFooter({ connected = false }: { connected?: boolean }) {
             .filter(
               ([target]) =>
                 !connected ||
-                ["home", "wallet"].includes(target) ||
+                ["home", "wallet", "audit"].includes(target) ||
                 (target === "seller" && session?.user.role === "auctioneer") ||
                 (target === "activity" && session?.user.role === "bidder"),
             )

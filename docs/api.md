@@ -289,7 +289,7 @@ consistent across pages. The protected own-position response includes your
 `bidderAlias`, allowing the room to display “You” for your bids.
 Aliases are scoped to each lot using HMAC with `JWT_SECRET`; rotating that secret
 changes aliases. No user IDs, names, emails or idempotency keys are exposed.
-This pseudonymization does **not** provide tamper detection; public audit remains pending.
+Pseudonymization alone does not provide tamper detection. Use the public audit endpoint below.
 
 ## Public results and shareable receipts
 
@@ -343,6 +343,19 @@ List/create proposals use the collection path; get/patch/delete proposals use
 `/{id}`. Proposed append-only/read-only restrictions and workflow-managed fields
 are not implemented protections. Prisma fields describe storage, not an agreed
 HTTP contract.
+
+## Public audit — implemented
+
+`GET /lots/:id/audit` requires no login. Returns `lotId`, `title`, `status`
+(`intact`, `tampered`, `not_verifiable`), `reason`, `checkedAt`, complete pseudonymous
+`history`, canonical `entries` and the last confirmed external `checkpoint`
+(sequence/hash). No account IDs or checkpoint identity bindings are exposed.
+Invalid UUID: 400; unknown lot without retained evidence: 404. A deleted lot with
+retained confirmed evidence returns 200 with a tampered result. Unavailable
+checkpoint storage returns a not-verifiable result for existing lots.
+
+The connected page is `/#/audit/:id`; see [verification and limitations](audit.md).
+This is separate from the planned generic `AuditEvent` log endpoints.
 
 ## Postman
 

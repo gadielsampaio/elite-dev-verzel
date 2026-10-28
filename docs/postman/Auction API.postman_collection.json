@@ -1362,8 +1362,33 @@
     },
     {
       "name": "Audit Logs",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Maps to Prisma AuditEvent (audit_events table). Proposed read-only logs with action, entityType, entityId, optional lotId, actorId, requestId, beforeData, afterData, metadata, and createdAt. Logs are system-generated.",
+      "description": "Public bid-integrity verification is implemented. Generic AuditEvent log endpoints remain planned.",
       "item": [
+        {
+          "name": "[IMPLEMENTED] Verify public bid history",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/lots/{{lotId}}/audit",
+            "description": "Public; no token required. Returns intact, tampered or not_verifiable. Requires a real lotId; legacy or unconfirmed history is not verifiable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"Public audit responds successfully\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"Audit has an explicit verification status\", () => {",
+                  "  const data = pm.response.json();",
+                  "  pm.expect(data.status).to.be.oneOf([\"intact\", \"tampered\", \"not_verifiable\"]);",
+                  "  pm.expect(data.history).to.be.an(\"array\");",
+                  "  pm.expect(data.entries).to.be.an(\"array\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
         {
           "name": "[PLANNED] List audit logs",
           "request": {

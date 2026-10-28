@@ -55,5 +55,9 @@ RUN_LIVE_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e --prefix frontend --
 ```
 
 Updates from other bidders still require Refresh lot. Observer/WebSocket delivery,
-public audit, required seeds, independent image availability and public deployment
+required seeds, independent image availability and public deployment
 remain pending. No integrity claim is made by the receipt or readable bid history.
+
+Public audit is connected at `/#/audit/:id`, with room/receipt links, complete
+pseudonymous history and browser SHA-256 verification against the external head.
+See [audit coverage and limits](audit.md).

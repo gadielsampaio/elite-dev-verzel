@@ -231,6 +231,7 @@ export function PublishedRoom({
                   </p>
                 )}
                 <div className="hs-p-line">
+                  <p><a href={`#/audit/${id}`} onClick={close}>VERIFY BID HISTORY</a></p>
                   <p className="hs-p-label">BID HISTORY</p>
                   <div className="hs-p-history">
                     {history.loading ? (

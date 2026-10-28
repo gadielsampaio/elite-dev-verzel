@@ -41,6 +41,19 @@ run local application commands from `backend/`. Existing environment variables
 (including Compose's `DATABASE_URL`) take precedence. Tests that bypass bootstrap
 still need the `--env-file` command below. Both actual `.env` files are ignored.
 
+For host audit checkpoints, create the shared directory from the repository root:
+
+```sh
+mkdir -p .local/audit-checkpoints
+chmod 700 .local/audit-checkpoints
+```
+
+Set `AUDIT_CHECKPOINT_DIR` in `backend/.env` to its **absolute path**, then restart
+the API. Compose already mounts this directory separately from PostgreSQL. Keep it
+private, backed up and intact across restarts. Missing configuration means audit
+history is not verifiable; configured storage failure rejects new bids with 503.
+See [checkpoint recovery and trust boundary](audit.md).
+
 ## Start, inspect, and stop
 
 ```sh
@@ -222,11 +235,15 @@ For host development, stop the Docker web service, then:
 ```sh
 docker compose stop web
 cd frontend
+cp .env.example .env # only if .env does not already exist
 npm ci
 npm run dev
 ```
 
-Vite proxies `/api` to `http://127.0.0.1:3000` by default; Docker sets
+Frontend settings are in `frontend/.env`; supported keys are documented in
+`frontend/.env.example`. Only `VITE_*` values are public; never add backend secrets.
+Restart Vite after edits, or rebuild for production. Vite proxies `/api` to
+`http://127.0.0.1:3000` by default; Docker sets
 `API_PROXY_TARGET=http://api:3000`. No CORS change or browser secret is needed.
 The session token stays in memory (refresh logs out). A pending deposit's amount/
 retry UUID is kept in session storage per user until confirmed, preventing a

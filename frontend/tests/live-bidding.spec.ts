@@ -1,5 +1,7 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createRequire } from "node:module";
+import { rm } from "node:fs/promises";
+import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 // Opt-in only: real local API, Cleveland, PostgreSQL and isolated browser sessions.
@@ -13,6 +15,10 @@ test("live publication, bidding, settlement and account results journey", async 
   );
   test.setTimeout(90000);
   process.loadEnvFile(new URL("../../backend/.env", import.meta.url));
+  expect(
+    process.env.AUDIT_CHECKPOINT_DIR,
+    "Configure external audit storage before this live test",
+  ).toBeTruthy();
   const require = createRequire(
     new URL("../../backend/package.json", import.meta.url),
   );
@@ -221,6 +227,20 @@ test("live publication, bidding, settlement and account results journey", async 
     ).toBeVisible();
     await expect(guestPage.getByText("$105.00", { exact: true })).toBeVisible();
     await expect(guestPage.locator("body")).not.toContainText(b);
+    await expect
+      .poll(
+        async () => {
+          const response = await request.get(`/api/lots/${lot.id}/audit`);
+          expect(response.status()).toBe(200);
+          return (await response.json()).status;
+        },
+        { timeout: 15000 },
+      )
+      .toBe("intact");
+    await guestPage.getByRole("link", { name: "VERIFY BID HISTORY" }).click();
+    await expect(guestPage.getByRole("status")).toHaveText("INTACT");
+    await expect(guestPage.getByRole("listitem")).toHaveCount(2);
+    await expect(guestPage.locator("body")).not.toContainText(b);
     await pageA.getByRole("button", { name: "MY BIDS", exact: true }).click();
     await expect(
       pageA.getByText("NOT WON · SETTLED", { exact: true }),
@@ -234,6 +254,10 @@ test("live publication, bidding, settlement and account results journey", async 
       await client.query("BEGIN");
       // Only test-owned records; never reset tables or remove existing user data.
       const own = [userIds];
+      const ownedLots = await client.query(
+        "SELECT id FROM lots WHERE owner_id = ANY($1::uuid[])",
+        own,
+      );
       await client.query(
         "DELETE FROM wallet_holds WHERE wallet_id IN (SELECT id FROM wallets WHERE user_id = ANY($1::uuid[]))",
         own,
@@ -264,6 +288,13 @@ test("live publication, bidding, settlement and account results journey", async 
       );
       await client.query("DELETE FROM users WHERE id = ANY($1::uuid[])", own);
       await client.query("COMMIT");
+      // Remove only checkpoints belonging to this test's random, isolated users.
+      for (const row of ownedLots.rows as { id: string }[]) {
+        await rm(join(process.env.AUDIT_CHECKPOINT_DIR!, row.id), {
+          recursive: true,
+          force: true,
+        });
+      }
     } catch (error) {
       await client.query("ROLLBACK");
       throw error;

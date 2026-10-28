@@ -1,3 +1,4 @@
+import { Audit } from "./Audit";
 import { AccountResults } from "./AccountResults";
 import { Receipt } from "./Receipt";
 import { Seller } from "./Seller";
@@ -21,12 +22,17 @@ import "../styles/react.css";
 function ConnectedScreens() {
   const { page, go } = useHaus(),
     { session, login, notice } = useSession();
+  const [auditId, setAuditId] = useState(
+    () => location.hash.match(/^#\/audit\/([^/]+)$/)?.[1] ?? null,
+  );
   const [receiptId, setReceiptId] = useState(
     () => location.hash.match(/^#\/receipt\/([^/]+)$/)?.[1] ?? null,
   );
   useEffect(() => {
-    const update = () =>
+    const update = () => {
       setReceiptId(location.hash.match(/^#\/receipt\/([^/]+)$/)?.[1] ?? null);
+      setAuditId(location.hash.match(/^#\/audit\/([^/]+)$/)?.[1] ?? null);
+    };
     window.addEventListener("hashchange", update);
     return () => window.removeEventListener("hashchange", update);
   }, []);
@@ -59,7 +65,9 @@ function ConnectedScreens() {
       <div className="hs-shell" id="main-app" inert={!!active}>
         <SiteHeader connected />
         <main id="page-root">
-          {receiptId ? (
+          {auditId || page === "audit" ? (
+            <Audit key={auditId ?? "audit"} lotId={auditId} />
+          ) : receiptId ? (
             <Receipt key={receiptId} lotId={receiptId} />
           ) : page === "home" ? (
             <Storefront open={setActive} />
