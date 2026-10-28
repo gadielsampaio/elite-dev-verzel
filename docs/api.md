@@ -191,7 +191,7 @@ Cancelled details subsequently return 404 publicly.
 
 Cancellation locks the lot row and checks ownership/state/bids in one transaction.
 Bid placement acquires the same lot lock before validating state and writing a bid.
-Editing and realtime remain pending; [background settlement](settlement.md) is implemented.
+Editing and lifecycle notifications remain pending; [background settlement](settlement.md) is implemented.
 
 ## Seller lot management
 
@@ -267,8 +267,8 @@ An inconsistent legacy leader without a valid active hold is rejected for repair
 No payment, winning-bid designation or ledger debit is performed during bidding.
 
 Use a live lot and deposit funds first. Public lot details expose the updated
-`endTime`; a receipt does not imply the bid is still leading. History/current-leader reads are described below; bid UI, realtime events and
-tamper-evident history remain pending.
+`endTime`; a receipt does not imply the bid is still leading. History/current-leader reads are described below; bid UI, realtime bid signals and
+[tamper-evident history](audit.md) are implemented.
 Leading holds remain committed until the [settlement worker](settlement.md) captures
 them and transfers funds. Closing the lot alone does not transfer money. Failed
 settlements retain reservations for investigation and retry.
@@ -377,3 +377,21 @@ than treating failures in planned requests as regressions. Example UUIDs are not
 seeded records. Future use requires replacing related IDs consistently and using
 a fresh idempotency key for each new logical operation. Example monetary values
 are strings and timestamps are UTC ISO 8601; these are proposed payload conventions.
+
+## Realtime auction rooms
+
+Socket.IO namespace `/auctions`, transport `websocket`, handshake path `/socket.io`.
+Public read-only subscriptions require no JWT. Emit `lot.subscribe` with
+`{"lotId":"<uuid>"}`; acknowledgement is `{"ok":true,"lotId":"<uuid>"}` or
+`{"ok":false,"error":"..."}`. Only existing scheduled/open/closed lots are accepted;
+joining another lot leaves the previous room.
+
+Listen for `lot.changed`: `{type, lotId, bidId, endTime}`. Type is `bid.accepted`
+or `lot.extended`; events contain no account identity and are emitted after commit.
+The client re-fetches public details/history and its protected position over HTTP.
+It also resynchronizes after reconnect, at schedule boundaries, on returning to the
+visible tab, and every 30 seconds while connected (10 seconds while disconnected).
+Current bid input survives refreshes. HTTP remains authoritative.
+
+Delivery is best-effort and process-local: multiple API instances would require a
+shared broker. Settlement/cancellation push events are not implemented yet.

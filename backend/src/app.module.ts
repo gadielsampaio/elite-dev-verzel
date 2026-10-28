@@ -1,3 +1,4 @@
+import { RealtimeModule } from './realtime/realtime.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { SettlementModule } from './settlement/settlement.module.js';
 import { BidsModule } from './bids/bids.module.js';
@@ -25,6 +26,7 @@ import { AuthModule } from './auth/auth.module.js';
     BidsModule,
     SettlementModule,
     AuditModule,
+    RealtimeModule,
   ],
   controllers: [AppController],
   providers: [AppService],

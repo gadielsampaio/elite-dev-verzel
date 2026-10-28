@@ -28,30 +28,48 @@ export type BidSummary = {
   limit: number;
 };
 // A query never substitutes fixtures after an error; abort and key checks prevent stale renders.
-export function useApiQuery<T>(path: string | null, token?: string) {
+export function useApiQuery<T>(
+  path: string | null,
+  token?: string,
+  keepPreviousData = false,
+) {
   const [revision, setRevision] = useState(0);
-  const key = `${path}|${token || ""}|${revision}`;
+  const resource = `${path}|${token || ""}`;
+  const key = `${resource}|${revision}`;
   const [state, setState] = useState<{
     key: string;
+    resource: string;
     data: T | null;
     error: string;
-  }>({ key: "", data: null, error: "" });
+  }>({ key: "", resource: "", data: null, error: "" });
   useEffect(() => {
     if (!path) return;
     const controller = new AbortController();
     api<T>(path, token, { signal: controller.signal })
       .then((data) => {
-        if (!controller.signal.aborted) setState({ key, data, error: "" });
+        if (!controller.signal.aborted)
+          setState({ key, resource, data, error: "" });
       })
       .catch((error) => {
         if (!controller.signal.aborted)
-          setState({ key, data: null, error: message(error) });
+          setState((previous) => ({
+            key,
+            resource,
+            data:
+              keepPreviousData && previous.resource === resource
+                ? previous.data
+                : null,
+            error: message(error),
+          }));
       });
     return () => controller.abort();
-  }, [path, token, key]);
+  }, [path, token, key, resource, keepPreviousData]);
   const current = state.key === key;
   return {
-    data: current ? state.data : null,
+    data:
+      current || (keepPreviousData && state.resource === resource)
+        ? state.data
+        : null,
     error: current ? state.error : "",
     loading: !!path && (!current || (!state.data && !state.error)),
     refresh: () => setRevision((n) => n + 1),

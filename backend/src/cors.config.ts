@@ -1,7 +1,7 @@
 import type { INestApplication } from '@nestjs/common';
 
-export function configureCors(app: INestApplication) {
-  const origins = (process.env.CORS_ORIGINS ?? '')
+export function corsOrigins() {
+  return (process.env.CORS_ORIGINS ?? '')
     .split(',')
     .map((value) => value.trim())
     .filter(Boolean)
@@ -20,7 +20,10 @@ export function configureCors(app: INestApplication) {
         );
       return url.origin;
     });
+}
+
+export function configureCors(app: INestApplication) {
   // Bearer-token authentication does not require cross-origin cookies.
   // No wildcard: an unset allowlist permits only same-origin browser usage.
-  app.enableCors({ origin: origins });
+  app.enableCors({ origin: corsOrigins() });
 }

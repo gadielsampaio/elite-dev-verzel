@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { AuctionIoAdapter } from './realtime/auction-io.adapter.js';
 import { configureCors } from './cors.config.js';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
@@ -8,6 +9,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
   configureCors(app);
+  app.useWebSocketAdapter(new AuctionIoAdapter(app));
 
   app.useGlobalPipes(
     new ValidationPipe({

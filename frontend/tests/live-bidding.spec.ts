@@ -106,25 +106,35 @@ test("live publication, bidding, settlement and account results journey", async 
         .click();
       await expect(page.getByText("Simulated deposit recorded.")).toBeVisible();
       await open(page);
+      await expect(
+        page.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+      ).toBeVisible();
     }
+    await pageB.getByLabel("BID AMOUNT (USD)").fill("105.00");
     await pageA.getByLabel("BID AMOUNT (USD)").fill("100.00");
     await pageA.getByRole("button", { name: "PLACE BID", exact: true }).click();
     await expect(pageA.getByText("You", { exact: true })).toBeVisible();
     await expect(
       pageA.getByText("● YOU ARE CURRENTLY LEADING", { exact: false }),
     ).toBeVisible();
-    await pageB
-      .getByRole("button", { name: "REFRESH LOT ↻", exact: true })
-      .click();
+
     await expect(pageB.getByText("Bidder A", { exact: true })).toBeVisible();
-    await pageB.getByLabel("BID AMOUNT (USD)").fill("105.00");
+    await expect(pageB.getByLabel("BID AMOUNT (USD)")).toHaveValue("$105.00");
+    await contexts[1].setOffline(true);
+    await expect(
+      pageA.getByText("CONNECTING LIVE UPDATES · AUTOMATIC REFRESH ACTIVE", {
+        exact: true,
+      }),
+    ).toBeVisible();
     await pageB.getByRole("button", { name: "PLACE BID", exact: true }).click();
     await expect(
       pageB.getByText("● YOU ARE CURRENTLY LEADING", { exact: false }),
     ).toBeVisible();
-    await pageA
-      .getByRole("button", { name: "REFRESH LOT ↻", exact: true })
-      .click();
+
+    await contexts[1].setOffline(false);
+    await expect(
+      pageA.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+    ).toBeVisible();
     await expect(
       pageA.getByText("● YOU HAVE BEEN OUTBID", { exact: false }),
     ).toBeVisible();

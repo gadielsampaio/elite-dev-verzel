@@ -41,7 +41,7 @@ database access, host execution, tests and troubleshooting.
   Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
 - Public audit uses protected external checkpoints; legacy/unconfirmed history stays not verifiable.
-  Post-commit Observer notifications are implemented; WebSocket delivery and required demo seeds remain pending.
+  Post-commit WebSocket bid updates are implemented; lifecycle notifications and required demo seeds remain pending.
   Public frontend/API access is verified; durable audit storage on Render and the full production journey remain pending.
   Other bidders’ updates currently require Refresh lot. Museum image hosting remains an external dependency.
   Lifecycle states update on reads and during background settlement. The worker

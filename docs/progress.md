@@ -17,7 +17,7 @@ ignored by Git; this summary is available in a fresh checkout.
 | Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; Public browsing/detail UI implemented; owner-scoped seller listing, publication and cancellation UI implemented; editing remains pending; background settlement is implemented. |
 | Wallet | Own balances and bidder-only simulated deposits implemented in API/UI. Concurrent retries are idempotent. Bid placement reserves leader funds and atomically releases the previous hold. |
 | Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Accepted bids have atomic snapshots and external witnesses. |
-| Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Bid submission refreshes history/position; manual refresh resynchronizes other changes. Post-commit Observer notifications are implemented; WebSocket delivery and automatic browser updates remain pending. |
+| Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Post-commit WebSocket signals refresh price, history, position and deadline automatically. Reconnection resynchronizes over HTTP; entered bid amounts are preserved. |
 | Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
 | Public audit and privacy | Implemented: atomic SHA-256 snapshots, protected checkpoints outside PostgreSQL, public verification and browser hash checks. Database changes/deletions/insertions are detected against confirmed evidence; legacy, interrupted and uncovered history is not verifiable. No personal identity exposure. See [audit guarantees](audit.md). |
@@ -38,11 +38,11 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Phase 10: connect the Observer to per-lot WebSocket rooms and refresh HTTP state on events/reconnection.
+1. Phase 10: add settlement/lifecycle notifications, then verify the deployed realtime journey.
 2. Finish demo seeds, durable Render audit storage, provider-outage image handling and the full deployed journey.
 
 Adapter, Facade-style orchestration in `BidsService`, and process-local Observer notifications are implemented.
-WebSocket transport and browser subscriptions remain planned. Hash chains, protected filesystem checkpoints and public verification are implemented.
+Per-lot WebSocket transport and browser subscriptions are implemented. Hash chains, protected filesystem checkpoints and public verification are implemented.
 Legacy and interrupted histories remain not verifiable; see [audit limits](audit.md).
 
 ## Submission checklist
@@ -73,7 +73,7 @@ The live publish → bid → settle → logged-out audit journey also passed aft
 restarting the API with checkpoint storage configured. Compose API/web and the
 frontend health proxy are running. Test-owned records and checkpoints were removed.
 
-## Phase 10 — first increment
+## Phase 10 — bid updates and reconnection
 
 `AuctionEvents` uses Node's EventEmitter. `BidsService` publishes `bid.accepted`
 and, when anti-sniping extends the deadline, `lot.extended` **after Prisma confirms
@@ -83,10 +83,20 @@ failures cannot fail an accepted bid or prevent other observers from receiving i
 Payloads contain only `type`, `lotId`, `bidId` and the committed `endTime`.
 Subscriptions return an unsubscribe function. These are best-effort process-local
 signals, not durable delivery or a cross-instance broker; HTTP remains authoritative.
-There is no WebSocket endpoint or automatic browser update yet. The next increment
-adds the gateway and client resynchronization; settlement/lifecycle notifications
-must follow before phase 10 is complete.
+The gateway now delivers these signals to public per-lot rooms. The browser resynchronizes
+over HTTP on subscription, reconnection and events, with periodic fallback reads.
+Settlement/lifecycle notifications remain pending. See [realtime contract](api.md#realtime-auction-rooms).
 
-Validation: 126 unit tests and 235 e2e tests passed, including separate PostgreSQL
+Observer foundation validation: 126 unit tests and 235 e2e tests passed, including separate PostgreSQL
 reads proving that bids, holds, audit snapshots and deadlines are committed before
 observers run. Build, typecheck and lint passed. No frontend changes in this increment.
+
+Gateway increment validation: backend build/typecheck/lint, 126 unit tests and 238
+e2e tests passed. Frontend build and 47 standard browser tests passed; the opt-in
+live journey passed separately against Cleveland and PostgreSQL. It verifies
+cross-session bid updates without manual refresh, preserved bid input, offline
+reconnection, settlement and public audit. Socket tests cover room isolation,
+room switching, invalid subscriptions and reconnect. Documentation links passed.
+Vite reports transient EPIPE/ECONNRESET warnings when test sockets close; the
+final API health check passed. An overlapping browser run lost its shared dev
+server; the standalone rerun passed. This increment is validated locally, not yet deployed.

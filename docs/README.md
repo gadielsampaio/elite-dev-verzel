@@ -23,7 +23,7 @@ uses React Router and Playwright browser tests.
 | Path                                                                                     | Purpose                                                          |
 | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
 | [frontend/](../frontend/) | HAUS UI with backend auth, public lot/history reads and wallet/deposits; isolated `/preview` prototype |
-| [backend/src/events/](../backend/src/events/) | Process-local post-commit auction notifications (Observer); WebSocket transport pending |
+| [backend/src/events/](../backend/src/events/) | Process-local post-commit auction notifications (Observer) |
 | [backend/src/bids/](../backend/src/bids/) | Bid placement, reservations, public history and own position |
 | [backend/src/wallets/](../backend/src/wallets/) | Own balances and idempotent simulated deposits |
 | [backend/src/main.ts](../backend/src/main.ts)                                            | Bootstrap; port 3000 by default; no global route prefix          |
@@ -44,3 +44,5 @@ uses React Router and Playwright browser tests.
 The generated Prisma client lives in `backend/src/generated/prisma/` and is ignored
 by Git. The [backend README](../backend/README.md) links back to these guides.
 Observe is not initialized; its installed dependency does not enable instrumentation.
+
+Realtime transport: [backend/src/realtime/](../backend/src/realtime/) and [protocol](api.md#realtime-auction-rooms).

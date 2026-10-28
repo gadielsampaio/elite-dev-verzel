@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useLotRealtime } from "./useLotRealtime";
+import { useEffect, useRef, useState } from "react";
 import { BidForm } from "./BidForm";
 import type { Lot } from "../../api";
 import { useSession } from "../../session";
@@ -25,13 +26,16 @@ export function PublishedRoom({
     [tab, setTab] = useState("bids"),
     [caption, setCaption] = useState(true),
     [bidNotice, setBidNotice] = useState("");
-  const detail = useApiQuery<Lot>(`/lots/${id}`);
+  const detail = useApiQuery<Lot>(`/lots/${id}`, undefined, true);
   const history = useApiQuery<BidSummary>(
     detail.data ? `/lots/${id}/bids?page=${page}&limit=20` : null,
+    undefined,
+    true,
   );
   const position = useApiQuery<Position>(
     detail.data && session ? `/lots/${id}/bids/me` : null,
     session?.token,
+    true,
   );
   const received = useRef({ data: history.data, at: now });
   if (received.current.data !== history.data)
@@ -47,6 +51,20 @@ export function PublishedRoom({
     history.refresh();
     position.refresh();
   };
+  const liveUpdates = useLotRealtime(id, refresh);
+  useEffect(() => {
+    if (!bids || !lot || !["scheduled", "open"].includes(bids.status)) return;
+    const boundary = bids.status === "scheduled" ? lot.startTime : bids.endTime;
+    const timeout = setTimeout(
+      refresh,
+      Math.min(
+        2147483647,
+        Math.max(100, Date.parse(boundary) - serverNow + 100),
+      ),
+    );
+    return () => clearTimeout(timeout);
+    // Recalculate from a fresh server response, not every countdown tick.
+  }, [bids, lot?.startTime]);
   return (
     <Modal
       id="lot-dialog"
@@ -158,6 +176,11 @@ export function PublishedRoom({
                   ` · POSITION ${position.data.position}`}
               </p>
             )}
+            <p className="hs-p-mini" aria-live="polite">
+              {liveUpdates
+                ? "LIVE UPDATES CONNECTED"
+                : "CONNECTING LIVE UPDATES · AUTOMATIC REFRESH ACTIVE"}
+            </p>
             <div className="hs-p-tabs">
               <button
                 className={tab === "bids" ? "active" : ""}
@@ -231,7 +254,11 @@ export function PublishedRoom({
                   </p>
                 )}
                 <div className="hs-p-line">
-                  <p><a href={`#/audit/${id}`} onClick={close}>VERIFY BID HISTORY</a></p>
+                  <p>
+                    <a href={`#/audit/${id}`} onClick={close}>
+                      VERIFY BID HISTORY
+                    </a>
+                  </p>
                   <p className="hs-p-label">BID HISTORY</p>
                   <div className="hs-p-history">
                     {history.loading ? (

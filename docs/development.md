@@ -339,3 +339,10 @@ migrations through local Compose only migrates the local database.
 is 500, inspect Render logs and migration status. Verify CORS using both a GET and
 an OPTIONS preflight from the configured Vercel origin. A separate 404 requires
 its exact request URL; it is not necessarily caused by CORS.
+
+## Realtime transport
+
+The browser derives its Socket.IO host and handshake path from `VITE_API_BASE_URL`.
+Local `/api` uses Vite's WebSocket-enabled proxy; an absolute backend URL connects
+directly to that host. Production reverse proxies must forward WebSocket upgrades.
+No additional frontend environment variable is required. See the [room protocol](api.md#realtime-auction-rooms).
