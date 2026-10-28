@@ -5,7 +5,7 @@ import { BidsService } from './bids.service.js';
 
 describe('Bid transaction rules', () => {
   const now = new Date('2030-01-01T12:00:00Z'),
-    lotId = 'lot',
+    lotId = '11111111-1111-4111-8111-111111111111',
     bidderId = 'bidder',
     walletId = 'wallet';
   const db = {
@@ -21,11 +21,12 @@ describe('Bid transaction rules', () => {
       update: vi.fn(),
     },
     walletTransaction: { groupBy: vi.fn() },
+    bidAuditEntry: { findFirst: vi.fn(), create: vi.fn() },
   };
   const service = new BidsService(db as unknown as PrismaService);
   const data = { amount: '100.00', idempotencyKey: 'key' };
   const bid = {
-    id: 'new-bid',
+    id: '22222222-2222-4222-8222-222222222222',
     lotId,
     bidderId,
     amount: new Prisma.Decimal(100),
@@ -43,6 +44,7 @@ describe('Bid transaction rules', () => {
     currency: string;
   };
   beforeEach(() => {
+    vi.stubEnv('JWT_SECRET', 'test-only-secret-with-at-least-32-characters');
     vi.useFakeTimers();
     vi.setSystemTime(now);
     vi.resetAllMocks();
@@ -72,14 +74,21 @@ describe('Bid transaction rules', () => {
     ]);
     db.walletHold.aggregate.mockResolvedValue({ _sum: { amount: null } });
   });
-  afterEach(() => vi.useRealTimers());
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllEnvs();
+  });
   it('accepts first bid at the minimum and reserves the amount', async () => {
     expect(await service.place(lotId, bidderId, data)).toMatchObject({
-      id: 'new-bid',
+      id: '22222222-2222-4222-8222-222222222222',
       amount: '100.00',
     });
     expect(db.walletHold.create).toHaveBeenCalledWith({
-      data: { walletId, bidId: 'new-bid', amount: new Prisma.Decimal(100) },
+      data: {
+        walletId,
+        bidId: '22222222-2222-4222-8222-222222222222',
+        amount: new Prisma.Decimal(100),
+      },
     });
     expect(db.lot.update).toHaveBeenCalledWith({
       where: { id: lotId },

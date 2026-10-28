@@ -1,3 +1,4 @@
+import { recordBidAudit } from '../audit/record-bid-audit.js';
 import {
   BadRequestException,
   ConflictException,
@@ -126,6 +127,7 @@ export class BidsService {
             bidderId,
             amount,
             idempotencyKey: data.idempotencyKey,
+            createdAt: now,
           },
         });
         if (previousHold)
@@ -144,6 +146,7 @@ export class BidsService {
           where: { id: lotId },
           data: { status: 'open', endTime },
         });
+        await recordBidAudit(tx, bid, lot.currency, endTime);
         return this.receipt(bid);
       });
     } catch (error) {

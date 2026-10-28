@@ -74,8 +74,7 @@ Transactions store financial entries, holds represent reservations associated
 with bids, and results link the winning bid to the lot and settlement timestamps.
 Audit events can record before/after state and request context. These structures
 exist. Simulated deposits and ledger/active-hold balance calculation are implemented.
-Bid placement reserves/releases holds atomically. Capture, settlement and audit
-recording remain pending; `isWinner` is not set just because a bid leads.
+Bid placement reserves/releases holds atomically. Capture and settlement are implemented; accepted bids now also persist hash-linked snapshots. Public audit verification remains pending; `isWinner` is not set just because a bid leads.
 
 The schema and initial migration do not enforce positive amounts, sufficient
 funds, matching currencies, auction time ordering, role permissions, one
@@ -89,3 +88,13 @@ verification are still missing. `Item.sourceSnapshot` and `sourceFetchedAt`
 are populated atomically with a lot during publication, preserving normalized
 catalog details and the mock/real provider marker. `AuctionResult` requires a
 winner; a no-bid closure must not invent one. See [remaining requirements](progress.md).
+
+
+## Accepted-bid audit snapshots
+
+`BidAuditEntry` maps to `bid_audit_entries`: bidId (UUID primary key), lotId,
+sequence, previousHash/hash, bidderAlias, exact amount/currency, acceptedAt and
+the resulting endTime. The lot/sequence pair is unique. Bid IDs have no foreign
+key to Bid, so deleting a bid preserves evidence; lot deletion cascades snapshots.
+The database enforces positive sequence/amount and valid hash/link shape.
+See [audit rollout and limitations](audit.md). Existing bids are not backfilled.

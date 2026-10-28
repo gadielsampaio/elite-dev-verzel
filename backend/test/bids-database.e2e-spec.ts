@@ -1,3 +1,5 @@
+import { hashBidAudit } from '../src/audit/bid-hash.js';
+import { Prisma } from '../src/generated/prisma/client.js';
 import { randomUUID } from 'node:crypto';
 import { BidReadsService } from '../src/bids/bid-reads.service.js';
 import { BidsService } from '../src/bids/bids.service.js';
@@ -81,6 +83,119 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       } finally {
         await db.$disconnect();
       }
+    });
+    it('persists a canonical chain and keeps bid deletion from erasing its snapshot', async () => {
+      const a = await bidder(),
+        b = await bidder(),
+        l = await lot(60000);
+      const first = await place(l.id, a, '100.00');
+      await place(l.id, b, '105.00');
+      const entries = await db.bidAuditEntry.findMany({
+        where: { lotId: l.id },
+        orderBy: { sequence: 'asc' },
+      });
+      expect(entries.map((e) => e.sequence)).toEqual([1, 2]);
+      expect(entries[0].previousHash).toBeNull();
+      expect(entries[1].previousHash).toBe(entries[0].hash);
+      for (const entry of entries) {
+        expect(entry.hash).toBe(
+          hashBidAudit({
+            ...entry,
+            amount: entry.amount.toFixed(2),
+            acceptedAt: entry.acceptedAt.toISOString(),
+            endTime: entry.endTime.toISOString(),
+          }),
+        );
+        expect(entry.acceptedAt.toISOString()).toBe(
+          (
+            await db.bid.findUniqueOrThrow({ where: { id: entry.bidId } })
+          ).createdAt.toISOString(),
+        );
+      }
+      expect(entries[0].endTime.getTime()).toBe(l.endTime.getTime() + 120000);
+      await db.walletHold.deleteMany({ where: { bidId: first.id } });
+      await db.bid.delete({ where: { id: first.id } });
+      expect(await db.bidAuditEntry.count({ where: { bidId: first.id } })).toBe(
+        1,
+      );
+    });
+    it('rolls back bids, released holds and deadline changes when audit insertion fails', async () => {
+      const a = await bidder(),
+        b = await bidder(),
+        l = await lot(60000);
+      await place(l.id, a, '100.00');
+      const before = await db.lot.findUniqueOrThrow({ where: { id: l.id } });
+      const broken = new BidsService({
+        $transaction: (
+          fn: (tx: Prisma.TransactionClient) => Promise<unknown>,
+        ) =>
+          db.$transaction((tx) =>
+            fn(
+              new Proxy(tx, {
+                get(target, key) {
+                  if (key === 'bidAuditEntry')
+                    return {
+                      ...target.bidAuditEntry,
+                      create: () =>
+                        Promise.reject(new Error('Audit storage failed')),
+                    };
+                  return Reflect.get(target, key);
+                },
+              }),
+            ),
+          ),
+      } as unknown as PrismaService);
+      await expect(
+        broken.place(l.id, b, {
+          amount: '105.00',
+          idempotencyKey: randomUUID(),
+        }),
+      ).rejects.toThrow('Audit storage failed');
+      expect(await db.bid.count({ where: { lotId: l.id } })).toBe(1);
+      expect(await db.bidAuditEntry.count({ where: { lotId: l.id } })).toBe(1);
+      expect(await wallets.balance(a)).toMatchObject({ committed: '100.00' });
+      expect(await wallets.balance(b)).toMatchObject({ committed: '0.00' });
+      expect(
+        (await db.lot.findUniqueOrThrow({ where: { id: l.id } })).endTime,
+      ).toEqual(before.endTime);
+    });
+    it('does not fabricate audit snapshots for pre-existing bids', async () => {
+      const a = await bidder(),
+        b = await bidder(),
+        l = await lot();
+      const legacy = await db.bid.create({
+        data: {
+          lotId: l.id,
+          bidderId: a,
+          amount: '90.00',
+          isActive: false,
+          idempotencyKey: randomUUID(),
+        },
+      });
+      const current = await place(l.id, b, '100.00');
+      expect(
+        await db.bidAuditEntry.findUnique({ where: { bidId: legacy.id } }),
+      ).toBeNull();
+      expect(
+        await db.bidAuditEntry.findUnique({ where: { bidId: current.id } }),
+      ).toMatchObject({ sequence: 1, previousHash: null });
+    });
+    it('fails closed when the stored tail hash is inconsistent', async () => {
+      const a = await bidder(),
+        b = await bidder(),
+        l = await lot();
+      const first = await place(l.id, a, '100.00');
+      await db.bidAuditEntry.update({
+        where: { bidId: first.id },
+        data: { hash: '0'.repeat(64) },
+      });
+      await expect(place(l.id, b, '105.00')).rejects.toMatchObject({
+        status: 409,
+      });
+      expect(await db.bid.count({ where: { lotId: l.id } })).toBe(1);
+      expect(await db.bidAuditEntry.count({ where: { lotId: l.id } })).toBe(1);
+      expect(await wallets.balance(a)).toMatchObject({ committed: '100.00' });
+      expect(await wallets.balance(b)).toMatchObject({ committed: '0.00' });
     });
     it('atomically transfers reservations without deactivating eligible bids', async () => {
       const a = await bidder(),
@@ -229,6 +344,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         409,
       );
       expect(await db.bid.count({ where: { lotId: l.id } })).toBe(1);
+      expect(await db.bidAuditEntry.count({ where: { lotId: l.id } })).toBe(1);
       expect(
         await db.walletHold.count({
           where: { bid: { lotId: l.id }, status: 'active' },
@@ -271,6 +387,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       ).toBe(l.endTime.getTime() + 120000);
       await db.lot.update({ where: { id: l.id }, data: { status: 'closed' } });
       expect(await place(l.id, a, '100.00', key)).toEqual(result[0]);
+      expect(await db.bidAuditEntry.count({ where: { lotId: l.id } })).toBe(1);
     });
     it('rolls back cross-lot key collisions without leaking a reservation', async () => {
       const a = await bidder(),

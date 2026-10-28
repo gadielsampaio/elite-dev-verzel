@@ -94,6 +94,7 @@ model Lot {
   items              Item[]
   bids               Bid[]
   result             AuctionResult?
+  bidAuditEntries    BidAuditEntry[]
   auditEvents        AuditEvent[]
 
   @@unique([id, ownerId])
@@ -226,4 +227,22 @@ model AuditEvent {
   @@index([entityType, entityId, createdAt])
   @@index([actorId])
   @@map("audit_events")
+}
+
+// Accepted-bid snapshots; bidId deliberately has no cascading FK to Bid.
+model BidAuditEntry {
+  bidId        String   @id @map("bid_id") @db.Uuid
+  lotId        String   @map("lot_id") @db.Uuid
+  sequence     Int
+  previousHash String?  @map("previous_hash") @db.Char(64)
+  hash         String   @db.Char(64)
+  bidderAlias  String   @map("bidder_alias") @db.VarChar(39)
+  amount       Decimal  @db.Decimal(19, 2)
+  currency     String   @db.Char(3)
+  acceptedAt   DateTime @map("accepted_at") @db.Timestamptz(3)
+  endTime      DateTime @map("end_time") @db.Timestamptz(3)
+  lot          Lot      @relation(fields: [lotId], references: [id], onDelete: Cascade, onUpdate: Restrict)
+
+  @@unique([lotId, sequence])
+  @@map("bid_audit_entries")
 }

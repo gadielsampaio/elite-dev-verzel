@@ -20,7 +20,7 @@ ignored by Git; this summary is available in a fresh checkout.
 | Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Bid submission refreshes history/position; manual refresh resynchronizes other changes. Realtime updates remain pending. |
 | Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
-| Public audit and privacy | Canonical SHA-256 bid format and unit tests implemented, not yet wired to storage or bid placement. Still pending: detect edits/deletions/insertions, including direct database changes; explain verification; no login or personal-data exposure in audit/receipts. `AuditEvent` storage is not tamper detection. |
+| Public audit and privacy | Canonical SHA-256 snapshots are now persisted atomically with new accepted bids; legacy bids remain unaudited. Still pending: detect edits/deletions/insertions, including direct database changes; explain verification; no login or personal-data exposure in audit/receipts. `AuditEvent` storage is not tamper detection. |
 | Demo seeds | Missing: one auctioneer, two clients and at least one published lot open for bidding. No seed command exists. |
 | Delivery | Local setup documented. Public deployment URL and repository visibility not verified; Initial React app available locally; complete auction demonstration and deployment pending. |
 
@@ -38,7 +38,7 @@ server receipts. Integrity is not claimed without audit verification.
 
 ## Next small steps
 
-1. Phase 09: atomically persist the tested bid hash format; add a trusted external checkpoint and public verification. See [audit progress](audit.md).
+1. Phase 09: add a trusted external checkpoint and public verification for the recorded bid chain. See [audit progress](audit.md).
 2. Phase 10: Observer/WebSocket updates and HTTP resynchronization.
 3. Finish seeds, provider-outage image handling and public deployment; do not postpone deployment behind visual refinements.
 
