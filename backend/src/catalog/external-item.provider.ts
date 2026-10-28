@@ -3,6 +3,7 @@ export interface CatalogItem {
   name: string;
   articImageId: string | null;
   imageUrl: string | null;
+  printImageUrl: string | null;
   artistDisplay: string | null;
   creditLine: string | null;
   isPublicDomain: boolean | null;

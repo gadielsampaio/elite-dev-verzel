@@ -111,6 +111,7 @@ model Item {
   description     String?
   estimatedValue  Decimal   @map("estimated_value") @db.Decimal(19, 2)
   imageUrl        String?   @map("image_url")
+  printImageUrl   String?   @map("print_image_url")
   position        Int       @default(0)
   articArtworkId  Int?      @map("artic_artwork_id")
   articImageId    String?   @map("artic_image_id")

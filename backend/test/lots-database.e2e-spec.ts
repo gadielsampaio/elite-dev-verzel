@@ -52,6 +52,21 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
               };
               const scheduled = await create('scheduled', 3600000, 7200000);
               const live = await create('scheduled', -3600000, 3600000);
+              const savedImage = await tx.item.create({
+                data: {
+                  lotId: live.id,
+                  name: 'Image fixture',
+                  estimatedValue: '500',
+                  imageUrl: 'https://example.org/web.jpg',
+                  printImageUrl: 'https://example.org/print.jpg',
+                },
+              });
+              expect(
+                await tx.item.findUnique({ where: { id: savedImage.id } }),
+              ).toMatchObject({
+                imageUrl: 'https://example.org/web.jpg',
+                printImageUrl: 'https://example.org/print.jpg',
+              });
               const expired = await create('open', -7200000, -3600000);
               const skippedWindow = await create(
                 'scheduled',

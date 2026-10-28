@@ -114,3 +114,11 @@ See [permissions and administrator limitations](audit.md#trust-boundary).
 token hash, expiry, consumption/revocation timestamps and creation time. User
 deletion cascades sessions. Rotation consumes one row and inserts its successor
 under a family lock; replay revokes the entire family. Raw tokens are never stored.
+
+## Auction room image quality
+
+New lot items save `imageUrl` (web preview) and `printImageUrl` (the highest-resolution
+browser-ready JPEG), also retained in the source snapshot. The room shows the web
+image first and switches only after the print image has decoded. Failed or missing
+print images keep the web preview. Archival TIFF URLs are not retained.
+Existing items remain compatible; missing print URLs are not inferred from filenames.

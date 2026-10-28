@@ -18,6 +18,7 @@ test("real local HttpOnly cookie rotates on reload and is revoked on logout", as
   const env = parseEnv(
     readFileSync(new URL("../../backend/.env", import.meta.url), "utf8"),
   );
+  if (!env.DATABASE_URL) throw new Error("Local DATABASE_URL is required");
   const connection = new URL(env.DATABASE_URL);
   if (!["localhost", "127.0.0.1"].includes(connection.hostname))
     throw new Error("This test requires a local database");

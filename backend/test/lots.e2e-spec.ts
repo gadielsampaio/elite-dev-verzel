@@ -26,7 +26,8 @@ describe('Lot publication (HTTP)', () => {
     articArtworkId: 27992,
     name: 'Example painting',
     articImageId: 'image-id',
-    imageUrl: 'https://www.artic.edu/iiif/2/image-id/full/843,/0/default.jpg',
+    imageUrl: 'https://example.org/art_web.jpg',
+    printImageUrl: 'https://example.org/art_print.jpg',
     artistDisplay: 'Artist',
     creditLine: 'Collection',
     isPublicDomain: true,
@@ -116,6 +117,10 @@ describe('Lot publication (HTTP)', () => {
       articArtworkId: 27992,
     });
     expect(write.items.create.estimatedValue.toFixed(2)).toBe('300.00');
+    expect(write.items.create).toMatchObject({
+      imageUrl: artwork.imageUrl,
+      printImageUrl: artwork.printImageUrl,
+    });
     expect(write.items.create.sourceFetchedAt).toBeInstanceOf(Date);
     expect(catalog.findOne).toHaveBeenCalledWith(27992);
   });

@@ -10,6 +10,8 @@ describe('Cleveland adapter', () => {
     title: 'Twilight in the Wilderness',
     creators: [{ description: 'Frederic Edwin Church (American, 1826–1900)' }],
     images: {
+      print: { url: 'https://example.org/art_print.jpg' },
+      full: { url: 'https://example.org/art_full.tif' },
       web: {
         url: 'https://openaccess-cdn.clevelandart.org/1965.233/1965.233_web.jpg',
       },
@@ -40,6 +42,7 @@ describe('Cleveland adapter', () => {
           articImageId: null,
           name: artwork.title,
           imageUrl: artwork.images.web.url,
+          printImageUrl: artwork.images.print.url,
           isPublicDomain: true,
         },
       ],
@@ -53,7 +56,9 @@ describe('Cleveland adapter', () => {
   });
   it('maps detail and nullable metadata', async () => {
     reply({ data: artwork });
-    expect(await adapter.findOne(141639)).toMatchObject({
+    const detail = await adapter.findOne(141639);
+    expect(detail).not.toHaveProperty('fullImageUrl');
+    expect(detail).toMatchObject({
       dateDisplay: '1860',
       mediumDisplay: 'oil on canvas',
       artworkType: 'Painting',
@@ -61,6 +66,7 @@ describe('Cleveland adapter', () => {
     reply({ data: { id: 141639, title: 'Unknown' } });
     expect(await adapter.findOne(141639)).toMatchObject({
       imageUrl: null,
+      printImageUrl: null,
       artistDisplay: null,
       isPublicDomain: null,
     });

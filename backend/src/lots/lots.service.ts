@@ -91,6 +91,7 @@ export class LotsService {
             name: artwork.name,
             estimatedValue,
             imageUrl: artwork.imageUrl,
+            printImageUrl: artwork.printImageUrl,
             articArtworkId: artwork.articArtworkId,
             articImageId: artwork.articImageId,
             artistDisplay: artwork.artistDisplay,

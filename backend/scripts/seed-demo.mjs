@@ -42,6 +42,7 @@ export async function seedDemo(connectionString, config) {
     articImageId: null,
     name: artwork.title,
     imageUrl: artwork.images.web.url,
+    printImageUrl: artwork.images.print?.url ?? null,
     artistDisplay: artwork.creators[0].description,
     creditLine: artwork.creditline,
     isPublicDomain: true,
@@ -94,8 +95,8 @@ export async function seedDemo(connectionString, config) {
       await client.query(
         `INSERT INTO items
       (lot_id,name,estimated_value,image_url,artic_artwork_id,artist_display,credit_line,
-       is_public_domain,source_snapshot,source_fetched_at,updated_at)
-      VALUES ($1,$2,500,$3,$4,$5,$6,true,$7,now(),now())`,
+       is_public_domain,source_snapshot,source_fetched_at,print_image_url,updated_at)
+      VALUES ($1,$2,500,$3,$4,$5,$6,true,$7,now(),$8,now())`,
         [
           key('lot'),
           snapshot.name,
@@ -104,6 +105,7 @@ export async function seedDemo(connectionString, config) {
           snapshot.artistDisplay,
           snapshot.creditLine,
           JSON.stringify(snapshot),
+          snapshot.printImageUrl,
         ],
       );
     await client.query('COMMIT');

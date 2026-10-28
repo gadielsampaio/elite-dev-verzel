@@ -83,6 +83,7 @@ export type Lot = {
     id: string;
     name: string;
     imageUrl: string | null;
+    printImageUrl?: string | null;
     artistDisplay: string | null;
     sourceSnapshot: {
       provider?: string;

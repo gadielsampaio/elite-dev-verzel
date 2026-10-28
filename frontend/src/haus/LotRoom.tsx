@@ -13,6 +13,7 @@ export function ArtworkScene({
     figure = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [imageFailed, setImageFailed] = useState(false);
+  useEffect(() => setImageFailed(false), [lot.image]);
   const target = useRef({ x: 0, y: 0, z: 1 });
   const schedule = useRef(() => {});
   useEffect(() => {

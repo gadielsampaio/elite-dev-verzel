@@ -58,12 +58,21 @@ export class ClevelandAdapter extends ExternalItemProvider {
     const images = value.images;
     if (images != null && !record(images))
       throw new ServiceUnavailableException('Cleveland Museum API unavailable');
-    const web = record(images) ? images.web : null;
-    if (web != null && !record(web))
-      throw new ServiceUnavailableException('Cleveland Museum API unavailable');
-    const imageUrl = record(web) ? text(web.url) : null;
-    if (imageUrl && !imageUrl.startsWith('https://'))
-      throw new ServiceUnavailableException('Cleveland Museum API unavailable');
+    const image = (variant: string) => {
+      const asset = record(images) ? images[variant] : null;
+      if (asset != null && !record(asset))
+        throw new ServiceUnavailableException(
+          'Cleveland Museum API unavailable',
+        );
+      const url = record(asset) ? text(asset.url) : null;
+      if (url && !url.startsWith('https://'))
+        throw new ServiceUnavailableException(
+          'Cleveland Museum API unavailable',
+        );
+      return url;
+    };
+    const imageUrl = image('web');
+    const printImageUrl = image('print');
     const license = text(value.share_license_status);
     return {
       // Compatibility fields: sourceSnapshot.provider identifies the ID namespace.
@@ -71,6 +80,7 @@ export class ClevelandAdapter extends ExternalItemProvider {
       articImageId: null,
       name: value.title,
       imageUrl,
+      printImageUrl,
       artistDisplay: Array.isArray(creators)
         ? creators
             .map((c) => text(c.description))

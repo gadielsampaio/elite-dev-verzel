@@ -1,3 +1,4 @@
+import { useRoomImage } from "./useRoomImage";
 import type { Result } from "./Receipt";
 import { useLiveRefresh } from "./useLiveRefresh";
 import { useEffect, useRef, useState } from "react";
@@ -58,6 +59,7 @@ export function PublishedRoom({
     position.refresh();
     result.refresh();
   };
+  const roomImage = useRoomImage(item?.imageUrl, item?.printImageUrl);
   const liveUpdates = useLiveRefresh(() => {}, undefined, id);
   useEffect(() => {
     if (!bids || !lot || !["scheduled", "open"].includes(bids.status)) return;
@@ -119,7 +121,7 @@ export function PublishedRoom({
               title: lot.title,
               artist: item?.artistDisplay || "Artist not listed",
               year: item?.sourceSnapshot?.dateDisplay || "—",
-              image: item?.imageUrl || "",
+              image: roomImage,
               provider: item?.sourceSnapshot?.provider,
             }}
           />
