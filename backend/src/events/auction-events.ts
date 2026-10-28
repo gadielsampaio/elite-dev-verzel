@@ -4,7 +4,7 @@ import { EventEmitter } from 'node:events';
 export type AuctionEvent = Readonly<
   { lotId: string; endTime: string } & (
     | { type: 'bid.accepted' | 'lot.extended'; bidId: string }
-    | { type: 'lot.opened' | 'lot.closed' | 'lot.cancelled' | 'lot.settled' }
+    | { type: 'lot.opened' | 'lot.closed' | 'lot.cancelled' | 'lot.settled' | 'audit.confirmed' }
   )
 >;
 type Observer = (event: AuctionEvent) => void | Promise<void>;

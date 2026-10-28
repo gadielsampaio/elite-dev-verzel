@@ -36,7 +36,7 @@ export function verifyAudit(
   if (!checkpoints.length)
     return result(
       'not_verifiable',
-      'No external checkpoint covers this history.',
+      'No audit checkpoint covers this history.',
     );
   try {
     let previousHash: string | null = null;
@@ -55,12 +55,12 @@ export function verifyAudit(
       if (checkpoint.confirmed && !matchesCheckpoint(checkpoint, entry, bid))
         return result(
           'tampered',
-          'Confirmed history differs from the external checkpoint.',
+          'Confirmed history differs from the audit checkpoint.',
         );
       if (entry && bid && !matchesCheckpoint(checkpoint, entry, bid))
         return result(
           'tampered',
-          'A recorded bid differs from its external witness.',
+          'A recorded bid differs from its audit witness.',
         );
     }
     if (checkpoints.some((c) => !c.confirmed))
@@ -84,7 +84,7 @@ export function verifyAudit(
       );
     return result(
       'intact',
-      'The complete recorded bid history matches the external checkpoints.',
+      'The complete recorded bid history matches the audit checkpoints.',
     );
   } catch {
     return result(

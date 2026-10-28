@@ -246,3 +246,18 @@ model BidAuditEntry {
   @@unique([lotId, sequence])
   @@map("bid_audit_entries")
 }
+
+// Trigger-managed, append-only evidence. No cascading relations by design.
+model BidAuditHistory {
+  id            BigInt   @id @default(autoincrement())
+  lotId         String   @map("lot_id") @db.Uuid
+  sourceTable   String   @map("source_table")
+  operation     String
+  transactionId BigInt   @default(dbgenerated("txid_current()")) @map("transaction_id")
+  recordedAt    DateTime @default(dbgenerated("clock_timestamp()")) @map("recorded_at") @db.Timestamptz(6)
+  oldRow        Json?    @map("old_row")
+  newRow        Json?    @map("new_row")
+
+  @@index([lotId, id])
+  @@map("bid_audit_history")
+}

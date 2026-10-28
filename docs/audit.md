@@ -7,11 +7,12 @@ and recomputes SHA-256 hashes in the browser before displaying **INTACT**.
 
 | Status | Meaning |
 | --- | --- |
-| `intact` | Every bid and snapshot matches the complete, confirmed external history. |
-| `tampered` | A confirmed bid was changed/deleted, the chain was rewritten, or an uncheckpointed bid was inserted into fully covered history. |
-| `not_verifiable` | No checkpoint, legacy coverage, inaccessible storage, or an interrupted/unconfirmed write. Never treated as intact. |
+| `intact` | Every bid and snapshot matches the complete, protected audit history. |
+| `tampered` | A confirmed bid was changed/deleted, the chain was rewritten, or an inserted bid lacks a matching acceptance snapshot. |
+| `not_verifiable` | No checkpoint, pre-migration coverage, unavailable configured storage, or an interrupted/unconfirmed write. Never treated as intact. |
 
-Verification is a point-in-time result; refresh after new bids. Zero-bid lots have
+Verification is a point-in-time result; WebSocket bid/confirmation events refresh it.
+Direct SQL changes require a fresh HTTP check (manual refresh or reopening the page). Zero-bid lots have
 no checkpoint and remain not verifiable. Historical data is never backfilled and
 then described as proven intact.
 
@@ -30,45 +31,50 @@ includes the deadline after anti-sniping. Aliases are stored at acceptance, so J
 rotation does not invalidate old snapshots. Names, emails and account IDs are
 excluded from the public response.
 
-## External checkpoints and failure handling
+## Trigger-backed history
 
-1. Under the existing lot lock, record the bid, holds, deadline and `BidAuditEntry`
-   in one PostgreSQL transaction.
-2. Before commit, write and flush an immutable external witness containing that
-   snapshot, its hash, coverage flag and a private bidder-ID binding. A configured
-   storage failure returns HTTP 503 and rolls back the bid/financial writes.
-3. A worker scans up to 50 checkpoint directories every five seconds, confirming
-   only witnesses matching committed bids and snapshots. It retries after restart;
-   it never manufactures trusted evidence from database contents alone.
-4. Verification compares actual bids, chain snapshots and external witnesses.
-   The browser independently recomputes the returned chain and compares its head
-   with the external checkpoint supplied by the API.
+The `20261028220000_bid_audit_history` migration adds `bid_audit_history`.
+PostgreSQL triggers record every INSERT, UPDATE and DELETE on `bids` and
+`bid_audit_entries` and settlement receipts, including direct SQL, with original/new JSON, transaction ID
+and timestamp. No foreign keys cascade-delete this evidence. Direct history-table
+inserts, updates, deletes and truncation are rejected; truncation of the source
+history tables is also rejected.
 
-Files are atomically published without overwriting existing evidence. A crash or
-transaction rollback can leave an unconfirmed witness. Such a lot stays **not
-verifiable** unless the exact witnessed bid commits and can be confirmed. There
-is intentionally no automatic orphan deletion: a missing bid could also indicate
-DB tampering. Preserve the files and investigate; do not erase evidence to obtain
-an intact badge. The same rule covers a deleted tail before confirmation.
+Accepted bids and their hash snapshots commit with the trigger evidence in one
+transaction. Verification checks their original INSERT records, transaction pairing,
+current rows and hash chain. Changes/deletions remain detectable even if reverted;
+an inserted bid without a matching acceptance snapshot is tampered. Failed
+transactions roll back evidence along with balances and holds. The winner flag
+may change from false to true only alongside its recorded settlement receipt in
+the same transaction; other winner-flag edits are reported as tampered. Pre-migration rows
+are not backfilled or retroactively certified. Empty history is not verifiable.
 
-## Storage and trust boundary
+Without `AUDIT_CHECKPOINT_DIR`, this database history supplies the checkpoint
+returned to the browser. No external storage subscription is required.
 
-Compose mounts `.local/audit-checkpoints/` into **only the API**, at
-`/var/lib/auction-audit`. It is outside PostgreSQL, persistent across container
-restarts, and Git-ignored. Host execution must set `AUDIT_CHECKPOINT_DIR` to the
-absolute path of that same directory. All API instances must share this store.
-Without configuration, bids still work but have no external proof.
+## Optional external checkpoints
 
-Directories/files are created with modes 0700/0600. Keep checkpoints private:
-the identity binding is for server verification, not public download. Back up
-and retain them independently of PostgreSQL. Do not remove them when stopping
-containers, restoring the database or switching between host and Docker.
+When `AUDIT_CHECKPOINT_DIR` is configured, the API additionally writes a private,
+non-overwriting filesystem witness before commit. Storage failure rolls back the
+bid with HTTP 503. A worker confirms committed witnesses and retries after restart.
+Pending/orphan witnesses remain not verifiable; they are never silently deleted.
+Compose retains its separate `.local/audit-checkpoints/` mount for this option.
+Keep that directory private, backed up and shared by all API instances.
 
-This protects against **database-only** edits, including rewritten chains and
-whole-lot deletion after confirmation. It trusts the API and protected filesystem;
-it is not a blockchain, WORM storage or a third-party timestamp service. An attacker
-controlling the API host/checkpoint files is outside this guarantee. Production
-must preserve that separation and use durable, access-controlled storage.
+## Trust boundary
+
+The protected table, triggers, accepted-snapshot writer and API are trusted. Grant
+ordinary SQL users only the source-table privileges they need, not access to write
+accepted snapshots or evidence, create triggers, or change schema/roles. Runtime
+accounts should not own these objects or have superuser/DDL privileges. The current
+Render owner credential is not an independent security boundary against its holder.
+
+This detects direct DML changes to history under those permissions. It cannot
+prove integrity against a database owner/superuser who disables protections,
+restores an older whole database, or impersonates the complete acceptance writer.
+The supplementary table is not an independent external witness or WORM archive.
+Do not advertise protection against arbitrary administrator compromise. Private
+bidder IDs in stored snapshots never appear in the public response.
 
 ## Validation
 
@@ -78,3 +84,15 @@ confirmation, orphan witnesses, legacy coverage, idempotent replay and public HT
 access without personal data. Browser tests cover local hash recomputation, forged
 hashes, pending/tampered states and error handling. The opt-in live journey also
 opens the public audit after real bidding and settlement.
+
+Trigger-history validation: 127 unit tests, 260 backend e2e tests and five audit
+browser tests passed; two external-only cases are skipped in database-only mode.
+Run database suites serially to avoid shared-fixture pagination interference:
+
+```sh
+# From backend/; uses the local database in backend/.env.
+NODE_ENV=test RUN_DATABASE_TESTS=1 node --env-file=.env node_modules/vitest/vitest.mjs run --config vitest.config.e2e.ts --no-file-parallelism
+```
+
+Both new migrations were applied locally. Production deployment and the full
+production bidding/settlement journey remain pending.
