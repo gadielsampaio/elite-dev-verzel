@@ -70,3 +70,10 @@ See [audit coverage and limits](audit.md).
 Rooms now distinguish pending settlement, confirmed receipts and no-winner closure.
 Lifecycle/settlement signals refresh room and receipt HTTP state; cancelled or missing
 lots clear retained room data.
+
+Auction rooms progressively load saved image variants; see [image quality](database.md#auction-room-image-quality).
+
+In the auction room, scroll or use +/− to zoom (100–300%). Once zoomed, drag
+with a mouse or touch to pan. Focus the artwork viewer for arrow-key panning;
+Home or Reset view recentres it at 100%. Panning is bounded and does not toggle
+the artwork caption. The 3D hover effect remains available at 100%.

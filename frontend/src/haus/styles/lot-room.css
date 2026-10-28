@@ -947,3 +947,8 @@
         bottom: auto;
       }
     }
+
+/* Zoomed artwork navigation leaves the bidding panel and controls independent. */
+.hs-immersive-scene.is-zoomed { cursor: grab; touch-action: none; }
+.hs-immersive-scene[data-dragging="true"] { cursor: grabbing; user-select: none; }
+.hs-immersive-scene:focus-visible { outline: 1px solid var(--hs-ink); outline-offset: -3px; }
