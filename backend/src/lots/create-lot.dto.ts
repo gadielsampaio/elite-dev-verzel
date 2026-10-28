@@ -1,6 +1,9 @@
 import { Transform } from 'class-transformer';
 import {
   IsInt,
+  IsIn,
+  IsOptional,
+  ValidateIf,
   IsISO8601,
   IsString,
   Length,
@@ -37,9 +40,17 @@ export class CreateLotDto {
   @Matches(money)
   estimatedValue!: string;
 
+  @IsOptional()
+  @IsIn(['now', 'scheduled'])
+  startMode?: 'now' | 'scheduled';
+
+  @ValidateIf(
+    (data: CreateLotDto) =>
+      data.startMode !== 'now' || data.startTime !== undefined,
+  )
   @IsISO8601({ strict: true, strictSeparator: true })
   @Matches(timezone)
-  startTime!: string;
+  startTime?: string;
 
   @IsISO8601({ strict: true, strictSeparator: true })
   @Matches(timezone)

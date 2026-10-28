@@ -20,9 +20,13 @@ export class LotsService {
   ) {}
 
   async create(ownerId: string, data: CreateLotDto) {
-    const startTime = new Date(data.startTime),
+    let startTime =
+        data.startMode === 'now' ? new Date() : new Date(data.startTime!),
       endTime = new Date(data.endTime);
-    if (startTime.getTime() <= Date.now() || endTime <= startTime) {
+    if (
+      (data.startMode !== 'now' && startTime.getTime() <= Date.now()) ||
+      endTime <= startTime
+    ) {
       throw new BadRequestException(
         'Start must be in the future and end must be after start',
       );
@@ -43,7 +47,10 @@ export class LotsService {
     if (!artwork.imageUrl?.trim())
       throw new BadRequestException('Artwork must have an image');
     // Reject a schedule that expired while waiting for the provider.
-    if (startTime.getTime() <= Date.now())
+    if (data.startMode === 'now') startTime = new Date();
+    if (endTime <= startTime)
+      throw new BadRequestException('End must be after start');
+    if (data.startMode !== 'now' && startTime.getTime() <= Date.now())
       throw new BadRequestException('Start must be in the future');
     return this.prisma.lot.create({
       data: {
@@ -54,7 +61,7 @@ export class LotsService {
         startingBid,
         bidIncrement,
         currency: 'USD',
-        status: 'scheduled',
+        status: data.startMode === 'now' ? 'open' : 'scheduled',
         items: {
           create: {
             name: artwork.name,

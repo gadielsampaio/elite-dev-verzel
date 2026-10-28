@@ -144,7 +144,10 @@ clients cannot supply `ownerId`, status, currency or snapshot data.
 }
 ```
 
-Replace dates with future timestamps including a timezone. End must follow start.
+For scheduled publication, replace dates with future timestamps including a timezone.
+For immediate publication, send `"startMode": "now"` and omit `startTime`; the server
+sets the start after catalog validation and publishes the lot as open. End must
+follow the actual start. Existing requests without `startMode` remain scheduled.
 Prices are positive decimal **strings**, at most 17 integer digits and two decimal
 places. `estimatedValue` is supplied by the seller, not a museum valuation.
 This increment supports one artwork per lot and USD only. Title is trimmed,

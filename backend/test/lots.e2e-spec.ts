@@ -179,6 +179,24 @@ describe('Lot publication (HTTP)', () => {
     expect(prisma.lot.create).not.toHaveBeenCalled();
     expect(catalog.findOne).not.toHaveBeenCalled();
   });
+  it('publishes immediately using server time after catalog lookup', async () => {
+    const { startTime: _, ...immediate } = data;
+    const before = Date.now();
+    await publish({ ...immediate, startMode: 'now' }).expect(201);
+    const saved = prisma.lot.create.mock.calls[0][0].data;
+    expect(saved.status).toBe('open');
+    expect(saved.startTime.getTime()).toBeGreaterThanOrEqual(before);
+    expect(saved.startTime.getTime()).toBeLessThanOrEqual(Date.now());
+  });
+  it('rejects invalid immediate publication end times', async () => {
+    const { startTime: _, ...immediate } = data;
+    await publish({
+      ...immediate,
+      startMode: 'now',
+      endTime: new Date(Date.now() - 1000).toISOString(),
+    }).expect(400);
+    expect(prisma.lot.create).not.toHaveBeenCalled();
+  });
   it('rejects past starts and reversed intervals', async () => {
     await publish({
       ...data,
