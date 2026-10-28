@@ -115,7 +115,7 @@ not create migrations or reset data. Client generation only writes generated cod
 The checked-in migrations are
 [initial schema](../backend/prisma/migrations/20261025183545_init/migration.sql) and
 [password hash](../backend/prisma/migrations/20261026180000_add_user_password_hash/migration.sql).
-No seed script exists yet; migrations alone do not create the required demo users/lots.
+Migrations alone do not create demo data. Use the explicit [remote setup script](#remote-migrations-and-demo-seeds) when needed.
 For inspection without applying migrations:
 
 ```sh
@@ -346,3 +346,55 @@ The browser derives its Socket.IO host and handshake path from `VITE_API_BASE_UR
 Local `/api` uses Vite's WebSocket-enabled proxy; an absolute backend URL connects
 directly to that host. Production reverse proxies must forward WebSocket upgrades.
 No additional frontend environment variable is required. See the [room protocol](api.md#realtime-auction-rooms).
+
+## Remote migrations and demo seeds
+
+Requires Node.js 24 and installed backend dependencies (`npm ci --prefix backend`).
+In the root `.env` (see [.env.example](../.env.example)), configure:
+
+- `REMOTE_DATABASE_URL`: Render PostgreSQL **external** connection URL when running from your computer. Retain the provider's SSL parameters.
+- `SEED_PASSWORD`: demo login password, at least 12 characters and at most 72 UTF-8 bytes. Never commit it.
+- `SEED_NAMESPACE`: defaults to `auction-demo-v1`; keep it stable for repeatable seeds.
+
+From the repository root:
+
+```sh
+# Validate settings without connecting or writing.
+npm run db:remote --prefix backend -- --check
+# Apply committed migrations, then seed demo data.
+npm run db:remote --prefix backend
+# Apply migrations only.
+npm run db:remote --prefix backend -- --migrate-only
+```
+
+For a separate ignored file, append `--env-file .env.remote` (paths are relative
+to the repository root). Exported environment variables take precedence over the
+file. `REMOTE_DATABASE_URL` is required explicitly; the script never substitutes
+the local `backend/.env` database. In a Render shell, set it to the appropriate
+internal URL instead. No credentials are printed.
+
+Seeds create `auctioneer@auction-demo-v1.example.invalid`,
+`bidder-a@auction-demo-v1.example.invalid` and `bidder-b@auction-demo-v1.example.invalid`
+using `SEED_PASSWORD`. The namespace replaces `auction-demo-v1` in these addresses.
+Each account has an empty USD wallet. Bidders can use the existing simulated deposit UI.
+One lot opens immediately for seven days, with starting bid $100 and increment $5.
+Its artwork snapshot comes from the checked-in Cleveland fixture (141639, CC0 with
+an image); seeding needs no museum request. Images still use Cleveland's CDN.
+No bids, holds, financial credits or audit evidence are fabricated.
+
+Reruns preserve passwords, balances, lot dates and status; they do not reopen an
+expired/cancelled lot. Create another lot through Seller Studio when needed.
+A different namespace creates a separate demo dataset. Seeds are transactional;
+if they fail, their writes roll back, but successfully applied migrations remain.
+The script does not reset databases and is not part of automatic deployment startup.
+
+Validation (local isolated schema; removed after the test):
+
+```sh
+RUN_DATABASE_TESTS=1 node --test backend/scripts/db-remote.test.mjs
+```
+
+Without `RUN_DATABASE_TESTS=1`, only configuration checks run. Database tests use
+`backend/.env` and require permission to create an isolated schema. The tests verify
+migration application, seed creation, and preservation on reruns. Remote execution
+has not been performed as part of adding this script.
