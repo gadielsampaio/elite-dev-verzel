@@ -1,6 +1,8 @@
 import type { CatalogArtwork } from "./types";
-export const catalogBase =
-  "https://openaccess-api.clevelandart.org/api/artworks";
+export const catalogBase = (
+  import.meta.env.VITE_CATALOG_API_URL ||
+  "https://openaccess-api.clevelandart.org/api/artworks"
+).replace(/\/+$/, "");
 export function normalizeArtwork(value: unknown): CatalogArtwork | null {
   if (!value || typeof value !== "object") return null;
   const item = value as Record<string, unknown>;
