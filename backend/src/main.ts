@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import { configureCors } from './cors.config.js';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
 import { ValidationPipe } from '@nestjs/common';
@@ -6,6 +7,7 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   app.enableShutdownHooks();
+  configureCors(app);
 
   app.useGlobalPipes(
     new ValidationPipe({

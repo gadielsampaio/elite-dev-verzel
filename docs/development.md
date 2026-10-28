@@ -244,7 +244,7 @@ Frontend settings are in `frontend/.env`; supported keys are documented in
 `frontend/.env.example`. Only `VITE_*` values are public; never add backend secrets.
 Restart Vite after edits, or rebuild for production. Vite proxies `/api` to
 `http://127.0.0.1:3000` by default; Docker sets
-`API_PROXY_TARGET=http://api:3000`. No CORS change or browser secret is needed.
+`API_PROXY_TARGET=http://api:3000`. This same-origin proxy needs no CORS configuration.
 The session token stays in memory (refresh logs out). A pending deposit's amount/
 retry UUID is kept in session storage per user until confirmed, preventing a
 network retry from generating a new credit. This is not payment processing.
@@ -312,3 +312,30 @@ deposits simulated funds and verifies bidding/hold release in separate sessions.
 It advances only its own lot deadline, waits for the background worker, and checks
 seller credits, wins and a public receipt.
 Cleanup removes only that run's records. Other browser tests mock API responses.
+
+## Render API + Vercel frontend
+
+Set these separately in each platform's environment settings:
+
+| Platform | Variable | Value |
+| --- | --- | --- |
+| Render | `CORS_ORIGINS` | `https://elite-dev-verzel-delta.vercel.app` |
+| Render | `DATABASE_URL` | The Render PostgreSQL connection URL (secret) |
+| Render | `JWT_SECRET` | Your existing signing secret |
+| Vercel | `VITE_API_BASE_URL` | `https://elite-dev-verzel-2c5n.onrender.com` |
+
+Allowed origins are comma-separated, exact HTTP(S) origins; no wildcard or path.
+Missing `CORS_ORIGINS` leaves cross-origin browser access disabled. Bearer tokens
+use `Authorization`; cross-origin cookies are not enabled. Redeploy after changes;
+Vite embeds public variables at build time. Local `.env` files are not uploaded.
+
+For the existing Render Docker service (root directory `backend/`), set **Docker
+Command** to `npm run start:render`. It applies committed migrations to Render's
+`DATABASE_URL`, generates Prisma Client, builds and starts Nest without watch mode.
+Migration failure prevents startup; this never resets the database. Applying
+migrations through local Compose only migrates the local database.
+
+`/health` checks connectivity, not table existence. If `/health` is 200 but `/lots`
+is 500, inspect Render logs and migration status. Verify CORS using both a GET and
+an OPTIONS preflight from the configured Vercel origin. A separate 404 requires
+its exact request URL; it is not necessarily caused by CORS.
