@@ -334,7 +334,7 @@
                 "{{userId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         }
       ]
@@ -433,7 +433,7 @@
                 "wallets"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -456,7 +456,7 @@
                 "{{walletId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -482,7 +482,7 @@
                 "wallets"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"currency\": \"USD\"\n}",
@@ -518,7 +518,7 @@
                 "{{walletId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"currency\": \"USD\"\n}",
@@ -550,14 +550,14 @@
                 "{{walletId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         }
       ]
     },
     {
       "name": "Wallet Transactions",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed append-only ledger: no update or delete requests. Types: deposit, withdrawal, auction_purchase, auction_sale, refund. auctionResultId and transferId are optional UUIDs.",
+      "description": "PLANNED — proposed contract, not implemented. Proposed append-only ledger: no update or delete requests. Types: deposit, withdrawal, auction_purchase, auction_sale, refund. auctionResultId and transferId are optional UUIDs.",
       "item": [
         {
           "name": "[PLANNED] List wallet transactions",
@@ -578,7 +578,7 @@
                 "wallet-transactions"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -601,7 +601,7 @@
                 "{{walletTransactionId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -627,7 +627,7 @@
                 "wallet-transactions"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"type\": \"deposit\",\n  \"amount\": \"500.00\",\n  \"idempotencyKey\": \"{{idempotencyKey}}\",\n  \"externalReference\": \"local-deposit-001\",\n  \"description\": \"Opening auction funds\"\n}",
@@ -643,7 +643,7 @@
     },
     {
       "name": "Wallet Holds",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Proposed lifecycle updates only; no delete. Statuses: active, released, captured. The bid must belong to the wallet owner. Capture would use capturedAt.",
+      "description": "PLANNED — proposed contract, not implemented. Proposed lifecycle updates only; no delete. Statuses: active, released, captured. The bid must belong to the wallet owner. Capture would use capturedAt.",
       "item": [
         {
           "name": "[PLANNED] List wallet holds",
@@ -664,7 +664,7 @@
                 "wallet-holds"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -687,7 +687,7 @@
                 "{{walletHoldId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -713,7 +713,7 @@
                 "wallet-holds"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"walletId\": \"{{walletId}}\",\n  \"bidId\": \"{{bidId}}\",\n  \"amount\": \"125.00\",\n  \"status\": \"active\"\n}",
@@ -749,7 +749,7 @@
                 "{{walletHoldId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"status\": \"released\",\n  \"releasedAt\": \"2026-11-02T16:30:00.000Z\"\n}",
@@ -895,7 +895,7 @@
                 "{{lotId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"Vintage landscape print \\u2014 framed\",\n  \"description\": \"Archival frame included.\"\n}",
@@ -927,7 +927,7 @@
                 "{{lotId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -967,7 +967,7 @@
     },
     {
       "name": "Items",
-      "description": "PLANNED \u2014 proposed contract, not implemented. Optional stored source metadata fields include articArtworkId (integer), articImageId, artistDisplay, creditLine, isPublicDomain, sourceSnapshot (JSON), and sourceFetchedAt (ISO timestamp). Example image URL is a placeholder.",
+      "description": "PLANNED — proposed contract, not implemented. Optional stored source metadata fields include articArtworkId (integer), articImageId, artistDisplay, creditLine, isPublicDomain, sourceSnapshot (JSON), and sourceFetchedAt (ISO timestamp). Example image URL is a placeholder.",
       "item": [
         {
           "name": "[PLANNED] List items",
@@ -988,7 +988,7 @@
                 "items"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -1011,7 +1011,7 @@
                 "{{itemId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -1037,7 +1037,7 @@
                 "items"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"lotId\": \"{{lotId}}\",\n  \"name\": \"Landscape print, numbered edition\",\n  \"description\": \"Paper print with original frame.\",\n  \"estimatedValue\": \"250.00\",\n  \"imageUrl\": \"https://example.com/images/landscape-print.jpg\",\n  \"position\": 0\n}",
@@ -1073,7 +1073,7 @@
                 "{{itemId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"description\": \"Numbered edition with original frame and mounting.\",\n  \"estimatedValue\": \"275.00\"\n}",
@@ -1105,7 +1105,7 @@
                 "{{itemId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         }
       ]
@@ -1145,7 +1145,7 @@
                 "{{bidId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -1260,7 +1260,7 @@
                 "auction-results"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -1283,7 +1283,7 @@
                 "{{auctionResultId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -1408,7 +1408,7 @@
                 "audit-logs"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         },
         {
@@ -1431,7 +1431,7 @@
                 "{{auditLogId}}"
               ]
             },
-            "description": "PLANNED \u2014 no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
+            "description": "PLANNED — no controller exists. Proposed REST path and request DTO; Prisma defines storage, not an HTTP contract. Expect 404 until implemented. Example IDs must be replaced with related records; create responses should supply generated IDs."
           }
         }
       ]
@@ -1482,6 +1482,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "X-Session-Request",
+                "value": "1"
               }
             ],
             "url": "{{baseUrl}}/auth/login",
@@ -1508,6 +1512,79 @@
               }
             }
           ]
+        },
+        {
+          "name": "[IMPLEMENTED] Refresh session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Session-Request",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
+            "description": "Uses the HttpOnly refresh cookie from login. Keep the Postman cookie jar enabled; refresh rotates it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) pm.environment.set(\"accessToken\", pm.response.json().accessToken);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[IMPLEMENTED] Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Session-Request",
+                "value": "1"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
+            "description": "Uses the HttpOnly refresh cookie from login. Keep the Postman cookie jar enabled; refresh rotates it."
+          }
         }
       ]
     },

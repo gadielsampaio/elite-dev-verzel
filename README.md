@@ -40,14 +40,14 @@ database access, host execution, tests and troubleshooting.
 - Catalog uses Cleveland (`CATALOG_PROVIDER=cleveland`), with verified live search/detail.
   Offline Cleveland fixtures remain available through explicit `mock` mode.
   Mock external health reports `not_checked`, not real provider availability.
-- Public audit uses protected external checkpoints; legacy/unconfirmed history stays not verifiable.
-  Post-commit WebSocket bid, lifecycle and settlement updates are implemented; production verification and demo seeding remain pending.
-  Public frontend/API access is verified; durable audit storage on Render and the full production journey remain pending.
-  Other bidders’ updates currently require Refresh lot. Museum image hosting remains an external dependency.
+- Public audit uses protected trigger history; external witnesses are optional. Pre-migration/unconfirmed history stays not verifiable.
+  Post-commit WebSocket bid, lifecycle and settlement updates are implemented; production demo accounts and an open lot are seeded; the full production journey remains pending.
+  Public frontend/API access is verified; deployment of the trigger-history migration and the full production journey remain pending.
+  Lists, summaries, wallets, results and audit refresh through WebSocket invalidation after their initial HTTP load. Museum image hosting remains an external dependency.
   Lifecycle states update on reads and during background settlement. The worker
   transfers funds and captures winning holds; failed settlements retain holds for retry.
   Schema tables do not constitute working auction features.
-- Sign in again after refreshing the page: tokens are kept in memory only.
+- Sessions survive reload with a rotating HttpOnly refresh cookie (7 days). Access JWTs stay in memory and renew automatically; logout revokes the session.
 - Legacy passwordless users cannot log in. No admin seed or public admin signup exists.
 - Watch mode can leave stale processes (`EADDRINUSE`); restart only the API with
   `docker compose restart api`. Stop the API before building on the host.

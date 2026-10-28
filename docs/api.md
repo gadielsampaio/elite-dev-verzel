@@ -71,7 +71,14 @@ filename has no dot between `health` and `service`.
 `accessToken`, `tokenType: "Bearer"`, and `expiresIn: 900` (15 minutes).
 Invalid credentials, inactive users, and users without a password hash return
 401 with `Invalid credentials`. Invalid body fields return 400.
-JWTs are signed using HS256 and contain `sub` (user ID), `role`, and timestamps.
+JWTs are signed using HS256 and contain `sub` (user ID), `role`, `sid` (session family), and timestamps.
+
+Login also sets an HttpOnly refresh cookie. `POST /auth/refresh` rotates it and
+returns the same access-token response. `POST /auth/logout` revokes its family,
+clears the cookie and returns 204. All three require `X-Session-Request: 1`; keep
+the browser/Postman cookie jar enabled. Refresh sessions expire seven days from
+login; reused, expired or revoked tokens return 401. Logout invalidates JWTs
+carrying that family ID. Legacy JWTs without `sid` expire normally.
 
 Send `Authorization: Bearer <accessToken>` for all implemented `/users` routes.
 
@@ -85,8 +92,7 @@ Missing, invalid, or expired tokens and inactive/deleted accounts return 401.
 Authenticated users without permission receive 403. The guard checks current
 account status and role in PostgreSQL on each request, ignoring stale token roles.
 Updates still accept only name/email; users cannot promote themselves.
-There is no public admin signup or admin seed. No refresh tokens or rate limiting
-yet; bidder/auctioneer permissions for lots and bids will accompany those modules.
+There is no public admin signup or admin seed. Rate limiting is not implemented.
 
 ## Museum catalog
 
@@ -392,7 +398,7 @@ Listen for `lot.changed`: `{type, lotId, endTime}` with `bidId` on
 after commit. `lot.closed` means bidding ended; only the HTTP result confirms settlement.
 The client re-fetches public details/history and its protected position over HTTP.
 It also resynchronizes after reconnect, at schedule boundaries, on returning to the
-visible tab, and every 30 seconds while connected (10 seconds while disconnected).
+visible tab, and every 10 seconds while disconnected. Healthy subscriptions do not poll.
 Current bid input survives refreshes. HTTP remains authoritative.
 
 Delivery is best-effort and process-local: multiple API instances would require a
@@ -400,3 +406,22 @@ shared broker. Lifecycle reconciliation runs on reads and in the existing 10-sec
 worker. Repeated reads, cancellation retries and settled replays do not re-emit
 transitions. The room and public receipt refresh result data on these signals.
 A cancelled lot returns 404 and clears stale room data.
+
+
+### Collection and account updates
+
+- `collection.subscribe` (no payload/JWT) joins the public collection feed and
+  acknowledges `{ "ok": true }`. `collection.changed` sends only `{lotId, type}`.
+  Types include publication (`lot.created`), bid/lifecycle/settlement events and
+  optional filesystem audit confirmation (`audit.confirmed`).
+- `account.subscribe` accepts `{token: "<JWT>"}` and returns `{ "ok": true/false }`.
+  Only a valid, unexpired JWT for an active account can join its own account room.
+  `account.changed` has no payload and follows a committed deposit. Invalid/expired
+  accounts receive no private changes; `account.expired` requests resynchronization.
+- Frontend queries fetch on mount and after the subscription acknowledgement,
+  reconnect and visibility/online recovery. A shared connection coalesces event
+  bursts; filters, pagination and entered bid amounts are preserved. HTTP still
+  enforces authorization and supplies all balances and results.
+- Other clients’ bids and settlements invalidate wallet reads through public lot
+  signals; balance/account data is never broadcast publicly. Direct SQL edits do
+  not emit application events; manual refresh still detects them in audit.

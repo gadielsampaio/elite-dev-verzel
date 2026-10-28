@@ -11,7 +11,7 @@ never serves as a fallback for failed API requests.
 | View | Behavior |
 | --- | --- |
 | Storefront `/` | Persisted lots, server status filters, pagination, saved artwork. Text search applies only to the displayed page. |
-| Registration/login | API registration and JWT login, current-user profile and role restrictions. Tokens stay in memory; reload requires login. |
+| Registration/login | API registration and JWT login, current-user profile and role restrictions. Rotating HttpOnly refresh cookie restores sessions; 15-minute access JWTs stay in memory and renew automatically. Logout revokes the session. |
 | Seller Studio `/#/seller` | Cleveland search by text/type/both, images/CC0 restrictions, selection, publication, owned lots and eligible cancellation. |
 | Seller results | Actual owned/live/sold counts and settled sale credits; paginated closed results with pending/no-winner/sold states and receipt links. |
 | Auction room | Server history/current bid, deadline and own position; exact-decimal bid entry, rejection feedback and safe idempotent retries. |
@@ -54,13 +54,17 @@ PLAYWRIGHT_CHANNEL=chrome npm run test:e2e --prefix frontend
 RUN_LIVE_TESTS=1 PLAYWRIGHT_CHANNEL=chrome npm run test:e2e --prefix frontend -- live-bidding.spec.ts
 ```
 
-Other bidders’ updates now trigger automatic HTTP resynchronization through per-lot
-WebSocket subscriptions. Reconnection refreshes missed state; manual refresh remains available.
-Production demo seeding, independent image availability and full production
+Other bidders’ updates now trigger automatic HTTP resynchronization through a shared
+WebSocket connection per session. Each page requests its initial data immediately;
+collection lists, seller summaries/lots, participation/results, receipts, audit and
+wallet balances update on matching events. Lot-specific queries filter by lot ID.
+Deposits send private account notifications. No periodic requests run while the
+subscription is healthy; disconnected visible pages retry HTTP every ten seconds. Reconnection refreshes missed state; manual refresh remains available.
+Independent image availability and full production
 journey verification remain pending. No integrity claim is made by the receipt or readable bid history.
 
 Public audit is connected at `/#/audit/:id`, with room/receipt links, complete
-pseudonymous history and browser SHA-256 verification against the external head.
+pseudonymous history and browser SHA-256 verification against the protected audit head.
 See [audit coverage and limits](audit.md).
 
 Rooms now distinguish pending settlement, confirmed receipts and no-winner closure.

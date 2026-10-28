@@ -16,18 +16,18 @@ ignored by Git; this summary is available in a fresh checkout.
 | Public item API | Search, artwork details and explicit mock/real transport selection implemented. Cleveland live search/detail verified; Cleveland fixtures remain available. Snapshots are persisted during publication; connected seller search/selection UI implemented with text/type filters and mandatory images/CC0. |
 | Lots and storefront | Single-artwork publication, paginated status listings, saved details and owner cancellation before any bids implemented. Lifecycle reconciles on reads; Public browsing/detail UI implemented; owner-scoped seller listing, publication and cancellation UI implemented; editing remains pending; background settlement is implemented. |
 | Wallet | Own balances and bidder-only simulated deposits implemented in API/UI. Concurrent retries are idempotent. Bid placement reserves leader funds and atomically releases the previous hold. |
-| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Accepted bids have atomic snapshots and external witnesses. |
+| Bids | Placement API implements timing, minimum/increment, leader restriction, funds, atomic holds, concurrent retries and two-minute anti-sniping. Public paginated history/current leader and protected own-position reads implemented. Connected bid entry uses exact decimals, idempotent retries and server rejection reasons. Accepted bids have atomic snapshots and trigger history, with optional external witnesses. |
 | Live room | API reads expose current bid, history, user position and deadline. HAUS room shows server history, current bid, position and deadline. Post-commit WebSocket signals refresh price, history, position and deadline automatically. Reconnection resynchronizes over HTTP; entered bid amounts are preserved. |
 | Settlement and results | Background winner debit/seller credit, hold capture and empty-lot closure implemented. Public per-lot result reads and shareable receipt page implemented; closed Seller Studio lots link to results. Seller totals, paginated closed results, bidder participation/wins and receipt links are connected. Totals count confirmed sale credits; wins require settled results. |
 | External outages | Not satisfied yet: published storefront, rooms, audit and receipts must work without the museum provider. Lot details now read saved snapshots without the provider; image URLs still depend on the remote host. |
-| Public audit and privacy | Implemented: atomic SHA-256 snapshots, protected checkpoints outside PostgreSQL, public verification and browser hash checks. Database changes/deletions/insertions are detected against confirmed evidence; legacy, interrupted and uncovered history is not verifiable. No personal identity exposure. See [audit guarantees](audit.md). |
+| Public audit and privacy | Implemented: atomic SHA-256 snapshots, protected trigger history and optional external checkpoints, public verification and browser hash checks. Database changes/deletions/insertions are detected against confirmed evidence; legacy, interrupted and uncovered history is not verifiable. No personal identity exposure. See [audit guarantees](audit.md). |
 | Demo seeds | Explicit `db:remote` script creates one auctioneer, two bidders, empty wallets and a lot open for bidding. Local isolated-schema tests pass; production seeding remains pending. |
-| Delivery | Vercel frontend and Render API/PostgreSQL deployed. CORS, public lot reads and all three Render migrations verified. Required demo seeds, durable Render audit storage, full production journey and repository-visibility verification remain pending. |
+| Delivery | Vercel frontend and Render API/PostgreSQL deployed. CORS, public lot reads and the original three Render migrations verified; two new audit migrations await deployment. Production demo seeds are verified. Trigger-history deployment, full production journey and repository-visibility verification remain pending. |
 
 Plan phase 08 is implemented end to end: background settlement, seller results/totals,
 bidder participation/wins and public receipts. Foundation/auth/catalog/lot/wallet/bid
 flows are connected. Phase 09 now includes external checkpoints and public verification. Phase 10
-(realtime) is implemented locally, including lifecycle and settlement notifications. Seeds, production audit persistence and full deployment validation remain incomplete; the challenge is not yet complete.
+(realtime) is implemented locally, including lifecycle and settlement notifications. Trigger-history deployment and full deployment validation remain incomplete; the challenge is not yet complete.
 The existing `admin` role is an implementation addition, not a required challenge role.
 
 The original local-state prototype remains at `/preview` for visual regression
@@ -39,7 +39,7 @@ server receipts. Integrity is not claimed without audit verification.
 ## Next small steps
 
 1. Complete the deployed multi-user bidding/settlement journey after preparing demo data.
-2. Run demo seeds on the target deployment, finish durable Render audit storage, provider-outage image handling and the full deployed journey.
+2. Deploy trigger-backed audit history; finish provider-outage image handling and the full deployed journey.
 
 Adapter, Facade-style orchestration in `BidsService`, and process-local Observer notifications are implemented.
 Per-lot WebSocket transport and browser subscriptions are implemented. Hash chains, protected filesystem checkpoints and public verification are implemented.
@@ -125,4 +125,26 @@ API/database health 200, public lots 200, Vercel-origin CORS and preflight 204,
 and a real WebSocket connection to `/auctions` with an unavailable-lot rejection.
 The Vercel storefront loads without console errors and correctly shows zero lots.
 These are deployment smoke checks, not a full production bidding/settlement test.
-Demo seeding, durable audit storage and the complete production journey remain pending.
+Demo seeding is verified. Trigger-history deployment and the complete production journey remain pending.
+
+
+### Shared realtime queries
+
+Initial HTTP loads were already present. Lists, seller summaries/collection, account
+results, receipts, audit and wallets now share WebSocket invalidation; deposits
+notify only their authenticated account. Healthy subscriptions do not poll;
+disconnected visible pages retry every ten seconds. Filters and input survive
+updates. Backend tests: 127 unit and 262 e2e passed (two mode-specific skips).
+Browser suite: 52 passed, one opt-in live test skipped. Local Docker health and
+`collection.subscribe` passed after restarting a stale API process.
+
+## Session renewal
+
+Implemented rotating HttpOnly refresh cookies, seven-day session families,
+15-minute in-memory access JWTs, automatic renewal and server-side logout/replay
+revocation. Local Docker migration and live browser cookie rotation/logout verified.
+Production still needs the migration, frontend/backend deployment and the
+[production environment settings](development.md). No production changes were applied.
+Validation: 127 unit tests, 268 backend integration tests and 59 browser contract
+tests passed, plus the opt-in local cookie lifecycle test. Default suites skip
+four opt-in checks. Builds, backend lint and Prisma validation passed.

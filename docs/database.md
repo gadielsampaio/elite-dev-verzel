@@ -74,17 +74,17 @@ Transactions store financial entries, holds represent reservations associated
 with bids, and results link the winning bid to the lot and settlement timestamps.
 Audit events can record before/after state and request context. These structures
 exist. Simulated deposits and ledger/active-hold balance calculation are implemented.
-Bid placement reserves/releases holds atomically. Capture and settlement are implemented; accepted bids now also persist hash-linked snapshots. External checkpoints and public verification are implemented; `isWinner` is not set just because a bid leads.
+Bid placement reserves/releases holds atomically. Capture and settlement are implemented; accepted bids now also persist hash-linked snapshots. Trigger-backed audit history and public verification are implemented; external witnesses are optional; `isWinner` is not set just because a bid leads.
 
 The schema and initial migration do not enforce positive amounts, sufficient
 funds, matching currencies, auction time ordering, role permissions, one
 `isWinner=true` bid per lot, or equality between a hold's wallet owner and bidder.
-They also do not enforce paired transfers, immutable financial/audit records, or
+They also do not enforce paired transfers, immutable financial records, or
 status/timestamp consistency. These remain business-rule design and implementation
 work, not guarantees provided by the current database.
 
-For the challenge, `AuditEvent` is only storage: tamper detection and public
-verification are still missing. `Item.sourceSnapshot` and `sourceFetchedAt`
+For the challenge, `AuditEvent` remains general-purpose storage; tamper detection
+uses `BidAuditEntry` and the trigger-managed `BidAuditHistory`. `Item.sourceSnapshot` and `sourceFetchedAt`
 are populated atomically with a lot during publication, preserving normalized
 catalog details and the mock/real provider marker. `AuctionResult` requires a
 winner; a no-bid closure must not invent one. See [remaining requirements](progress.md).
@@ -98,3 +98,19 @@ the resulting endTime. The lot/sequence pair is unique. Bid IDs have no foreign
 key to Bid, so deleting a bid preserves evidence; lot deletion cascades snapshots.
 The database enforces positive sequence/amount and valid hash/link shape.
 See [audit rollout and limitations](audit.md). Existing bids are not backfilled.
+
+## Supplementary trigger history
+
+`BidAuditHistory` / `bid_audit_history` records `id`, `lotId`, `sourceTable`,
+`operation`, `transactionId`, `recordedAt`, `oldRow` and `newRow`. Row triggers on
+bids, accepted snapshots and settlement receipts capture direct SQL changes atomically. The table has
+no cascading foreign keys; evidence survives lot deletion. Guard triggers reject
+direct writes and truncation. No pre-migration backfill is performed.
+See [permissions and administrator limitations](audit.md#trust-boundary).
+
+## Refresh sessions
+
+`RefreshSession` / `refresh_sessions` stores user/family UUIDs, a unique SHA-256
+token hash, expiry, consumption/revocation timestamps and creation time. User
+deletion cascades sessions. Rotation consumes one row and inserts its successor
+under a family lock; replay revokes the entire family. Raw tokens are never stored.

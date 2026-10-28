@@ -41,7 +41,7 @@ run local application commands from `backend/`. Existing environment variables
 (including Compose's `DATABASE_URL`) take precedence. Tests that bypass bootstrap
 still need the `--env-file` command below. Both actual `.env` files are ignored.
 
-For host audit checkpoints, create the shared directory from the repository root:
+For optional additional host audit checkpoints, create the shared directory from the repository root:
 
 ```sh
 mkdir -p .local/audit-checkpoints
@@ -50,8 +50,8 @@ chmod 700 .local/audit-checkpoints
 
 Set `AUDIT_CHECKPOINT_DIR` in `backend/.env` to its **absolute path**, then restart
 the API. Compose already mounts this directory separately from PostgreSQL. Keep it
-private, backed up and intact across restarts. Missing configuration means audit
-history is not verifiable; configured storage failure rejects new bids with 503.
+private, backed up and intact across restarts. Without this setting, the migrated trigger history supplies audit evidence.
+Configured external storage failure still rejects new bids with 503.
 See [checkpoint recovery and trust boundary](audit.md).
 
 ## Start, inspect, and stop
@@ -182,7 +182,7 @@ Generate a secret with `openssl rand -hex 32`. Set `JWT_SECRET` in root `.env`
 for Docker and in `backend/.env` for host execution. There is no fallback secret;
 startup requires at least 32 characters. Never commit actual environment files.
 After changing root `.env`, run `docker compose up -d --force-recreate api`.
-Tokens expire after 15 minutes. Changing the secret invalidates existing tokens.
+Access JWTs expire after 15 minutes; refresh sessions last seven days from login. Changing the signing secret invalidates access JWTs, but refresh sessions remain valid until revoked.
 
 ## Catalog development
 
@@ -222,7 +222,9 @@ future concurrent bid handling or settlement.
 accounts or lots are seeded automatically. Browse lots publicly, or log in to view
 your wallet. `/` uses the HAUS UI with real API calls; `/#/login`,
 `/#/register` and `/#/wallet` are the connected account routes. The room reads
-saved details, public bid history and authenticated position, with manual refresh.
+saved details, public bid history and authenticated position. Initial HTTP requests
+run on page load; shared WebSocket signals keep lists, summaries, wallets and results
+updated. Manual refresh remains available; polling is only a disconnected fallback.
 `/preview` is an isolated local-state visual reference, not the application.
 The older API screens remain at `/lots`, `/login` and `/wallet` during transition.
 Seller Studio at `/#/seller` is now available to signed-in auctioneers for
@@ -245,7 +247,16 @@ Frontend settings are in `frontend/.env`; supported keys are documented in
 Restart Vite after edits, or rebuild for production. Vite proxies `/api` to
 `http://127.0.0.1:3000` by default; Docker sets
 `API_PROXY_TARGET=http://api:3000`. This same-origin proxy needs no CORS configuration.
-The session token stays in memory (refresh logs out). A pending deposit's amount/
+Access JWTs stay in memory. An HttpOnly cookie restores the session on reload and
+rotates on renewal; its seven-day deadline does not extend. Logout revokes the
+session family, including its access JWTs. Legacy access JWTs without a session ID
+remain valid until their original expiry. Refresh-token reuse revokes the family;
+a lost refresh response can require signing in again. Temporary API failures offer retry.
+Local HTTP requires `AUTH_COOKIE_SECURE=false` (already set in Compose);
+production defaults to Secure/SameSite=None. Every login/refresh/logout request
+requires `X-Session-Request: 1`. Browser requests include cookies; Postman uses its
+cookie jar. Refresh secrets are hashed in PostgreSQL and never returned in JSON.
+Passwords and tokens are not kept in browser storage. A pending deposit's amount/
 retry UUID is kept in session storage per user until confirmed, preventing a
 network retry from generating a new credit. This is not payment processing.
 
@@ -322,11 +333,15 @@ Set these separately in each platform's environment settings:
 | Render | `CORS_ORIGINS` | `https://elite-dev-verzel-delta.vercel.app` |
 | Render | `DATABASE_URL` | The Render PostgreSQL connection URL (secret) |
 | Render | `JWT_SECRET` | Your existing signing secret |
-| Vercel | `VITE_API_BASE_URL` | `https://elite-dev-verzel-2c5n.onrender.com` |
+| Vercel | `VITE_API_BASE_URL` | `/api` |
+| Vercel | `VITE_SOCKET_BASE_URL` | `https://elite-dev-verzel-2c5n.onrender.com` |
 
 Allowed origins are comma-separated, exact HTTP(S) origins; no wildcard or path.
 Missing `CORS_ORIGINS` leaves cross-origin browser access disabled. Bearer tokens
-use `Authorization`; cross-origin cookies are not enabled. Redeploy after changes;
+use `Authorization`; explicit allowed origins support credentialed requests.
+[frontend/vercel.json](../frontend/vercel.json) proxies HTTP to Render so the
+refresh cookie is same-origin; WebSockets connect directly to Render. Keep
+`AUTH_COOKIE_SECURE` unset or `true` on Render. Redeploy after changes;
 Vite embeds public variables at build time. Local `.env` files are not uploaded.
 
 For the existing Render Docker service (root directory `backend/`), set **Docker
@@ -352,7 +367,7 @@ No additional frontend environment variable is required. See the [room protocol]
 Requires Node.js 24 and installed backend dependencies (`npm ci --prefix backend`).
 In the root `.env` (see [.env.example](../.env.example)), configure:
 
-- `REMOTE_DATABASE_URL`: Render PostgreSQL **external** connection URL when running from your computer. Retain the provider's SSL parameters.
+- `REMOTE_DATABASE_URL`: Render PostgreSQL **external** connection URL when running from your computer. Use `sslmode=verify-full` for Render external connections; keep TLS certificate verification enabled.
 - `SEED_PASSWORD`: demo login password, at least 12 characters and at most 72 UTF-8 bytes. Never commit it.
 - `SEED_NAMESPACE`: defaults to `auction-demo-v1`; keep it stable for repeatable seeds.
 
@@ -367,9 +382,14 @@ npm run db:remote --prefix backend
 npm run db:remote --prefix backend -- --migrate-only
 ```
 
-For a separate ignored file, append `--env-file .env.remote` (paths are relative
-to the repository root). Exported environment variables take precedence over the
-file. `REMOTE_DATABASE_URL` is required explicitly; the script never substitutes
+For a separate ignored file, run from the repository root:
+
+```sh
+node backend/scripts/db-remote.mjs --env-file .env.remote --check
+node backend/scripts/db-remote.mjs --env-file .env.remote
+```
+
+Paths are relative to the repository root. Exported environment variables take precedence over the file. `REMOTE_DATABASE_URL` is required explicitly; the script never substitutes
 the local `backend/.env` database. In a Render shell, set it to the appropriate
 internal URL instead. No credentials are printed.
 
@@ -396,5 +416,13 @@ RUN_DATABASE_TESTS=1 node --test backend/scripts/db-remote.test.mjs
 
 Without `RUN_DATABASE_TESTS=1`, only configuration checks run. Database tests use
 `backend/.env` and require permission to create an isolated schema. The tests verify
-migration application, seed creation, and preservation on reruns. Remote execution
-has not been performed as part of adding this script.
+migration application, seed creation, and preservation on reruns. Production execution on 2026-10-28 applied migrations and seeded three accounts,
+empty wallets and open lot `939ee759-74e6-4a86-aeab-42cfc709001e`. A rerun preserved
+the lot and schedule. All three logins and wallet reads returned HTTP 200.
+Credentials are stored locally in ignored `.env.remote`; do not commit or publish them.
+
+Production bidding/settlement verification is pending deployment of the
+trigger-history migration. Render can remain on Free compute with
+`AUDIT_CHECKPOINT_DIR` unset: the supplementary audit table persists in PostgreSQL.
+No external storage or paid upgrade is required for this documented trust boundary. The free PostgreSQL instance currently expires
+on 2026-11-27; API compute upgrades do not upgrade the database.
