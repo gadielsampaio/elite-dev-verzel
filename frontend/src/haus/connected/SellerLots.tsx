@@ -75,10 +75,20 @@ export function SellerLots({
         <p role="status">Loading your lots…</p>
       ) : query.data?.items.length ? (
         query.data.items.map((lot) => (
-          <div key={lot.id} className="hs-seller-row">
+          <div key={lot.id} className="hs-seller-row hs-seller-collection-row">
             <Artwork lot={lot} />
             <div>
-              <div className="hs-seller-row-title">{lot.title}</div>
+              {!["draft", "cancelled"].includes(lot.status) ? (
+                <button
+                  className="hs-seller-row-title hs-seller-row-open"
+                  aria-label={`View lot: ${lot.title}`}
+                  onClick={() => open(lot.id)}
+                >
+                  {lot.title}
+                </button>
+              ) : (
+                <div className="hs-seller-row-title">{lot.title}</div>
+              )}
               <div className="hs-seller-row-sub">
                 {lot.items[0]?.artistDisplay}
               </div>
@@ -100,19 +110,11 @@ export function SellerLots({
             <div className="hs-seller-action">
               {lot.status === "closed" && (
                 <a
-                  className="hs-seller-text-link"
+                  className="hs-seller-btn ghost"
                   href={`/#/receipt/${lot.id}`}
                 >
-                  VIEW RESULT / RECEIPT ↗
+                  Result/Receipt
                 </a>
-              )}
-              {!["draft", "cancelled"].includes(lot.status) && (
-                <button
-                  className="hs-seller-text-link"
-                  onClick={() => open(lot.id)}
-                >
-                  VIEW LOT ↗
-                </button>
               )}
               {lot.canCancel && (
                 <button

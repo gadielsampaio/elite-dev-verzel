@@ -408,3 +408,28 @@ test("creation errors belong to their fields and Publish now omits a client star
   expect(payload?.startMode).toBe("now");
   expect(payload).not.toHaveProperty("startTime");
 });
+
+test("collection rows open lots by click or keyboard while receipt links stay independent", async ({ page }) => {
+  await loginSeller(page);
+  let closed = false;
+  await page.route("**/api/lots/mine?**", (route) => route.fulfill({
+    json: { items: [{ ...lot, status: closed ? "closed" : "scheduled", canCancel: false, bidCount: 0 }], total: 1, page: 1, limit: 9 },
+  }));
+  await page.locator(".hs-footer-links").getByRole("button", { name: "SELLER STUDIO" }).click();
+  const row = page.locator(".hs-seller-collection-row");
+  await expect(row).toBeVisible();
+  await expect(row.getByText("VIEW LOT ↗", { exact: true })).toHaveCount(0);
+  await row.click({ position: { x: 5, y: 5 } });
+  const close = page.getByRole("button", { name: "Close artwork room" });
+  await expect(close).toBeVisible();
+  await close.click();
+  await row.getByRole("button", { name: `View lot: ${lot.title}` }).focus();
+  await page.keyboard.press("Enter");
+  await expect(close).toBeVisible();
+  await close.click();
+  closed = true;
+  await page.getByRole("button", { name: "REFRESH MY LOTS" }).click();
+  await row.getByRole("link", { name: "Result/Receipt" }).click();
+  await expect(page).toHaveURL(new RegExp(`/receipt/${lot.id}$`));
+  await expect(close).toHaveCount(0);
+});

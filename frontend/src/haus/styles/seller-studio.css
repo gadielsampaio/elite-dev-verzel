@@ -679,3 +679,31 @@
   .hs-seller-art-grid { grid-template-columns: 1fr; }
   .hs-seller-art-frame { height: 265px; }
 }
+
+/* Stretch the accessible title button across the collection row. Actions sit
+   above it so cancellation and receipts never open the auction room. */
+.hs-seller-collection-row { position: relative; }
+.hs-seller-row-open {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.hs-seller-row-open::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+}
+.hs-seller-row-open:focus-visible { outline: none; }
+.hs-seller-row-open:focus-visible::after {
+  outline: 2px solid var(--hs-ink);
+  outline-offset: -2px;
+}
+.hs-seller-collection-row .hs-seller-action > a,
+.hs-seller-collection-row .hs-seller-action > button {
+  position: relative;
+  z-index: 1;
+}
