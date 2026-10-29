@@ -362,6 +362,24 @@
           }
         },
         {
+          "name": "[IMPLEMENTED] My cancellation refunds",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/wallet/credit-memos",
+            "description": "Authenticated account only. Lists its cancellation refunds with id, lotId, title, amount, currency and createdAt. Returns [] when empty. Cancelling a scheduled/live lot releases active reservations without increasing total balance; repeated cancellation does not duplicate refunds."
+          }
+        },
+        {
           "name": "[IMPLEMENTED] Simulated deposit",
           "request": {
             "method": "POST",
@@ -960,7 +978,7 @@
                 }
               }
             },
-            "description": "Owning auctioneer only. 200 if scheduled/live and no bids ever; 403 wrong owner/role; 409 expired or bids exist. Repeating preserves the original cancellation. Public detail then returns 404."
+            "description": "Owning auctioneer only. Cancels scheduled/live lots before their deadline, including lots with bids. Releases active wallet holds and records refunds atomically; total balance and bid history are preserved. Notifies affected wallets after commit. 403 wrong owner/role; 409 expired or settled. Repeating preserves the original cancellation and does not duplicate refunds. Public lot detail then returns 404."
           }
         }
       ]
@@ -1163,7 +1181,7 @@
               }
             ],
             "url": "{{baseUrl}}/lots/{{lotId}}/bids",
-            "description": "Bidder only; requires funded wallet and live lot. 201 receipt; 409 rule failure. Same key/amount safely retries. Clear bidKey before each new intended bid. Leading holds remain committed until outbid or future settlement.",
+            "description": "Bidder only; requires funded wallet and live lot. 201 receipt; 409 rule failure. Same key/amount safely retries. Clear bidKey before each new intended bid. Leading holds remain committed until outbid, cancellation, or settlement.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"amount\": \"105.00\",\n  \"idempotencyKey\": \"{{bidKey}}\"\n}",
@@ -1228,19 +1246,8 @@
     },
     {
       "name": "Auction Results",
-      "description": "Public results and protected receipts/account results are implemented. Receipts require the winning bidder or owning auctioneer.",
+      "description": "Public results, protected account results, and shareable receipts are implemented. Direct receipt access requires the winning bidder or owning auctioneer; shared access requires a receipt-specific token.",
       "item": [
-        {
-          "name": "[IMPLEMENTED] Public lot result",
-          "request": {
-            "method": "GET",
-            "auth": {
-              "type": "noauth"
-            },
-            "url": "{{baseUrl}}/lots/{{lotId}}/result",
-            "description": "Public outcome and anonymous winner. No receipt details. Valid optional bearer authentication adds canViewReceipt. States: awaiting_close, pending_settlement, no_winner, settled."
-          }
-        },
         {
           "name": "[IMPLEMENTED] Private lot receipt",
           "request": {
@@ -1256,7 +1263,50 @@
               ]
             },
             "url": "{{baseUrl}}/lots/{{lotId}}/receipt",
-            "description": "Winning bidder or owning auctioneer only. 401 without authentication; 403 for other users. Receipt details only after settlement."
+            "description": "Winning bidder or owning auctioneer only. 401 without authentication; 403 for other users. Receipt details only after settlement. The receipt includes shareToken for the shared endpoint. Saves receipt.shareToken as receiptShareToken in the selected environment. Run this as the winner or lot owner before Shared lot receipt. Treat the token as a private access link; do not publish populated environments."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.environment.unset(\"receiptShareToken\");",
+                  "if (pm.response.code === 200) {",
+                  "  const receipt = pm.response.json().receipt;",
+                  "  if (receipt && receipt.shareToken) pm.environment.set(\"receiptShareToken\", receipt.shareToken);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "[IMPLEMENTED] Shared lot receipt",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "header": [
+              {
+                "key": "X-Receipt-Token",
+                "value": "{{receiptShareToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/lots/{{lotId}}/receipt/shared",
+            "description": "Use receipt.shareToken from an authorized receipt response. No login required. Missing, invalid, or wrong-lot tokens are rejected. The token grants access to this receipt only; public results and audit listings never include it."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Public lot result",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/lots/{{lotId}}/result",
+            "description": "Public outcome and anonymous winner. No receipt details. Valid optional bearer authentication adds canViewReceipt. States: awaiting_close, pending_settlement, no_winner, settled."
           }
         },
         {
@@ -1373,7 +1423,7 @@
               ]
             },
             "url": "{{baseUrl}}/me/participations?filter=wins&page=1&limit=9",
-            "description": "Bidder JWT. Confirmed settled wins and public receipt paths."
+            "description": "Bidder JWT. Confirmed settled wins and protected receipt paths."
           }
         }
       ]
@@ -1382,6 +1432,17 @@
       "name": "Audit Logs",
       "description": "Public bid-integrity verification is implemented. Generic AuditEvent log endpoints remain planned.",
       "item": [
+        {
+          "name": "[IMPLEMENTED] Closed lots for public audit",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/lots?status=closed&page=1&limit=9",
+            "description": "Public paginated closed lots with artwork previews. Use an item id as lotId for Verify public bid history. No receipt details or share tokens are returned. The Public Audit UI links only to each lot audit."
+          }
+        },
         {
           "name": "[IMPLEMENTED] Verify public bid history",
           "request": {
