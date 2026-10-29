@@ -99,14 +99,20 @@ export function FeaturedLot({ lot }: { lot: Lot | null }) {
           )}
         </div>
         <Button
-          asChild
+          type="button"
           variant="link"
           className="justify-start gap-5 self-start px-0 text-xs uppercase tracking-wider"
+          onClick={() =>
+            document.getElementById("catalog")?.scrollIntoView({
+              behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+                ? "auto"
+                : "smooth",
+              block: "start",
+            })
+          }
         >
-          <a href="#catalog">
-            {s.explore}
-            <ArrowDown />
-          </a>
+          {s.explore}
+          <ArrowDown />
         </Button>
       </div>
       <div className="relative order-1 min-h-80 overflow-hidden bg-muted md:order-2 md:min-h-full">

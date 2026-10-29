@@ -224,3 +224,20 @@ test("numbered pagination handles ellipses, boundaries and filter reset", async 
     await page.evaluate(() => document.documentElement.scrollWidth),
   ).toBeLessThanOrEqual(390);
 });
+
+for (const [path, width] of [["/", 1440], ["/#/home", 390]] as const) {
+  test(`explore auctions scrolls without changing route at ${width}px`, async ({ page }) => {
+    await setup(page);
+    await page.setViewportSize({ width, height: 800 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await page.goto(path);
+    const url = page.url();
+    const explore = page.getByText("EXPLORE THE AUCTIONS", { exact: true });
+    await explore.focus();
+    await explore.press("Enter");
+    await expect(page).toHaveURL(url);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(lot.title);
+    await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(0);
+    await expect.poll(() => page.locator("#catalog").evaluate(el => el.getBoundingClientRect().top)).toBeLessThan(400);
+  });
+}
