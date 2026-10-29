@@ -151,8 +151,16 @@ export function Footer() {
         <div className="flex flex-col justify-between gap-8 md:flex-row md:items-center">
           <a
             href="/#/home"
-            className="font-display font-semibold tracking-widest"
+            className="inline-flex items-center gap-3 font-display font-semibold tracking-widest"
           >
+            <span
+              aria-hidden="true"
+              className="inline-block h-8 w-7 shrink-0 bg-current"
+              style={{
+                mask: 'url("/favicon.svg") center / contain no-repeat',
+                WebkitMask: 'url("/favicon.svg") center / contain no-repeat',
+              }}
+            />
             HAUS SAMPAIO
           </a>
           <nav
@@ -168,8 +176,8 @@ export function Footer() {
           </nav>
         </div>
         <div className="mt-12 flex justify-between border-t border-footer-foreground/20 pt-6 text-[10px] text-footer-foreground/60">
-          <span>© {new Date().getFullYear()} HAUS SAMPAIO</span>
-          <span>HAUS SAMPAIO / AUCTIONS</span>
+          <span>© {new Date().getFullYear()} - HS - ALL RIGHTS RESERVED </span>
+          <span>developed by GADIEL SAMPAIO</span>
         </div>
       </div>
     </footer>
