@@ -1228,17 +1228,35 @@
     },
     {
       "name": "Auction Results",
-      "description": "Public receipt and protected seller/bidder account results are implemented. Generic CRUD routes remain planned.",
+      "description": "Public results and protected receipts/account results are implemented. Receipts require the winning bidder or owning auctioneer.",
       "item": [
         {
-          "name": "[IMPLEMENTED] Public lot result and receipt",
+          "name": "[IMPLEMENTED] Public lot result",
           "request": {
             "method": "GET",
             "auth": {
               "type": "noauth"
             },
             "url": "{{baseUrl}}/lots/{{lotId}}/result",
-            "description": "Public result. States: awaiting_close, pending_settlement, no_winner, settled. Only settled includes a pseudonymous receipt. No authentication or museum request."
+            "description": "Public outcome and anonymous winner. No receipt details. Valid optional bearer authentication adds canViewReceipt. States: awaiting_close, pending_settlement, no_winner, settled."
+          }
+        },
+        {
+          "name": "[IMPLEMENTED] Private lot receipt",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/lots/{{lotId}}/receipt",
+            "description": "Winning bidder or owning auctioneer only. 401 without authentication; 403 for other users. Receipt details only after settlement."
           }
         },
         {
