@@ -1,3 +1,4 @@
+import { receiptShareToken, validReceiptShare } from './receipt-share.js';
 import {
   ForbiddenException,
   Injectable,
@@ -14,6 +15,7 @@ export class ResultsService {
     lotId: string,
     viewer?: { id: string; role: string },
     receiptRequested = false,
+    shareToken?: string,
   ) {
     return this.prisma.$transaction(
       async (tx) => {
@@ -48,7 +50,11 @@ export class ResultsService {
           ((viewer.role === 'auctioneer' && lot.ownerId === viewer.id) ||
             (viewer.role === 'bidder' &&
               lot.result?.winningBid.bidderId === viewer.id));
-        if (receiptRequested && !allowed)
+        const shared =
+          !!lot.result?.settledAt &&
+          shareToken !== undefined &&
+          validReceiptShare(shareToken, lotId, lot.result.id);
+        if (receiptRequested && !allowed && !shared)
           throw new ForbiddenException(
             'Receipt is restricted to the winning bidder and lot owner',
           );
@@ -69,6 +75,7 @@ export class ResultsService {
             receipt: receiptRequested
               ? {
                   id: result.id,
+                  shareToken: receiptShareToken(lotId, result.id),
                   endedAt: result.endedAt,
                   settledAt: result.settledAt,
                   winningBidId: result.winningBid.id,

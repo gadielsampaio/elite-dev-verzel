@@ -131,6 +131,38 @@ describe('Receipt access over HTTP', () => {
       });
     });
 
+  it('allows anyone holding the shared link without leaking account IDs', async () => {
+    const privateResponse = await request(app.getHttpServer())
+      .get(`/lots/${id}/receipt`)
+      .set('Authorization', `Bearer ${winner}`)
+      .expect(200);
+    const token = privateResponse.body.receipt.shareToken;
+    expect(token).toMatch(/^[a-f0-9]{64}$/);
+    const shared = await request(app.getHttpServer())
+      .get(`/lots/${id}/receipt/shared`)
+      .set('X-Receipt-Token', token)
+      .expect(200);
+    expect(shared.headers['cache-control']).toContain('no-store');
+    expect(shared.body.receipt.amount).toBe('100.00');
+    expect(JSON.stringify(shared.body)).not.toContain(winner);
+    expect(JSON.stringify(shared.body)).not.toContain(owner);
+    const publicResult = await request(app.getHttpServer())
+      .get(`/lots/${id}/result`)
+      .expect(200);
+    expect(JSON.stringify(publicResult.body)).not.toContain(token);
+    await request(app.getHttpServer())
+      .get(`/lots/${id}/receipt/shared`)
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(`/lots/${id}/receipt/shared`)
+      .set('X-Receipt-Token', '0'.repeat(64))
+      .expect(403);
+    await request(app.getHttpServer())
+      .get(`/lots/${stranger}/receipt/shared`)
+      .set('X-Receipt-Token', token)
+      .expect(403);
+  });
+
   it('rejects invalid supplied credentials on public personalized reads', async () => {
     await request(app.getHttpServer())
       .get(`/lots/${id}/result`)

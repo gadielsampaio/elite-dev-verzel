@@ -28,7 +28,7 @@ Casa de leilões de arte com catálogo do Cleveland Museum of Art, lances em tem
 - Carteira com depósitos simulados e saldos total, comprometido e disponível.
 - Reembolsos por cancelamento liberam o saldo reservado e aparecem automaticamente na carteira, sem recarregar a página.
 - Lances com incremento mínimo, reserva/liberação de saldo e prorrogação de dois minutos no fim da disputa.
-- Liquidação automática, participações, arremates e comprovante acessível ao vencedor e ao leiloeiro.
+- Liquidação automática, participações, arremates e comprovante acessível ao vencedor, ao leiloeiro e a quem possui o link assinado de compartilhamento.
 - Auditoria pública com identificação pseudônima e verificação do histórico.
 - Cadastro, login, renovação por cookie HttpOnly, temas claro/escuro e seletor de idioma português/inglês com preferência salva no navegador.
 - Layout responsivo para desktop e dispositivos móveis.
@@ -170,7 +170,7 @@ O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE
 - **Dinheiro:** depósitos são simulados, sem gateway de pagamento. Saldo deriva do extrato e das reservas, com operações críticas em transações. O cancelamento de lotes agendados ou ao vivo libera as reservas sem alterar o saldo total.
 - **Encerramento:** o worker verifica lotes a cada dez segundos enquanto a API está ativa. Pode haver intervalo entre o fim da disputa e a confirmação do resultado; não há lances aceitos após o prazo.
 - **Auditoria:** snapshots SHA-256 encadeados são comparados com histórico suplementar alimentado por triggers. Isso detecta alterações diretas no histórico sob as proteções descritas em [arquitetura](docs/architecture.md). Não garante integridade contra um administrador que desative essas proteções ou reescreva toda a evidência. Histórico vazio ou sem cobertura não é certificado como íntegro.
-- **Acesso:** auditoria é pública; comprovantes exigem login do vencedor ou leiloeiro, mesmo quando o link é compartilhado.
+- **Acesso:** a Auditoria Pública lista lotes encerrados apenas com links de auditoria. Comprovantes exigem login do vencedor ou leiloeiro, ou um link assinado de compartilhamento. Quem recebe ou encaminha esse link pode acessar o comprovante com identificação pseudônima. Cada token vale para um único comprovante; trocar `JWT_SECRET` invalida os links existentes.
 - **Tempo real:** os eventos são locais ao processo, sem broker distribuído. Reconexão e consultas HTTP recuperam o estado; executar múltiplas instâncias exige coordenação adicional.
 - **Validação:** fluxos completos de lances/liquidação foram verificados localmente. Após o último reset, saúde e logins foram verificados em produção; o fluxo completo de produção ainda precisa ser reexecutado.
 

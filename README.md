@@ -28,7 +28,7 @@ An art auction house featuring the Cleveland Museum of Art catalog, real-time bi
 - Wallet with simulated deposits and total, committed, and available balances.
 - Cancellation refunds release reserved funds and appear automatically in the wallet without reloading the page.
 - Bids with minimum increments, fund reservations/releases, and a two-minute extension near the end of an auction.
-- Automatic settlement, participation history, wins, and receipts accessible to the winner and auctioneer.
+- Automatic settlement, participation history, wins, and receipts accessible to the winner, auctioneer, and anyone holding the signed share link.
 - Public audits with pseudonymous identification and history verification.
 - Registration, login, renewal through an HttpOnly cookie, light/dark themes, and a Portuguese/English language selector with the preference saved in the browser.
 - Responsive layout for desktop and mobile devices.
@@ -170,7 +170,7 @@ The command `npm run db:remote --prefix backend -- --check` validates `REMOTE_DA
 - **Money:** deposits are simulated, with no payment gateway. Balances are derived from the ledger and reservations, with critical operations inside transactions. Cancelling scheduled or live lots releases reservations without changing the total balance.
 - **Closing:** the worker checks lots every ten seconds while the API is running. There may be a delay between the end of bidding and result confirmation; bids are not accepted after the deadline.
 - **Audit:** chained SHA-256 snapshots are compared against supplementary trigger-backed history. This detects direct history changes under the protections described in the [architecture documentation](docs/architecture.md). It does not guarantee integrity against an administrator who disables these protections or rewrites all evidence. Empty or uncovered history is not certified as intact.
-- **Access:** audits are public; receipts require the winner or auctioneer to sign in, even when the link is shared.
+- **Access:** Public Audit lists closed lots with audit links only. Receipts require the winner or auctioneer to sign in, or possession of a signed share link. Anyone receiving or forwarding that link can access the pseudonymous receipt. Share tokens are scoped to a single receipt; rotating `JWT_SECRET` invalidates existing share links.
 - **Real-time updates:** events are local to the process, with no distributed broker. Reconnection and HTTP queries restore state; running multiple instances requires additional coordination.
 - **Validation:** complete bidding and settlement flows have been verified locally. Since the last reset, health and logins have been verified in production; the full production flow still needs to be rerun.
 

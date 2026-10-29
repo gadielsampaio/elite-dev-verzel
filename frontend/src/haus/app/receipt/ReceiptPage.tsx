@@ -4,7 +4,7 @@ import { AppLink } from "@/haus/app/routing/AppLink";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
 import { useSession } from "../../../hooks/useSession";
 import { useState } from "react";
-import { useParams } from "react-router";
+import { useParams, useSearchParams } from "react-router";
 import { format } from "date-fns";
 import { Copy, RefreshCw, ShieldCheck, ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
@@ -25,24 +25,31 @@ export function ReceiptPage() {
 function ReceiptContent({ lotId }: { lotId: string | null }) {
   const { t } = useTranslation();
   const { session } = useSession();
+  const [searchParams] = useSearchParams();
+  const sharedToken = searchParams.get("share");
   const query = useApiQuery<Result>(
-    lotId && session ? `/lots/${encodeURIComponent(lotId)}/receipt` : null,
-    session?.token,
+    lotId && (session || sharedToken)
+      ? `/lots/${encodeURIComponent(lotId)}/receipt${sharedToken ? "/shared" : ""}`
+      : null,
+    sharedToken ? undefined : session?.token,
+    false,
+    false,
+    sharedToken ? { "X-Receipt-Token": sharedToken } : undefined,
   );
   const result = query.data;
   const receipt = result?.status === "settled" ? result.receipt : null;
   const [copyError, setCopyError] = useState("");
   const [copying, setCopying] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
-  const shareUrl = lotId
-    ? `${location.origin}/#/audit/${encodeURIComponent(lotId)}`
+  const shareUrl = lotId && receipt?.shareToken
+    ? `${location.origin}/#/receipt/${encodeURIComponent(lotId)}?share=${encodeURIComponent(receipt.shareToken)}`
     : "";
   async function copy() {
     setCopying(true);
     setCopyError("");
     try {
       await navigator.clipboard.writeText(shareUrl);
-      toast.success(t("Audit report link copied"));
+      toast.success(t("Receipt link copied"));
     } catch {
       setCopyError(
         t("Could not copy the link. Select the link and copy it manually."),
@@ -80,11 +87,11 @@ function ReceiptContent({ lotId }: { lotId: string | null }) {
         </div>
         <p className="text-sm leading-relaxed text-muted-foreground">
           {t(
-            "Confirmed settlement details for the winning bidder and lot owner only.",
+            "Settlement details for the winner, lot owner, and anyone with the shared receipt link.",
           )}{" "}
         </p>
       </header>
-      {!session && (
+      {!session && !sharedToken && (
         <Alert>
           <AlertDescription>
             {t(
@@ -203,14 +210,14 @@ function ReceiptContent({ lotId }: { lotId: string | null }) {
               </section>
               <div className="space-y-3">
                 <label
-                  htmlFor="audit-share-link"
+                  htmlFor="receipt-share-link"
                   className="block text-xs uppercase"
                 >
-                  {t("Shareable audit report link")}{" "}
+                  {t("Shareable receipt link")}{" "}
                 </label>
                 <div className="flex gap-2">
                   <Input
-                    id="audit-share-link"
+                    id="receipt-share-link"
                     readOnly
                     value={shareUrl}
                     onFocus={(e) => e.currentTarget.select()}
@@ -220,14 +227,17 @@ function ReceiptContent({ lotId }: { lotId: string | null }) {
                     variant="outline"
                     size="icon"
                     className="size-12 shrink-0"
-                    aria-label={t("Copy audit report link")}
-                    title={t("Copy audit report link")}
+                    aria-label={t("Copy receipt link")}
+                    title={t("Copy receipt link")}
                     disabled={copying}
                     onClick={() => void copy()}
                   >
                     <Copy aria-hidden="true" />
                   </Button>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {t("Anyone with this link can view the receipt. Share it only with people you choose.")}
+                </p>
                 {copyError && (
                   <Alert variant="destructive">
                     <AlertDescription>{t(copyError)}</AlertDescription>

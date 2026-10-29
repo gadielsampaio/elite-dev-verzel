@@ -36,6 +36,7 @@ export function useApiQuery<T>(
   token?: string,
   keepPreviousData = false,
   retainPageWhileLoading = false,
+  headers?: Record<string, string>,
 ) {
   const [revision, setRevision] = useState(0);
   const refresh = () => setRevision((previous) => previous + 1);
@@ -43,7 +44,8 @@ export function useApiQuery<T>(
   const lotId = path?.match(/^\/lots\/([0-9a-f-]{36})(?:[/?]|$)/)?.[1];
   useLiveRefresh(refresh, token, lotId, liveEnabled);
 
-  const resource = `${path}|${token || ""}`;
+  const headerKey = JSON.stringify(headers ?? {});
+  const resource = `${path}|${token || ""}|${headerKey}`;
   const key = `${resource}|${revision}`;
   const [state, setState] = useState<QueryState<T>>({
     key: "", resource: "", data: null, error: "",
@@ -53,7 +55,7 @@ export function useApiQuery<T>(
     if (!path) return;
 
     const controller = new AbortController();
-    api<T>(path, token, { signal: controller.signal })
+    api<T>(path, token, { signal: controller.signal, headers: JSON.parse(headerKey) })
       .then((data) => {
         if (controller.signal.aborted) return;
         setState({ key, resource, data, error: "" });
@@ -69,7 +71,7 @@ export function useApiQuery<T>(
       });
 
     return () => controller.abort();
-  }, [path, token, key, resource, keepPreviousData]);
+  }, [path, token, key, resource, keepPreviousData, headerKey]);
 
   const isCurrentRevision = state.key === key;
   const isCurrentResource = state.resource === resource;

@@ -9,6 +9,7 @@ export type Result = {
   items: { name: string; imageUrl: string | null }[];
   receipt: {
     id: string;
+    shareToken: string;
     amount: string;
     winnerAlias: string;
     winningBidId: string;

@@ -1,6 +1,8 @@
 import {
   Controller,
   Get,
+  Header,
+  Headers,
   Param,
   ParseUUIDPipe,
   Req,
@@ -24,7 +26,17 @@ export class ResultsController {
   ) {
     return this.results.forLot(lotId, request.user);
   }
+  @Get('receipt/shared')
+  @Header('Cache-Control', 'private, no-store')
+  sharedReceipt(
+    @Param('lotId', ParseUUIDPipe) lotId: string,
+    @Headers('x-receipt-token') token?: string,
+  ) {
+    return this.results.forLot(lotId, undefined, true, token ?? '');
+  }
+
   @Get('receipt')
+  @Header('Cache-Control', 'private, no-store')
   @UseGuards(JwtAuthGuard)
   receipt(
     @Param('lotId', ParseUUIDPipe) lotId: string,

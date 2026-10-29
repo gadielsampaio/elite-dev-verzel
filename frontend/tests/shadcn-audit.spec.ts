@@ -227,3 +227,21 @@ test("uncovered and empty histories are shown without inventing coverage", async
   await expect(page.getByText("No recorded bids.")).toBeVisible();
   await expect(page.getByRole("status")).toHaveText("NOT VERIFIABLE");
 });
+
+
+test("public audit lists closed lots with audit links only", async ({ page }) => {
+  await page.route("**/api/auth/refresh", r => r.fulfill({ status: 401, json: {} }));
+  await page.route("**/api/lots?**", r => {
+    const url = new URL(r.request().url());
+    expect(url.searchParams.get("status")).toBe("closed");
+    expect(r.request().headers().authorization).toBeUndefined();
+    return r.fulfill({ json: { items: [{ id: lotId, title: "Closed artwork", items: [{ imageUrl: "/artwork-preview.jpg", artistDisplay: "George Bellows" }], endTime: "2026-01-01T12:00:00Z" }], total: 1, page: 1, limit: 9 } });
+  });
+  await page.goto("/#/audit");
+  const list = page.getByRole("region", { name: "Closed lots" });
+  await expect(list.getByText("Closed artwork")).toBeVisible();
+  await expect(list.getByText("George Bellows")).toBeVisible();
+  await expect(list.getByRole("link", { name: "View audit for Closed artwork" })).toHaveAttribute("href", `/#/audit/${lotId}`);
+  await expect(list.getByRole("link", { name: "Verify history" })).toHaveAttribute("href", `/#/audit/${lotId}`);
+  await expect(page.locator('a[href*="receipt"]')).toHaveCount(0);
+});

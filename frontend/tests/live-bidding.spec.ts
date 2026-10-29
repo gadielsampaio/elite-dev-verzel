@@ -259,15 +259,15 @@ test("live publication, bidding, settlement and account results journey", async 
     await expect(
       pageB.getByRole("heading", { name: "Settled receipt" }),
     ).toBeVisible();
-    const auditUrl = await pageB
-      .getByLabel("Shareable audit report link")
+    const receiptUrl = await pageB
+      .getByLabel("Shareable receipt link")
       .inputValue();
     const guest = await browser.newContext();
     contexts.push(guest);
     const guestPage = await guest.newPage();
-    await guestPage.goto(auditUrl);
+    await guestPage.goto(receiptUrl);
     await expect(
-      guestPage.getByRole("heading", { name: "Public audit", exact: true }),
+      guestPage.getByRole("heading", { name: "Settled receipt", exact: true }),
     ).toBeVisible();
     const denied = await request.get(`/api/lots/${lot.id}/receipt`);
     expect(denied.status()).toBe(401);

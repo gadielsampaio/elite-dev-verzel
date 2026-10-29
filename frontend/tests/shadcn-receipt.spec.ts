@@ -10,6 +10,7 @@ const result = {
   items: [],
   receipt: {
     id: "receipt-id",
+    shareToken: "a".repeat(64),
     amount: "9007199254740993.01",
     winnerAlias: "bidder_private_alias",
     winningBidId: "bid-id",
@@ -31,8 +32,8 @@ test("authorized receipt works and preserves exact amounts on reload", async ({
   ).toBeVisible();
   await expect(page.getByText("$9,007,199,254,740,993.01")).toBeVisible();
   await expect(page.getByText("bidder_private_alias")).toBeVisible();
-  const url = await page.getByLabel("SHAREABLE AUDIT REPORT LINK").inputValue();
-  expect(url).toBe(`${new URL(page.url()).origin}/#/audit/${lotId}`);
+  const url = await page.getByLabel("SHAREABLE RECEIPT LINK").inputValue();
+  expect(url).toBe(`${new URL(page.url()).origin}/#/receipt/${lotId}?share=${result.receipt.shareToken}`);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "SETTLED RECEIPT" }),
@@ -53,7 +54,7 @@ test("pending settlement refreshes into a receipt without inventing a winner", a
   await expect(
     page.getByText("Settlement is pending.", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByLabel("SHAREABLE AUDIT REPORT LINK")).toHaveCount(0);
+  await expect(page.getByLabel("SHAREABLE RECEIPT LINK")).toHaveCount(0);
   ready = true;
   await page.getByRole("button", { name: "Refresh result" }).click();
   await expect(
@@ -73,7 +74,7 @@ test("no winner and missing results have explicit states", async ({ page }) => {
   await expect(
     page.getByText("Closed without a winner.", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByLabel("SHAREABLE AUDIT REPORT LINK")).toHaveCount(0);
+  await expect(page.getByLabel("SHAREABLE RECEIPT LINK")).toHaveCount(0);
   missing = true;
   await page.getByRole("button", { name: "Refresh result" }).click();
   await expect(page.getByRole("alert")).toHaveText("Lot not found");
@@ -104,14 +105,14 @@ test("copy link, public audit navigation and mobile layout use the new pages", a
     page.getByRole("heading", { name: "Settled receipt", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Copy audit report link", exact: true })
+    .getByRole("button", { name: "Copy receipt link", exact: true })
     .click();
   await expect(
-    page.getByText("Audit report link copied", { exact: true }),
+    page.getByText("Receipt link copied", { exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => (window as unknown as { copied: string }).copied),
-  ).toBe(await page.getByLabel("Shareable audit report link").inputValue());
+  ).toBe(await page.getByLabel("Shareable receipt link").inputValue());
   await expect(
     page.getByRole("link", { name: "Verify bid history", exact: true }),
   ).toHaveAttribute("href", `/#/audit/${lotId}`);
@@ -141,13 +142,13 @@ test("copy failure retains manual link and shows an alert", async ({
   await page.route("**/api/lots/**", (r) => r.fulfill({ json: result }));
   await page.goto(`/#/receipt/${lotId}`);
   await page
-    .getByRole("button", { name: "Copy audit report link", exact: true })
+    .getByRole("button", { name: "Copy receipt link", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText(
     "Could not copy the link",
   );
-  await expect(page.getByLabel("Shareable audit report link")).toHaveValue(
-    /\/#\/audit\//,
+  await expect(page.getByLabel("Shareable receipt link")).toHaveValue(
+    /\/#\/receipt\//,
   );
 });
 test("unended auction and incomplete receipt never display a confirmed receipt", async ({
@@ -161,7 +162,7 @@ test("unended auction and incomplete receipt never display a confirmed receipt",
   await expect(page.getByRole("status")).toContainText(
     "This auction has not ended",
   );
-  await expect(page.getByLabel("Shareable audit report link")).toHaveCount(0);
+  await expect(page.getByLabel("Shareable receipt link")).toHaveCount(0);
   status = "settled";
   await page
     .getByRole("button", { name: "Refresh result", exact: true })
@@ -200,7 +201,7 @@ test("guest cannot request a receipt; other authenticated bidders see forbidden"
   );
   await page.reload();
   await expect(page.getByRole("alert")).toContainText("Receipt is restricted");
-  await expect(page.getByLabel("Shareable audit report link")).toHaveCount(0);
+  await expect(page.getByLabel("Shareable receipt link")).toHaveCount(0);
 });
 
 test("receipt login returns to the protected receipt", async ({ page }) => {
@@ -229,4 +230,27 @@ test("receipt login returns to the protected receipt", async ({ page }) => {
   await expect(
     page.getByRole("heading", { name: "Settled receipt", exact: true }),
   ).toBeVisible();
+});
+
+
+test("shared receipt works without login and sends its token only in a header", async ({ page }) => {
+  await page.route("**/api/auth/refresh", r => r.fulfill({ status: 401, json: { message: "Unauthorized" } }));
+  await page.route("**/api/lots/**/receipt/shared", r => {
+    expect(r.request().headers()["x-receipt-token"]).toBe(result.receipt.shareToken);
+    expect(r.request().headers().authorization).toBeUndefined();
+    expect(r.request().url()).not.toContain(result.receipt.shareToken);
+    return r.fulfill({ json: result });
+  });
+  await page.goto(`/#/receipt/${lotId}?share=${result.receipt.shareToken}`);
+  await expect(page.getByRole("heading", { name: "Settled receipt", exact: true })).toBeVisible();
+  await expect(page.getByText("Sign in as the winning bidder", { exact: false })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Settled receipt", exact: true })).toBeVisible();
+});
+
+test("invalid shared receipt displays an error without settlement details", async ({ page }) => {
+  await page.route("**/api/lots/**/receipt/shared", r => r.fulfill({ status: 403, json: { message: "Receipt is restricted to the winning bidder and lot owner" } }));
+  await page.goto(`/#/receipt/${lotId}?share=invalid`);
+  await expect(page.getByRole("alert")).toContainText("Receipt is restricted");
+  await expect(page.getByRole("heading", { name: "Settled receipt", exact: true })).toHaveCount(0);
 });

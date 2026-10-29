@@ -1,3 +1,4 @@
+import { ClosedLots } from "./ClosedLots";
 import { useTranslation } from "@/hooks/useTranslation";
 import { auditExplanation } from "./presentation";
 import { LoadingSkeleton } from "../components/LoadingSkeleton";
@@ -139,6 +140,7 @@ function PublicAuditContent({ lotId }: { lotId: string | null }) {
           </Button>
         </Alert>
       )}
+      {!lotId && <ClosedLots />}
       {!lotId && (
         <Alert>
           <ShieldCheck className="size-4" aria-hidden="true" />

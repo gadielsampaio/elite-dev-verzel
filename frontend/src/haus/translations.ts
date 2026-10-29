@@ -203,18 +203,22 @@ export const messagesPT: Record<string, string> = {
   "Committed balance": "Saldo reservado",
   "Complete bid history": "Histórico completo de lances",
   "Configure the auction": "Configure o leilão",
-  "Confirmed settlement details for the winning bidder and lot owner only.":
-    "Detalhes da liquidação confirmada, disponíveis apenas para o vencedor e o proprietário do lote.",
+  "Settlement details for the winner, lot owner, and anyone with the shared receipt link.":
+    "Detalhes da liquidação para o vencedor, o proprietário e quem possui o link compartilhado do recibo.",
   "Confirmed wins": "Vitórias confirmadas",
   "Connecting live updates · Automatic refresh active":
     "Conectando atualizações ao vivo · Atualização automática ativa",
+  "View audit for {title}": "Ver auditoria de {title}",
+  "Closed lots": "Lotes encerrados",
+  "No closed lots yet.": "Nenhum lote encerrado ainda.",
+  "Anyone with this link can view the receipt. Share it only with people you choose.": "Quem possui este link pode ver o recibo. Compartilhe apenas com quem você escolher.",
   "Refunds": "Reembolsos",
   "Reserved funds released after lot cancellation.": "Valores reservados liberados após o cancelamento do lote.",
   "No refunds yet.": "Nenhum reembolso ainda.",
   "Refresh refunds": "Atualizar reembolsos",
   "Refund ID": "ID do reembolso",
   "A settled lot cannot be cancelled": "Um lote liquidado não pode ser cancelado",
-  "Copy audit report link": "Copiar link do relatório de auditoria",
+  "Copy receipt link": "Copiar link do recibo",
   "Could not copy the link. Select the link and copy it manually.":
     "Não foi possível copiar o link. Selecione e copie manualmente.",
   "Could not restore your session.": "Não foi possível restaurar sua sessão.",
@@ -380,7 +384,7 @@ export const messagesPT: Record<string, string> = {
   "Receipt ID": "ID do recibo",
   "Receipt details are unavailable. Refresh the result to try again.":
     "Os detalhes do recibo estão indisponíveis. Atualize o resultado para tentar novamente.",
-  "Audit report link copied": "Link do relatório de auditoria copiado",
+  "Receipt link copied": "Link do recibo copiado",
   "Refresh balance": "Atualizar saldo",
   "Refresh bids": "Atualizar lances",
   "Refresh lot": "Atualizar lote",
@@ -429,7 +433,7 @@ export const messagesPT: Record<string, string> = {
   "Settlement is pending. No completed sale is confirmed yet.":
     "A liquidação está pendente. Nenhuma venda concluída foi confirmada ainda.",
   "Settlement pending": "Liquidação pendente",
-  "Shareable audit report link": "Link compartilhável do relatório de auditoria",
+  "Shareable receipt link": "Link compartilhável do recibo",
   "Show password": "Mostrar senha",
   "Sign in as a bidder to view your bids.":
     "Entre como participante para ver seus lances.",

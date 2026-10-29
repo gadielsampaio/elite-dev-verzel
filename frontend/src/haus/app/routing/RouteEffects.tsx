@@ -24,13 +24,14 @@ export function RouteEffects() {
 
     const lotId = validReturnId(matchPath("/lot/:id", pathname)?.params.id);
     const receiptId = validReturnId(matchPath("/receipt/:id", pathname)?.params.id);
+    if (receiptId && new URLSearchParams(search).has("share")) return;
     const returnQuery = new URLSearchParams();
     if (lotId) returnQuery.set("lot", lotId);
     else if (receiptId) returnQuery.set("receipt", receiptId);
 
     const query = returnQuery.toString();
     navigate(query ? `/login?${query}` : "/login");
-  }, [session, notice, pathname, navigate]);
+  }, [session, notice, pathname, search, navigate]);
 
   return null;
 }
