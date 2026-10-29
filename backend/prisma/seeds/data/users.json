@@ -1,20 +1,20 @@
 [
   {
-    "name": "AUCTIONEER",
+    "name": "João",
     "role": "auctioneer",
     "id": "d5de548c-ad1b-4059-a59e-2aae083e844e",
-    "email": "auctioneer@mail.com"
+    "email": "joao@mail.com"
   },
   {
-    "name": "BIDDER A",
+    "name": "Pedro",
     "role": "bidder",
     "id": "a92ea8fd-2be9-4e93-a8bd-d664b028c405",
-    "email": "bidderA@mail.com"
+    "email": "pedro@mail.com"
   },
   {
-    "name": "BIDDER B",
+    "name": "Tiago",
     "role": "bidder",
     "id": "5aa6c647-8c24-4407-a221-088c779dfdd9",
-    "email": "bidderB@mail.com"
+    "email": "tiago@mail.com"
   }
 ]

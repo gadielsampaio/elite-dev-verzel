@@ -47,11 +47,11 @@ async function main() {
   if (
     !migrateOnly &&
     (!env.SEED_PASSWORD ||
-      env.SEED_PASSWORD.length < 12 ||
+      env.SEED_PASSWORD.length < 8 ||
       Buffer.byteLength(env.SEED_PASSWORD) > 72)
   )
     throw new Error(
-      'SEED_PASSWORD must be 12 characters minimum and 72 bytes maximum',
+      'SEED_PASSWORD must be 8 characters minimum and 72 bytes maximum',
     );
   console.log(`Target: ${url.hostname}:${url.port || '5432'}${url.pathname}`);
   if (check) {
