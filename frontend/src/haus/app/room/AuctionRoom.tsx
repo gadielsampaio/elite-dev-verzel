@@ -1,3 +1,4 @@
+import { RoomSkeleton } from "./RoomSkeleton";
 import { LoadingSkeleton } from "../LoadingSkeleton";
 import { useEffect, useRef, useState } from "react";
 import { RefreshCw, ShieldCheck, ReceiptText } from "lucide-react";
@@ -114,6 +115,7 @@ function Room({ id }: { id: string }) {
     settled &&
     !!position.data?.bidderAlias &&
     position.data.bidderAlias === result.data?.winnerAlias;
+  if (!lot && detail.loading) return <RoomSkeleton />;
   return (
     <section>
       {!lot && (
@@ -124,9 +126,6 @@ function Room({ id }: { id: string }) {
           <h1 className={pageTitle}>
             {detail.error ? "Lot unavailable" : "Loading lot…"}
           </h1>
-          {detail.loading && (
-            <LoadingSkeleton label="Loading lot…" layout="hero" />
-          )}
           {item && (
             <p className="text-sm text-muted-foreground">
               {item.artistDisplay || "Artist not listed"}

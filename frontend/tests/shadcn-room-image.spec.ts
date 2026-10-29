@@ -143,3 +143,44 @@ test("immersive scene preserves desktop geometry and caption controls", async ({
   await expect(page).toHaveURL(/#\/home$/);
   await expect(room).toHaveCount(0);
 });
+
+test("room skeleton yields to web preview before requesting high resolution", async ({ page }) => {
+  await setup(page);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  let releaseLot!: () => void;
+  let releaseWeb!: () => void;
+  let releasePrint!: () => void;
+  const lotGate = new Promise<void>(resolve => { releaseLot = resolve; });
+  const webGate = new Promise<void>(resolve => { releaseWeb = resolve; });
+  const printGate = new Promise<void>(resolve => { releasePrint = resolve; });
+  let printRequested = false;
+  await page.route(`**/api/lots/${lot.id}`, async route => {
+    await lotGate;
+    await route.fulfill({ json: { ...lot, items: [{ ...lot.items[0], imageUrl: web, printImageUrl: print }] } });
+  });
+  await page.route(web, async route => {
+    await webGate;
+    await route.fulfill({ contentType: "image/svg+xml", body: svg });
+  });
+  await page.route(print, async route => {
+    printRequested = true;
+    await printGate;
+    await route.fulfill({ contentType: "image/svg+xml", body: svg });
+  });
+  await page.goto(`/#/lot/${lot.id}`);
+  await expect(page.getByRole("status", { name: "Loading auction room…" })).toBeVisible();
+  expect(await page.getByRole("dialog").boundingBox()).toMatchObject({ x: 0, y: 0, width: 1440, height: 1000 });
+  releaseLot();
+  const placeholder = page.getByRole("status", { name: "Loading artwork…" });
+  await expect(placeholder).toBeVisible();
+  expect(printRequested).toBe(false);
+  releaseWeb();
+  const image = page.locator("#lot-img");
+  await expect(image).toHaveAttribute("src", web);
+  await expect(placeholder).toHaveCount(0);
+  await expect.poll(() => printRequested).toBe(true);
+  releasePrint();
+  await expect(image).toHaveAttribute("src", print);
+  await expect(placeholder).toHaveCount(0);
+  await expect(page.getByRole("status", { name: "Loading auction room…" })).toHaveCount(0);
+});

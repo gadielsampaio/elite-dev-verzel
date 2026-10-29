@@ -1,4 +1,6 @@
 import { useArtworkViewer } from "./useArtworkViewer";
+import { useState } from "react";
+import { Skeleton } from "../components/ui/skeleton";
 export function ArtworkScene({
   lot,
   collectionLabel,
@@ -12,6 +14,7 @@ export function ArtworkScene({
   };
   collectionLabel?: string;
 }) {
+  const [imageLoaded, setImageLoaded] = useState(false);
   const {
     scene,
     figure,
@@ -39,12 +42,22 @@ export function ArtworkScene({
       }}
     >
       <div className="hs-art-figure" id="lot-figure" ref={figure}>
+        {lot.image && !imageFailed && !imageLoaded && (
+          <Skeleton
+            role="status"
+            aria-label="Loading artwork…"
+            aria-busy="true"
+            className="rounded-none"
+            style={{ position: "absolute", inset: "4% 7%" }}
+          />
+        )}
         {lot.image && !imageFailed ? (
           <img
             alt={`${lot.title} by ${lot.artist}`}
             draggable="false"
             id="lot-img"
             src={lot.image}
+            onLoad={() => setImageLoaded(true)}
             onError={() => setImageFailed(true)}
           />
         ) : (
