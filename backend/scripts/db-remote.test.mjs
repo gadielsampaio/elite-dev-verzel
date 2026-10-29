@@ -81,6 +81,18 @@ test(
       const items = await pool.query(
         `SELECT * FROM "${schema}".items ORDER BY id`,
       );
+      const seededLots = await pool.query(`SELECT * FROM "${schema}".lots`);
+      assert.equal(seededLots.rowCount, 1);
+      const lot = seededLots.rows[0];
+      assert.equal(lot.title, "Stag at Sharkey's");
+      assert.equal(lot.status, 'open');
+      assert.equal(lot.start_time.getTime(), lot.created_at.getTime());
+      assert.equal(lot.end_time.getTime() - lot.start_time.getTime(), 7 * 24 * 60 * 60 * 1000);
+      assert.equal(items.rows[0].name, "Stag at Sharkey's");
+      assert.equal(items.rows[0].artic_artwork_id, 92937);
+      assert.equal(items.rows[0].source_snapshot.provider, 'cleveland');
+      assert.equal(items.rows[0].is_public_domain, true);
+
       await pool.query(`UPDATE "${schema}".lots SET status = 'cancelled'`);
       const before = await pool.query(`SELECT * FROM "${schema}".lots`);
       await pool.query(

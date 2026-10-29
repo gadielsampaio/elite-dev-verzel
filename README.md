@@ -82,13 +82,15 @@ O startup da API gera o Prisma Client. Migrations e seeds são explícitos; não
 
 O comando de seed acima cria as mesmas contas de demonstração listadas em [Acesso em produção](#acesso-em-produção).
 
-O seed cria apenas as três contas e suas carteiras vazias. Os lotes são publicados manualmente pelo leiloeiro no Seller Studio; não há lances nem créditos artificiais. Os dados ficam nos [JSONs de seed](backend/prisma/seeds/data/).
+O seed cria as três contas, suas carteiras vazias e um lote aberto de **[Stag at Sharkey's](https://www.clevelandart.org/art/1922.1133)**, de George Bellows, pertencente à coleção do Cleveland Museum of Art. O lote é publicado em nome de João, começa no momento da primeira execução do seed e tem prazo inicial de **7 dias a partir da publicação**. Lances nos minutos finais continuam sujeitos à regra de extensão do leilão.
 
-1. Entre como João no Seller Studio, selecione uma obra e publique um lote com início imediato, prazo futuro, lance inicial e incremento mínimo.
+O título é `Stag at Sharkey's`, sem “mock”. Os dados reais da obra e as URLs das imagens ficam no [JSON do lote](backend/prisma/seeds/data/lot.json), permitindo executar o seed sem consultar a API externa. Os valores de demonstração são: lance inicial de US$ 100, incremento de US$ 10 e estimativa de US$ 1.000; não representam uma avaliação da obra. Não há lances nem créditos artificiais.
+
+1. Abra o lote `Stag at Sharkey's` na vitrine. Para publicar outros lotes, entre como João no Seller Studio.
 2. Em sessões de navegador separadas, entre como Pedro e Tiago, faça depósitos simulados e dispute o lote.
 3. Após o encerramento e a liquidação, confira os saldos, o resultado e o comprovante. A auditoria pode ser aberta sem login.
 
-Rodar o seed novamente não apaga dados, não troca senhas existentes e não altera lotes. Para uma nova disputa, publique outro lote pelo painel.
+Rodar o seed novamente não apaga dados, não troca senhas existentes, não duplica o lote e não reinicia seu prazo de 7 dias. Um lote encerrado ou cancelado permanece nesse estado. Para uma nova disputa, publique outro lote pelo painel.
 
 ### Manutenção local
 
@@ -159,7 +161,7 @@ O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE
 
 ## Comportamentos conhecidos e limitações
 
-- **Vitrine vazia:** o seed não publica lotes. Crie pelo menos um lote aberto no Seller Studio para disponibilizar a demonstração de lances.
+- **Vitrine sem lotes ao vivo:** execute o seed para criar o lote `Stag at Sharkey's`. Se ele já encerrou ou foi cancelado, publique outro pelo Seller Studio; executar o seed novamente não reabre o lote.
 - **Catálogo:** o Adapter normaliza o Cleveland. Lotes publicados guardam os dados da obra, então consultas e operações não precisam chamar o catálogo novamente. As imagens ainda dependem do CDN do museu; indisponibilidade pode impedir sua exibição.
 - **Dinheiro:** depósitos são simulados, sem gateway de pagamento. Saldo deriva do extrato e das reservas, com operações críticas em transações. Cancelamento com lances não está disponível.
 - **Encerramento:** o worker verifica lotes a cada dez segundos enquanto a API está ativa. Pode haver intervalo entre o fim da disputa e a confirmação do resultado; não há lances aceitos após o prazo.

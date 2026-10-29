@@ -103,7 +103,7 @@ async function main() {
         );
     }
     console.log(
-      'Prisma mock seeds ready: one auctioneer, two bidders, wallets and a lot.',
+      "Seeds ready: one auctioneer, two bidders, wallets and Stag at Sharkey's.",
     );
   }
 }

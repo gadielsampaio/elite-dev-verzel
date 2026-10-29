@@ -1,0 +1,24 @@
+{
+  "id": "07b815a1-68cd-4794-9ddf-f51760c1dd22",
+  "ownerId": "d5de548c-ad1b-4059-a59e-2aae083e844e",
+  "title": "Stag at Sharkey's",
+  "currency": "USD",
+  "startingBid": "100.00",
+  "bidIncrement": "10.00",
+  "estimatedValue": "1000.00",
+  "artwork": {
+    "articArtworkId": 92937,
+    "articImageId": null,
+    "name": "Stag at Sharkey's",
+    "imageUrl": "https://openaccess-cdn.clevelandart.org/1922.1133/1922.1133_web.jpg",
+    "printImageUrl": "https://openaccess-cdn.clevelandart.org/1922.1133/1922.1133_print.jpg",
+    "artistDisplay": "George Bellows (American, 1882–1925)",
+    "creditLine": "Hinman B. Hurlbut Collection",
+    "isPublicDomain": true,
+    "dateDisplay": "1909",
+    "mediumDisplay": "oil on canvas",
+    "dimensions": "Framed: 110 x 140.5 x 8.5 cm (43 5/16 x 55 5/16 x 3 3/8 in.); Unframed: 92 x 122.6 cm (36 1/4 x 48 1/4 in.)",
+    "artworkType": "Painting",
+    "provider": "cleveland"
+  }
+}
