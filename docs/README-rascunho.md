@@ -22,7 +22,7 @@ Foi adotada uma arquitetura modular, com responsabilidades bem definidas. O obje
 
 ### Histórico auditável
 
-O histórico auditável foi um dos principais desafios do projeto, especialmente pela necessidade de registrar operações de **criação, atualização e exclusão**. Após avaliar alternativas, optamos por uma **tabela de auditoria no PostgreSQL alimentada por triggers**.
+O histórico auditável foi um dos principais desafios do projeto, especialmente pela necessidade de registrar operações de **criação, atualização e exclusão**. Após avaliar alternativas, optei por uma **tabela de auditoria no PostgreSQL alimentada por triggers**.
 
 Essa abordagem registra as operações diretamente no banco de dados, inclusive exclusões, sem depender de chamadas explícitas dos serviços da aplicação. A solução concentra a responsabilidade da auditoria em um só lugar e reduz o risco de algum fluxo deixar de registrar uma alteração.
 
