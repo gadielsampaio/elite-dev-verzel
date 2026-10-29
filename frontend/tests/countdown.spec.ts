@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test";
-import { clock } from "../src/haus/model";
+import { formatCountdown } from "../src/utils/time";
 
 test("countdown shows days from 24 hours and clamps expired lots", () => {
   const now = Date.UTC(2026, 9, 29);
@@ -12,5 +12,5 @@ test("countdown shows days from 24 hours and clamps expired lots", () => {
     [86401, "1d 00:00:01"],
     [183845, "2d 03:04:05"],
   ] as const)
-    expect(clock(now + seconds * 1000, now)).toBe(expected);
+    expect(formatCountdown(now + seconds * 1000, now)).toBe(expected);
 });

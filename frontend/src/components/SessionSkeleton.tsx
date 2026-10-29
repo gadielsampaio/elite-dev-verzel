@@ -1,12 +1,14 @@
+import { useTranslation } from "@/hooks/useTranslation";
 import { Skeleton } from "./ui/skeleton";
 import "./session-skeleton.css";
 
 export function SessionSkeleton() {
+  const { t } = useTranslation();
   return (
     <div
       className="session-skeleton"
       role="status"
-      aria-label="Verifying your session"
+      aria-label={t("Verifying your session")}
       aria-busy="true"
     >
       <div aria-hidden="true">

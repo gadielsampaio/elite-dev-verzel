@@ -177,3 +177,96 @@ test("currency digits format from the right, backspace removes cents, and cursor
   await expect.poll(() => requests.length).toBe(1);
   expect(requests[0].amount).toBe("123.45");
 });
+
+test("currency paste preserves exact amounts and ignores invalid or oversized values", async ({
+  page,
+}) => {
+  const requests = await room(page);
+  const amount = page.getByLabel("Bid amount (USD)");
+  const paste = (text: string) =>
+    amount.evaluate((input, value) => {
+      const clipboardData = new DataTransfer();
+      clipboardData.setData("text", value);
+      input.dispatchEvent(new ClipboardEvent("paste", {
+        bubbles: true,
+        cancelable: true,
+        clipboardData,
+      }));
+    }, text);
+
+  await paste(" $ 1,234.5 ");
+  await expect(amount).toHaveValue("$1,234.50");
+  await paste("00012.");
+  await expect(amount).toHaveValue("$12.00");
+  await paste("99,999,999,999,999,999.99");
+  await expect(amount).toHaveValue("$99,999,999,999,999,999.99");
+
+  for (const invalid of [
+    "", "-1.00", "1.234", "1e3", "abc", "100000000000000000.00",
+  ]) {
+    await paste(invalid);
+    await expect(amount).toHaveValue("$99,999,999,999,999,999.99");
+  }
+
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
+  await expect.poll(() => requests.length).toBe(1);
+  expect(requests[0].amount).toBe("99999999999999999.99");
+});
+
+test("currency typing enforces the digit limit and deletion stops at zero", async ({
+  page,
+}) => {
+  await room(page);
+  const amount = page.getByLabel("Bid amount (USD)");
+  await amount.pressSequentially("0001234567890123456789");
+  await expect(amount).toHaveValue("$12,345,678,901,234,567.89");
+  await amount.press("0");
+  await expect(amount).toHaveValue("$12,345,678,901,234,567.89");
+  await amount.press("Delete");
+  await expect(amount).toHaveValue("$1,234,567,890,123,456.78");
+  await amount.press("9");
+  await expect(amount).toHaveValue("$12,345,678,901,234,567.89");
+
+  await amount.fill("0.01");
+  await amount.press("Backspace");
+  await amount.press("Delete");
+  await expect(amount).toHaveValue("$0.00");
+  await amount.press("Tab");
+  await expect(amount).not.toBeFocused();
+});
+
+test("currency handles input events without keyboard events", async ({ page }) => {
+  const requests = await room(page);
+  const amount = page.getByLabel("Bid amount (USD)");
+  await amount.fill("123.45");
+  await amount.focus();
+
+  const inputEvent = (inputType: string, data: string | null, value: string) =>
+    amount.evaluate((input: HTMLInputElement, event) => {
+      // Simulate the browser changing the input before React receives a mobile input event.
+      const setter = Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(input, event.value);
+      input.dispatchEvent(new InputEvent("input", {
+        bubbles: true,
+        inputType: event.inputType,
+        data: event.data,
+      }));
+    }, { inputType, data, value });
+
+  await inputEvent("insertText", "6", "$123.456");
+  await expect(amount).toHaveValue("$1,234.56");
+  await inputEvent("deleteContentBackward", null, "$1,234.5");
+  await expect(amount).toHaveValue("$123.45");
+  expect(
+    await amount.evaluate(
+      (input: HTMLInputElement) => input.selectionStart === input.value.length,
+    ),
+  ).toBe(true);
+
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
+  await expect.poll(() => requests.length).toBe(1);
+  expect(requests[0].amount).toBe("123.45");
+});

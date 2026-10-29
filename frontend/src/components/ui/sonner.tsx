@@ -1,5 +1,6 @@
+import { useTranslation } from "@/hooks/useTranslation";
 // Adapted from shadcn/ui New York Sonner (MIT); theme comes from the app.
-"use client";
+("use client");
 
 import type * as React from "react";
 import { Toaster as Sonner } from "sonner";
@@ -7,9 +8,12 @@ import { Toaster as Sonner } from "sonner";
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
 const Toaster = ({ ...props }: ToasterProps) => {
+  const { t } = useTranslation();
+
   return (
     <Sonner
       className="toaster group"
+      containerAriaLabel={t("Notifications")}
       style={
         {
           "--normal-bg": "var(--background)",
@@ -19,6 +23,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
         } as React.CSSProperties
       }
       toastOptions={{
+        closeButtonAriaLabel: t("Close notification"),
         style: {
           borderRadius: 0,
           border: "1px solid var(--border)",

@@ -37,7 +37,7 @@ export async function setup(
   let deposited = false;
   let signedIn = false;
   let filters: string[] = [];
-  await page.route("**/api/**", async (route) => {
+  await page.route((url) => url.pathname.startsWith("/api/"), async (route) => {
     const req = route.request(),
       url = new URL(req.url());
     let body: unknown;
@@ -69,7 +69,10 @@ export async function setup(
       filters.push(url.searchParams.get("status") ?? "");
       body = { items: [lot], page: 1, limit: 9, total: 1 };
     } else if (url.pathname === `/api/lots/${lot.id}`) body = lot;
-    else if (url.pathname === "/api/wallet") {
+    else if (url.pathname === "/api/wallet/credit-memos") {
+      expect(req.headers().authorization).toBe(`Bearer ${token}`);
+      body = [];
+    } else if (url.pathname === "/api/wallet") {
       expect(req.headers().authorization).toBe(`Bearer ${token}`);
       if (deposited && failBalanceAfterDeposit) {
         status = 503;

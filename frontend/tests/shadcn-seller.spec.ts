@@ -135,7 +135,7 @@ test("catalog keeps filters and publishes exact amounts; owned lot can be cancel
     .getByRole("button", { name: "Cancel lot", exact: true })
     .click();
   await expect(
-    page.getByText("Lot cancelled. It is no longer in the public collection."),
+    page.getByText("Lot cancelled. Any reserved funds have been released as a refund."),
   ).toBeVisible();
 });
 test("validation is inline and uncertain publication cannot be retried", async ({

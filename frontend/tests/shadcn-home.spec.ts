@@ -13,7 +13,7 @@ const published = {
 };
 async function setup(page: Page) {
   const requests: string[] = [];
-  await page.route("**/api/**", (route) => {
+  await page.route((url) => url.pathname.startsWith("/api/"), (route) => {
     const url = new URL(route.request().url());
     requests.push(url.pathname + url.search);
     if (url.pathname.endsWith("/refresh"))

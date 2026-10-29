@@ -182,3 +182,43 @@ test("initial HTTP load and fallback work even when WebSocket never connects", a
     page.getByRole("link", { name: "View Fallback collection", exact: true }),
   ).toBeVisible();
 });
+
+test("a delayed response cannot replace the current catalog filter", async ({ page }) => {
+  await setup(page);
+  let release!: () => void;
+  let delayedRequest = false;
+  let finished!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const completed = new Promise<void>((resolve) => { finished = resolve; });
+  await page.route("**/api/lots?**", async (route) => {
+    const url = new URL(route.request().url());
+    const delayed = url.searchParams.get("status") === "scheduled";
+    if (delayed) {
+      delayedRequest = true;
+      await gate;
+    }
+    try {
+      await route.fulfill({ json: {
+        items: [{ ...lot, title: delayed ? "Old scheduled result" : "Current collection" }],
+        total: 1, page: 1, limit: 9,
+      } });
+    } finally {
+      if (delayed) finished();
+    }
+  });
+
+  try {
+    await page.goto("/#/home");
+    await expect(page.getByRole("link", { name: "View Current collection", exact: true })).toBeVisible();
+    await page.getByRole("tab", { name: "UPCOMING", exact: true }).click();
+    await expect.poll(() => delayedRequest).toBe(true);
+    await page.getByRole("tab", { name: "CLOSED", exact: true }).click();
+    await expect(page.getByRole("tabpanel")).toHaveAttribute("aria-busy", "false");
+    release();
+    await completed;
+    await expect(page.getByRole("link", { name: "View Current collection", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "View Old scheduled result", exact: true })).toHaveCount(0);
+  } finally {
+    release();
+  }
+});

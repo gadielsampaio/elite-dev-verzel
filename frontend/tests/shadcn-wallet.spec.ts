@@ -138,7 +138,7 @@ test("guest wallet requests no private balance and offers login", async ({
   expect(calls).toEqual([]);
 });
 
-test("account events refresh balances without a manual reload", async ({
+test("cancellation account events update balances and refunds without a reload", async ({
   page,
 }) => {
   await setup(page);
@@ -171,12 +171,72 @@ test("account events refresh balances without a manual reload", async ({
         walletId: "wallet1",
         currency: "USD",
         total: "100.00",
-        committed: "60.00",
-        available: "40.00",
+        committed: "0.00",
+        available: "100.00",
       },
     }),
   );
+  await expect(page.getByRole("region", { name: "Refunds", exact: true })).toHaveCount(0);
+  await page.route("**/api/wallet/credit-memos", (route) => route.fulfill({ json: [{
+    id: "live-memo", lotId: "lot-id", title: "Cancelled artwork",
+    amount: "20.00", currency: "USD", createdAt: "2026-01-01T12:00:00Z",
+  }] }));
   sockets.forEach((ws) => ws.send('42/auctions,["account.changed",{}]'));
-  await expect(page.getByLabel("Wallet balances")).toContainText("$40.00");
-  await expect(page.getByLabel("Wallet balances")).toContainText("$60.00");
+  await expect(page.getByLabel("Wallet balances")).toContainText("$100.00");
+  await expect(page.getByLabel("Wallet balances")).toContainText("$0.00");
+  await expect(page.getByText("Refund ID: live-memo")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Refunds", exact: true })).toBeVisible();
+});
+
+test("an older balance response cannot overwrite a newer refresh", async ({ page }) => {
+  await setup(page);
+  await openWallet(page);
+  let requests = 0;
+  let release!: () => void;
+  let finished!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  const completed = new Promise<void>((resolve) => { finished = resolve; });
+  await page.route("**/api/wallet", async (route) => {
+    const delayed = ++requests === 1;
+    if (delayed) await gate;
+    try {
+      await route.fulfill({ json: {
+        walletId: "wallet1", currency: "USD",
+        total: delayed ? "200.00" : "300.00",
+        committed: "0.00", available: delayed ? "200.00" : "300.00",
+      } });
+    } finally {
+      if (delayed) finished();
+    }
+  });
+
+  try {
+    await page.getByRole("button", { name: "Refresh balance", exact: true }).click();
+    await expect.poll(() => requests).toBeGreaterThan(0);
+    await page.evaluate(() => document.dispatchEvent(new Event("visibilitychange")));
+    await expect(page.getByLabel("Wallet balances")).toContainText("$300.00");
+    release();
+    await completed;
+    await expect(page.getByRole("button", { name: "Refresh balance", exact: true })).toBeEnabled();
+    await expect(page.getByLabel("Wallet balances")).toContainText("$300.00");
+    await expect(page.getByLabel("Wallet balances")).not.toContainText("$200.00");
+  } finally {
+    release();
+  }
+});
+
+
+test("wallet shows cancellation refunds with exact released amounts", async ({ page }) => {
+  await setup(page);
+  await page.route("**/api/wallet/credit-memos", (route) => route.fulfill({ json: [{
+    id: "memo-id", lotId: "lot-id", title: "Cancelled artwork",
+    amount: "9007199254740993.01", currency: "USD", createdAt: "2026-01-01T12:00:00Z",
+  }] }));
+  await openWallet(page);
+  const memos = page.getByRole("region", { name: "Refunds" });
+  await expect(memos.getByText("Cancelled artwork")).toBeVisible();
+  await expect(memos.getByText("$9,007,199,254,740,993.01", { exact: true })).toBeVisible();
+  await expect(memos.getByText("Refund ID: memo-id")).toBeVisible();
+  await page.reload();
+  await expect(memos.getByText("Refund ID: memo-id")).toBeVisible();
 });

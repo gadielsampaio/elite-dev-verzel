@@ -31,8 +31,8 @@ test("authorized receipt works and preserves exact amounts on reload", async ({
   ).toBeVisible();
   await expect(page.getByText("$9,007,199,254,740,993.01")).toBeVisible();
   await expect(page.getByText("bidder_private_alias")).toBeVisible();
-  const url = await page.getByLabel("SHAREABLE RECEIPT LINK").inputValue();
-  expect(url).toContain(`/#/receipt/${lotId}`);
+  const url = await page.getByLabel("SHAREABLE AUDIT REPORT LINK").inputValue();
+  expect(url).toBe(`${new URL(page.url()).origin}/#/audit/${lotId}`);
   await page.reload();
   await expect(
     page.getByRole("heading", { name: "SETTLED RECEIPT" }),
@@ -53,7 +53,7 @@ test("pending settlement refreshes into a receipt without inventing a winner", a
   await expect(
     page.getByText("Settlement is pending.", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByLabel("SHAREABLE RECEIPT LINK")).toHaveCount(0);
+  await expect(page.getByLabel("SHAREABLE AUDIT REPORT LINK")).toHaveCount(0);
   ready = true;
   await page.getByRole("button", { name: "Refresh result" }).click();
   await expect(
@@ -73,7 +73,7 @@ test("no winner and missing results have explicit states", async ({ page }) => {
   await expect(
     page.getByText("Closed without a winner.", { exact: false }),
   ).toBeVisible();
-  await expect(page.getByLabel("SHAREABLE RECEIPT LINK")).toHaveCount(0);
+  await expect(page.getByLabel("SHAREABLE AUDIT REPORT LINK")).toHaveCount(0);
   missing = true;
   await page.getByRole("button", { name: "Refresh result" }).click();
   await expect(page.getByRole("alert")).toHaveText("Lot not found");
@@ -104,14 +104,14 @@ test("copy link, public audit navigation and mobile layout use the new pages", a
     page.getByRole("heading", { name: "Settled receipt", exact: true }),
   ).toBeVisible();
   await page
-    .getByRole("button", { name: "Copy receipt link", exact: true })
+    .getByRole("button", { name: "Copy audit report link", exact: true })
     .click();
   await expect(
-    page.getByText("Receipt link copied", { exact: true }),
+    page.getByText("Audit report link copied", { exact: true }),
   ).toBeVisible();
   expect(
     await page.evaluate(() => (window as unknown as { copied: string }).copied),
-  ).toBe(await page.getByLabel("Shareable receipt link").inputValue());
+  ).toBe(await page.getByLabel("Shareable audit report link").inputValue());
   await expect(
     page.getByRole("link", { name: "Verify bid history", exact: true }),
   ).toHaveAttribute("href", `/#/audit/${lotId}`);
@@ -141,13 +141,13 @@ test("copy failure retains manual link and shows an alert", async ({
   await page.route("**/api/lots/**", (r) => r.fulfill({ json: result }));
   await page.goto(`/#/receipt/${lotId}`);
   await page
-    .getByRole("button", { name: "Copy receipt link", exact: true })
+    .getByRole("button", { name: "Copy audit report link", exact: true })
     .click();
   await expect(page.getByRole("alert")).toContainText(
     "Could not copy the link",
   );
-  await expect(page.getByLabel("Shareable receipt link")).toHaveValue(
-    /\/#\/receipt\//,
+  await expect(page.getByLabel("Shareable audit report link")).toHaveValue(
+    /\/#\/audit\//,
   );
 });
 test("unended auction and incomplete receipt never display a confirmed receipt", async ({
@@ -161,7 +161,7 @@ test("unended auction and incomplete receipt never display a confirmed receipt",
   await expect(page.getByRole("status")).toContainText(
     "This auction has not ended",
   );
-  await expect(page.getByLabel("Shareable receipt link")).toHaveCount(0);
+  await expect(page.getByLabel("Shareable audit report link")).toHaveCount(0);
   status = "settled";
   await page
     .getByRole("button", { name: "Refresh result", exact: true })
@@ -200,7 +200,7 @@ test("guest cannot request a receipt; other authenticated bidders see forbidden"
   );
   await page.reload();
   await expect(page.getByRole("alert")).toContainText("Receipt is restricted");
-  await expect(page.getByLabel("Shareable receipt link")).toHaveCount(0);
+  await expect(page.getByLabel("Shareable audit report link")).toHaveCount(0);
 });
 
 test("receipt login returns to the protected receipt", async ({ page }) => {
