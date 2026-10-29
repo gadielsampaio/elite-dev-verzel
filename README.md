@@ -1,54 +1,58 @@
 # HAUS SAMPAIO
 
-Casa de leilões de arte com catálogo do Cleveland Museum of Art, lances em tempo real, carteira simulada e auditoria pública. Leiloeiros publicam obras; licitantes disputam lotes com saldo reservado até o encerramento.
+**English** · [Português (Brasil)](README.pt-BR.md)
 
-[Aplicação](https://elite-dev-verzel-delta.vercel.app/) · [API — saúde](https://elite-dev-verzel-2c5n.onrender.com/health) · [Repositório](https://github.com/gadielsampaio/elite-dev-verzel)
+An art auction house featuring the Cleveland Museum of Art catalog, real-time bidding, a simulated wallet, and public audits. Auctioneers publish artworks; bidders compete for lots with funds reserved until the auction ends.
 
-## Acesso em produção
+[Application](https://elite-dev-verzel-delta.vercel.app/) · [API health](https://elite-dev-verzel-2c5n.onrender.com/health) · [Repository](https://github.com/gadielsampaio/elite-dev-verzel)
 
-**Aplicação:** https://elite-dev-verzel-delta.vercel.app/
+## Production access
+
+**Application:** https://elite-dev-verzel-delta.vercel.app/
 
 **Login:** https://elite-dev-verzel-delta.vercel.app/#/login
 
-| Pessoa | Papel | E-mail |
+| Person | Role | Email |
 | --- | --- | --- |
-| João | Leiloeiro | `joao@mail.com` |
-| Pedro | Licitante | `pedro@mail.com` |
-| Tiago | Licitante | `tiago@mail.com` |
+| João | Auctioneer | `joao@mail.com` |
+| Pedro | Bidder | `pedro@mail.com` |
+| Tiago | Bidder | `tiago@mail.com` |
 
-**Senha para as três contas: `12345678`.** São contas de demonstração; depósitos e pagamentos são simulados.
+**Password for all three accounts: `12345678`.** These are demonstration accounts; deposits and payments are simulated.
 
-## Funcionalidades
+## Features
 
-- Vitrine de lotes ao vivo, agendados e encerrados; cancelados ficam fora da listagem pública.
-- Seller Studio: busca por obra/artista e categoria, publicação imediata ou agendada, cancelamento antes de qualquer lance e resultados do vendedor.
-- Sala com visualização 3D, zoom, histórico, posição do licitante e atualizações por WebSocket.
-- Carteira com depósitos simulados e saldos total, comprometido e disponível.
-- Lances com incremento mínimo, reserva/liberação de saldo e prorrogação de dois minutos no fim da disputa.
-- Liquidação automática, participações, arremates e comprovante acessível ao vencedor e ao leiloeiro.
-- Auditoria pública com identificação pseudônima e verificação do histórico.
-- Cadastro, login, renovação por cookie HttpOnly, temas claro/escuro e interface em português/inglês.
+- Collection of live, scheduled, and closed lots; cancelled lots are excluded from public listings.
+- Seller Studio: search by artwork/artist and category, immediate or scheduled publication, cancellation of scheduled or live lots, and seller results.
+- Auction room with a 3D viewer, zoom, bid history, bidder position, and WebSocket updates.
+- Wallet with simulated deposits and total, committed, and available balances.
+- Cancellation refunds release reserved funds and appear automatically in the wallet without reloading the page.
+- Bids with minimum increments, fund reservations/releases, and a two-minute extension near the end of an auction.
+- Automatic settlement, participation history, wins, and receipts accessible to the winner and auctioneer.
+- Public audits with pseudonymous identification and history verification.
+- Registration, login, renewal through an HttpOnly cookie, light/dark themes, and a Portuguese/English language selector with the preference saved in the browser.
+- Responsive layout for desktop and mobile devices.
 
-## Tecnologias e organização
+## Technology and organization
 
-React, TypeScript, Vite, shadcn/ui e Tailwind no frontend; NestJS com ESM, Prisma 7, PostgreSQL e Socket.IO no backend. Docker Compose reúne os três serviços locais. Vitest, Playwright e Oxlint cobrem testes e análise de código.
+React, TypeScript, Vite, shadcn/ui, and Tailwind on the frontend; NestJS with ESM, Prisma 7, PostgreSQL, and Socket.IO on the backend. Docker Compose runs the three local services. Vitest, Playwright, and Oxlint provide testing and code analysis.
 
-| Diretório | Conteúdo |
+| Directory | Contents |
 | --- | --- |
-| `frontend/src/haus/app/` | Páginas, componentes de domínio, tema e layout |
-| `frontend/src/haus/data/` | Consultas HTTP, ações e atualização por eventos |
-| `frontend/src/components/ui/` | Componentes de interface compartilhados |
-| `backend/src/` | Módulos de autenticação, catálogo, lotes, lances, carteira, liquidação e auditoria |
-| `backend/prisma/` | Schema, migrations e seeds por entidade |
-| `docs/` | [Arquitetura e ideias](docs/architecture.md), [banco de dados](docs/database.md) e Postman |
+| `frontend/src/haus/app/` | Pages, domain components, theme, and layout |
+| `frontend/src/api/` and `frontend/src/hooks/` | HTTP queries, actions, and event-driven updates |
+| `frontend/src/components/ui/` | Shared UI components |
+| `backend/src/` | Authentication, catalog, lots, bids, wallet, settlement, and audit modules |
+| `backend/prisma/` | Schema, migrations, and seeds by entity |
+| `docs/` | [Architecture and ideas](docs/architecture.md), [database](docs/database.md), and Postman |
 
-## Executar localmente
+## Running locally
 
-Requer Docker com Docker Compose. Para comandos fora dos containers, use Node.js 24 e npm. Execute os passos abaixo na raiz do repositório.
+Requires Docker with Docker Compose. For commands outside containers, use Node.js 24 and npm. Run the following steps from the repository root.
 
-### 1. Configurar o ambiente
+### 1. Configure the environment
 
-Em um checkout novo:
+For a fresh checkout:
 
 ```sh
 git clone https://github.com/gadielsampaio/elite-dev-verzel.git
@@ -57,11 +61,11 @@ cp .env.example .env
 openssl rand -hex 32
 ```
 
-Copie o valor gerado para `JWT_SECRET` no `.env`. Configure `POSTGRES_USER`, `POSTGRES_PASSWORD` e `POSTGRES_DB`; os valores de desenvolvimento do exemplo podem ser usados localmente. Preserve um `.env` já configurado.
+Copy the generated value into `JWT_SECRET` in `.env`. Configure `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`; the example development values can be used locally. Preserve an already configured `.env`.
 
-O Compose monta `DATABASE_URL` automaticamente. Use credenciais locais sem caracteres reservados de URL. `CATALOG_PROVIDER=cleveland` consulta o museu; `mock` utiliza fixtures explícitas, sem fallback automático. Não é necessária chave para o catálogo.
+Compose builds `DATABASE_URL` automatically. Use local credentials without URL-reserved characters. `CATALOG_PROVIDER=cleveland` queries the museum; `mock` uses explicit fixtures with no automatic fallback. No catalog API key is required.
 
-### 2. Criar as tabelas e iniciar
+### 2. Create the tables and start
 
 ```sh
 docker compose up -d db
@@ -70,29 +74,29 @@ docker compose up -d --build
 docker compose exec -e SEED_PASSWORD=12345678 api npm run db:seed
 ```
 
-O startup da API gera o Prisma Client. Migrations e seeds são explícitos; não são executados automaticamente no ambiente local.
+API startup generates the Prisma Client. Migrations and seeds are explicit; they do not run automatically in the local environment.
 
-| Serviço | Endereço |
+| Service | Address |
 | --- | --- |
 | Frontend | http://127.0.0.1:5175 |
 | API | http://localhost:3000 |
-| PostgreSQL | `127.0.0.1:5432`, com os dados do `.env` |
+| PostgreSQL | `127.0.0.1:5432`, using the credentials in `.env` |
 
-### 3. Experimentar o fluxo
+### 3. Try the workflow
 
-O comando de seed acima cria as mesmas contas de demonstração listadas em [Acesso em produção](#acesso-em-produção).
+The seed command above creates the same demonstration accounts listed under [Production access](#production-access).
 
-O seed cria as três contas, suas carteiras vazias e um lote aberto de **[Stag at Sharkey's](https://www.clevelandart.org/art/1922.1133)**, de George Bellows, pertencente à coleção do Cleveland Museum of Art. O lote é publicado em nome de João, começa no momento da primeira execução do seed e tem prazo inicial de **7 dias a partir da publicação**. Lances nos minutos finais continuam sujeitos à regra de extensão do leilão.
+The seed creates the three accounts, their empty wallets, and an open lot featuring **[Stag at Sharkey's](https://www.clevelandart.org/art/1922.1133)** by George Bellows, from the Cleveland Museum of Art collection. The lot is published under João's account, starts when the seed first runs, and initially ends **7 days after publication**. Bids near the end remain subject to the auction extension rule.
 
-O título é `Stag at Sharkey's`, sem “mock”. Os dados reais da obra e as URLs das imagens ficam no [JSON do lote](backend/prisma/seeds/data/lot.json), permitindo executar o seed sem consultar a API externa. Os valores de demonstração são: lance inicial de US$ 100, incremento de US$ 10 e estimativa de US$ 1.000; não representam uma avaliação da obra. Não há lances nem créditos artificiais.
+The title is `Stag at Sharkey's`, without “mock”. The actual artwork metadata and image URLs are stored in the [lot JSON](backend/prisma/seeds/data/lot.json), so seeding does not require the external API. Demonstration prices are a US$100 starting bid, a US$10 increment, and a US$1,000 estimate; these are not an appraisal of the artwork. No artificial bids or wallet credits are created.
 
-1. Abra o lote `Stag at Sharkey's` na vitrine. Para publicar outros lotes, entre como João no Seller Studio.
-2. Em sessões de navegador separadas, entre como Pedro e Tiago, faça depósitos simulados e dispute o lote.
-3. Após o encerramento e a liquidação, confira os saldos, o resultado e o comprovante. A auditoria pode ser aberta sem login.
+1. Open the `Stag at Sharkey's` lot in the collection. To publish more lots, sign in as João in Seller Studio.
+2. In separate browser sessions, sign in as Pedro and Tiago, make simulated deposits, and bid on the lot.
+3. After closing and settlement, check the balances, result, and receipt. The audit is accessible without signing in.
 
-Rodar o seed novamente não apaga dados, não troca senhas existentes, não duplica o lote e não reinicia seu prazo de 7 dias. Um lote encerrado ou cancelado permanece nesse estado. Para uma nova disputa, publique outro lote pelo painel.
+Rerunning the seed does not delete data, change existing passwords, duplicate the lot, or restart its seven-day period. A closed or cancelled lot stays in that state. Publish another lot through the dashboard for a new auction.
 
-### Manutenção local
+### Local maintenance
 
 ```sh
 docker compose ps
@@ -104,27 +108,27 @@ docker compose exec db sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB"'
 docker compose stop
 ```
 
-O volume `postgres_data` preserva os dados. Não use `docker compose down -v` para apenas parar o projeto. Alterar credenciais no `.env` não altera um banco já inicializado. Os checkpoints locais de auditoria ficam em `.local/audit-checkpoints/`; preserve-os junto com o banco.
+The `postgres_data` volume preserves data. Do not use `docker compose down -v` just to stop the project. Changing credentials in `.env` does not change an already initialized database. Local audit checkpoints are stored in `.local/audit-checkpoints/`; preserve them alongside the database.
 
-Para editar o frontend fora do Docker: pare `web`, entre em `frontend/`, copie `.env.example` para `.env`, execute `npm ci` e `npm run dev`. Para o backend no host, configure `backend/.env` pelo exemplo, usando `localhost` no `DATABASE_URL`; pare a API Docker antes de iniciar ou compilar a API no host, pois compartilham `dist`.
+To edit the frontend outside Docker: stop `web`, enter `frontend/`, copy `.env.example` to `.env`, then run `npm ci` and `npm run dev`. To run the backend on the host, configure `backend/.env` from the example, using `localhost` in `DATABASE_URL`; stop the Docker API before starting or building the API on the host, since they share `dist`.
 
-## API e Postman
+## API and Postman
 
-Importe a [coleção](docs/postman/Auction%20API.postman_collection.json) e o [ambiente local](docs/postman/Auction%20API%20Local.postman_environment.json). Selecione o ambiente com `baseUrl=http://localhost:3000`.
+Import the [collection](docs/postman/Auction%20API.postman_collection.json) and [local environment](docs/postman/Auction%20API%20Local.postman_environment.json). Select the environment with `baseUrl=http://localhost:3000`.
 
-`GET /health` executa `SELECT 1`. Com PostgreSQL acessível, retorna HTTP 200:
+`GET /health` runs `SELECT 1`. When PostgreSQL is reachable, it returns HTTP 200:
 
 ```json
 {"status":"ok","services":{"api":"up","database":"up"}}
 ```
 
-Sem conexão com o banco, retorna HTTP 503 com `status: "error"` e `database: "down"`. Isso não verifica se as migrations foram aplicadas. `GET /health/external` verifica o catálogo separadamente.
+Without a database connection, it returns HTTP 503 with `status: "error"` and `database: "down"`. This does not check whether migrations have been applied. `GET /health/external` checks the catalog separately.
 
-Rotas protegidas usam `Authorization: Bearer <accessToken>`. Login, renovação e logout também exigem `X-Session-Request: 1`; o refresh token fica em cookie HttpOnly. A aplicação envia esses dados automaticamente.
+Protected routes use `Authorization: Bearer <accessToken>`. Login, renewal, and logout also require `X-Session-Request: 1`; the refresh token is stored in an HttpOnly cookie. The application sends these automatically.
 
-## Testes
+## Tests
 
-Com os containers iniciados:
+With the containers running:
 
 ```sh
 docker compose exec api npm run build
@@ -134,13 +138,13 @@ docker compose exec api npm run test:e2e
 docker compose exec web npm run build
 ```
 
-Os testes de banco são opt-in. Execute apenas no ambiente local, de forma sequencial:
+Database tests are opt-in. Run them sequentially, only in the local environment:
 
 ```sh
 docker compose exec -e RUN_DATABASE_TESTS=1 api npm run test:e2e -- --no-file-parallelism
 ```
 
-Para os testes de navegador, no host:
+For browser tests on the host:
 
 ```sh
 cd frontend
@@ -149,41 +153,41 @@ npx playwright install chromium
 npm run test:e2e
 ```
 
-A suíte padrão de navegador simula respostas da API. Os testes `live-bidding.spec.ts` e `refresh-live.spec.ts` são separados, ativados por `RUN_LIVE_TESTS=1`, e precisam da API local e do `backend/.env` configurado; não devem apontar para produção.
+The default browser suite mocks API responses. The separate `live-bidding.spec.ts` and `refresh-live.spec.ts` tests are enabled by `RUN_LIVE_TESTS=1` and require the local API and a configured `backend/.env`; they must not target production.
 
-## Deploy
+## Deployment
 
-O frontend está na Vercel; a API e o PostgreSQL, no Render. No Render, configure `DATABASE_URL`, `JWT_SECRET`, `CATALOG_PROVIDER=cleveland` e `CORS_ORIGINS` com a origem exata do frontend. Use `backend/` como raiz e `npm run start:render` como comando Docker: aplica migrations, gera o client, compila e inicia a API.
+The frontend is hosted on Vercel; the API and PostgreSQL are on Render. On Render, configure `DATABASE_URL`, `JWT_SECRET`, `CATALOG_PROVIDER=cleveland`, and `CORS_ORIGINS` with the exact frontend origin. Use `backend/` as the root and `npm run start:render` as the Docker command: it applies migrations, generates the client, builds, and starts the API.
 
-Na Vercel, use `frontend/`, build `npm run build`, saída `dist`, `VITE_API_BASE_URL=/api` e `VITE_SOCKET_BASE_URL=https://elite-dev-verzel-2c5n.onrender.com`. O [vercel.json](frontend/vercel.json) encaminha HTTP ao backend; Socket.IO conecta diretamente. Em outro deploy, atualize também esse destino. Mantenha cookies Secure em produção; o Compose já configura a exceção para HTTP local.
+On Vercel, use `frontend/`, build command `npm run build`, output directory `dist`, `VITE_API_BASE_URL=/api`, and `VITE_SOCKET_BASE_URL=https://elite-dev-verzel-2c5n.onrender.com`. [vercel.json](frontend/vercel.json) forwards HTTP to the backend; Socket.IO connects directly. Update that destination for a different deployment. Keep cookies Secure in production; Compose already configures the exception for local HTTP.
 
-O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE_URL` e `SEED_PASSWORD` do `.env` raiz sem escrever. Sem `--check`, aplica migrations e seeds; `--migrate-only` aplica apenas migrations. Ele não limpa o banco. Variáveis `VITE_*` são públicas: não coloque senhas ou URLs de banco nelas.
+The command `npm run db:remote --prefix backend -- --check` validates `REMOTE_DATABASE_URL` and `SEED_PASSWORD` from the root `.env` without writing. Without `--check`, it applies migrations and seeds; `--migrate-only` applies only migrations. It does not clear the database. `VITE_*` variables are public: do not put passwords or database URLs in them.
 
-## Comportamentos conhecidos e limitações
+## Known behavior and limitations
 
-- **Vitrine sem lotes ao vivo:** execute o seed para criar o lote `Stag at Sharkey's`. Se ele já encerrou ou foi cancelado, publique outro pelo Seller Studio; executar o seed novamente não reabre o lote.
-- **Catálogo:** o Adapter normaliza o Cleveland. Lotes publicados guardam os dados da obra, então consultas e operações não precisam chamar o catálogo novamente. As imagens ainda dependem do CDN do museu; indisponibilidade pode impedir sua exibição.
-- **Dinheiro:** depósitos são simulados, sem gateway de pagamento. Saldo deriva do extrato e das reservas, com operações críticas em transações. Cancelamento com lances não está disponível.
-- **Encerramento:** o worker verifica lotes a cada dez segundos enquanto a API está ativa. Pode haver intervalo entre o fim da disputa e a confirmação do resultado; não há lances aceitos após o prazo.
-- **Auditoria:** snapshots SHA-256 encadeados são comparados com histórico suplementar alimentado por triggers. Isso detecta alterações diretas no histórico sob as proteções descritas em [arquitetura](docs/architecture.md). Não garante integridade contra um administrador que desative essas proteções ou reescreva toda a evidência. Histórico vazio ou sem cobertura não é certificado como íntegro.
-- **Acesso:** auditoria é pública; comprovantes exigem login do vencedor ou leiloeiro, mesmo quando o link é compartilhado.
-- **Tempo real:** os eventos são locais ao processo, sem broker distribuído. Reconexão e consultas HTTP recuperam o estado; executar múltiplas instâncias exige coordenação adicional.
-- **Validação:** fluxos completos de lances/liquidação foram verificados localmente. Após o último reset, saúde e logins foram verificados em produção; o fluxo completo de produção ainda precisa ser reexecutado.
+- **No live lots in the collection:** run the seed to create `Stag at Sharkey's`. If it has already closed or been cancelled, publish another lot through Seller Studio; rerunning the seed does not reopen it.
+- **Catalog:** the adapter normalizes Cleveland data. Published lots store artwork details, so queries and operations do not need to call the catalog again. Images still depend on the museum CDN and may fail to display during an outage.
+- **Money:** deposits are simulated, with no payment gateway. Balances are derived from the ledger and reservations, with critical operations inside transactions. Cancelling scheduled or live lots releases reservations without changing the total balance.
+- **Closing:** the worker checks lots every ten seconds while the API is running. There may be a delay between the end of bidding and result confirmation; bids are not accepted after the deadline.
+- **Audit:** chained SHA-256 snapshots are compared against supplementary trigger-backed history. This detects direct history changes under the protections described in the [architecture documentation](docs/architecture.md). It does not guarantee integrity against an administrator who disables these protections or rewrites all evidence. Empty or uncovered history is not certified as intact.
+- **Access:** audits are public; receipts require the winner or auctioneer to sign in, even when the link is shared.
+- **Real-time updates:** events are local to the process, with no distributed broker. Reconnection and HTTP queries restore state; running multiple instances requires additional coordination.
+- **Validation:** complete bidding and settlement flows have been verified locally. Since the last reset, health and logins have been verified in production; the full production flow still needs to be rerun.
 
-## Capturas de tela
+## Screenshots
 
-### Vitrine — tema escuro
+### Collection — dark theme
 
-![Vitrine de leilões no tema escuro](docs/image%20copy%204.png)
+![Auction collection in the dark theme](docs/image%20copy%204.png)
 
-### Seller Studio — coleção
+### Seller Studio — collection
 
-![Coleção de lotes do leiloeiro](docs/image%20copy%202.png)
+![Auctioneer's lot collection](docs/image%20copy%202.png)
 
-### Publicação de lote
+### Lot publication
 
-![Configuração e publicação de um lote no Seller Studio](docs/image.png)
+![Configuring and publishing a lot in Seller Studio](docs/image.png)
 
-### Sala de leilão
+### Auction room
 
-![Sala de leilão com visualização da obra e painel de lances](docs/image%20copy%203.png)
+![Auction room with artwork viewer and bidding panel](docs/image%20copy%203.png)
