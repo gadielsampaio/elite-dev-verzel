@@ -51,6 +51,8 @@ Requer Docker com Docker Compose. Para comandos fora dos containers, use Node.js
 Em um checkout novo:
 
 ```sh
+git clone https://github.com/gadielsampaio/elite-dev-verzel.git
+cd elite-dev-verzel
 cp .env.example .env
 openssl rand -hex 32
 ```
@@ -82,7 +84,7 @@ O comando de seed acima cria as mesmas contas de demonstração listadas em [Ace
 
 O seed cria apenas as três contas e suas carteiras vazias. Os lotes são publicados manualmente pelo leiloeiro no Seller Studio; não há lances nem créditos artificiais. Os dados ficam nos [JSONs de seed](backend/prisma/seeds/data/).
 
-1. Entre como João para publicar ou consultar lotes no Seller Studio.
+1. Entre como João no Seller Studio, selecione uma obra e publique um lote com início imediato, prazo futuro, lance inicial e incremento mínimo.
 2. Em sessões de navegador separadas, entre como Pedro e Tiago, faça depósitos simulados e dispute o lote.
 3. Após o encerramento e a liquidação, confira os saldos, o resultado e o comprovante. A auditoria pode ser aberta sem login.
 
@@ -155,8 +157,9 @@ Na Vercel, use `frontend/`, build `npm run build`, saída `dist`, `VITE_API_BASE
 
 O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE_URL` e `SEED_PASSWORD` do `.env` raiz sem escrever. Sem `--check`, aplica migrations e seeds; `--migrate-only` aplica apenas migrations. Ele não limpa o banco. Variáveis `VITE_*` são públicas: não coloque senhas ou URLs de banco nelas.
 
-## Decisões e limitações
+## Comportamentos conhecidos e limitações
 
+- **Vitrine vazia:** o seed não publica lotes. Crie pelo menos um lote aberto no Seller Studio para disponibilizar a demonstração de lances.
 - **Catálogo:** o Adapter normaliza o Cleveland. Lotes publicados guardam os dados da obra, então consultas e operações não precisam chamar o catálogo novamente. As imagens ainda dependem do CDN do museu; indisponibilidade pode impedir sua exibição.
 - **Dinheiro:** depósitos são simulados, sem gateway de pagamento. Saldo deriva do extrato e das reservas, com operações críticas em transações. Cancelamento com lances não está disponível.
 - **Encerramento:** o worker verifica lotes a cada dez segundos enquanto a API está ativa. Pode haver intervalo entre o fim da disputa e a confirmação do resultado; não há lances aceitos após o prazo.
