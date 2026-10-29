@@ -3,8 +3,6 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 import { seedUsers } from './seeds/users.js';
 import { seedWallets } from './seeds/wallets.js';
-import { seedLots } from './seeds/lots.js';
-import { seedItems } from './seeds/items.js';
 
 const connectionString = process.env.DATABASE_URL;
 if (!connectionString) throw new Error('DATABASE_URL is required');
@@ -22,8 +20,6 @@ async function main() {
     async (tx) => {
       await seedUsers(tx);
       await seedWallets(tx);
-      await seedLots(tx);
-      await seedItems(tx);
     },
     { timeout: 30000 },
   );
