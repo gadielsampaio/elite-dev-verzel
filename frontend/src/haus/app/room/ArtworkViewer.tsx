@@ -38,7 +38,7 @@ export function ArtworkViewer({
     >
       <DialogContent
         aria-describedby={undefined}
-        className={`hs-preview-dialog open hs-shadcn-room${caption ? " caption-visible" : ""}`}
+        className={`translate-x-0 translate-y-0 hs-preview-dialog open hs-shadcn-room${caption ? " caption-visible" : ""}`}
       >
         <DialogTitle asChild>
           <h1 className="sr-only">{title}</h1>

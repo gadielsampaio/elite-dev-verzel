@@ -15,7 +15,9 @@
   border: 0;
   border-radius: 0;
   transform: none;
-  translate: none;
+  /* Dialog translation is reset with utilities in ArtworkViewer: the production
+     CSS compiler lowers translate:none to transform, which cannot override
+     Tailwind's independent translate property. */
   animation: none;
 }
 /* Keep translucent scene surfaces in sync with the light theme. */
