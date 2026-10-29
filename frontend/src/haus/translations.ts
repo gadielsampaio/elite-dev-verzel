@@ -268,6 +268,10 @@ export const messagesPT: Record<string, string> = {
   "Hide password": "Ocultar senha",
   History: "Histórico",
   "Image unavailable": "Imagem indisponível",
+  "Add funds": "Adicionar saldo",
+  "Not now": "Agora não",
+  "You don't have enough available funds for this bid. Would you like to add funds to your wallet?":
+    "Você não tem saldo disponível suficiente para este lance. Deseja adicionar saldo à carteira?",
   "Insufficient available balance": "Saldo disponível insuficiente",
   "Invalid access token": "Token de acesso inválido",
   Jewelry: "Joias",

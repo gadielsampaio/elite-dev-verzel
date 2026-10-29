@@ -208,7 +208,7 @@ test("uncertain bid retains the same idempotency key across reload", async ({
     page.getByRole("button", { name: "Place bid", exact: true }),
   ).toBeDisabled();
 });
-test("insufficient balance redirects to wallet and confirmed deposit returns without auto-bidding", async ({
+test("insufficient balance offers a choice and deposit returns without auto-bidding", async ({
   page,
 }) => {
   const s = await fixture(page);
@@ -216,6 +216,16 @@ test("insufficient balance redirects to wallet and confirmed deposit returns wit
   s.failure = "balance";
   await page.getByLabel("Bid amount (USD)").fill("105.00");
   await page.getByRole("button", { name: "Place bid", exact: true }).click();
+  const alert = page.getByRole("alertdialog", { name: "Insufficient available balance" });
+  await expect(alert).toBeVisible();
+  await expect(page).toHaveURL(new RegExp(`#/lot/${lot.id}$`));
+  await alert.getByRole("button", { name: "Not now" }).click();
+  await expect(alert).toHaveCount(0);
+  await expect(page).toHaveURL(new RegExp(`#/lot/${lot.id}$`));
+  await expect(page.getByLabel("Bid amount (USD)")).toHaveValue("$105.00");
+  expect(s.attempts).toHaveLength(1);
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
+  await alert.getByRole("button", { name: "Add funds", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`#/wallet\\?lot=${lot.id}$`));
   await expect(
     page.getByRole("link", { name: "Return to lot", exact: true }),
@@ -228,7 +238,7 @@ test("insufficient balance redirects to wallet and confirmed deposit returns wit
   await expect(
     page.getByRole("button", { name: "Place bid", exact: true }),
   ).toBeEnabled();
-  expect(s.attempts).toHaveLength(1);
+  expect(s.attempts).toHaveLength(2);
 });
 for (const winner of [true, false])
   test(`confirmed closure shows ${winner ? "winner" : "loser"} and removes all bid controls`, async ({

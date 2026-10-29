@@ -1,3 +1,8 @@
+import { useState } from "react";
+import {
+  AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useNavigate } from "react-router";
 import { toast } from "sonner";
@@ -17,6 +22,7 @@ export function RoomBidForm(props: {
 }) {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [needsFunds, setNeedsFunds] = useState(false);
   const bid = useBid({
     ...props,
     refresh: (accepted) => {
@@ -24,7 +30,7 @@ export function RoomBidForm(props: {
       if (accepted) toast.success(t("Bid accepted"));
     },
     onInsufficientBalance: () => {
-      navigate(`/wallet?lot=${encodeURIComponent(props.lotId)}`);
+      setNeedsFunds(true);
     },
   });
   return (
@@ -70,6 +76,22 @@ export function RoomBidForm(props: {
           <AlertDescription>{t(bid.error)}</AlertDescription>
         </Alert>
       )}
+      <AlertDialog open={needsFunds} onOpenChange={setNeedsFunds}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t("Insufficient available balance")}</AlertDialogTitle>
+            <AlertDialogDescription>
+              {t("You don't have enough available funds for this bid. Would you like to add funds to your wallet?")}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel type="button">{t("Not now")}</AlertDialogCancel>
+            <AlertDialogAction type="button" onClick={() => navigate(`/wallet?lot=${encodeURIComponent(props.lotId)}`)}>
+              {t("Add funds")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }
