@@ -255,7 +255,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       );
       expect(new Set(results.map((r) => r?.id)).size).toBe(1);
       expect(results[0]?.settledAt).toBeInstanceOf(Date);
-      const receipt = await new ResultsService(db).forLot(l.id);
+      const receipt = await new ResultsService(db).forLot(l.id, { id: buyer, role: 'bidder' }, true);
       expect(receipt).toMatchObject({
         status: 'settled',
         receipt: { id: results[0]?.id, amount: '100.00' },

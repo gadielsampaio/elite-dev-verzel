@@ -145,7 +145,10 @@ export class AccountResultsService {
             items: lot.items,
             amount: settled ? lot.result!.winningBid.amount.toFixed(2) : null,
             settledAt: settled ? lot.result!.settledAt : null,
-            receiptPath: settled ? `/#/receipt/${lot.id}` : null,
+            receiptPath:
+              settled && (!bidderId || lot.result!.winnerId === bidderId)
+                ? `/#/receipt/${lot.id}`
+                : null,
             ...(bidderId
               ? {
                   won: settled && lot.result!.winnerId === bidderId,

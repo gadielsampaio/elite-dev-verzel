@@ -79,3 +79,13 @@ export class JwtAuthGuard implements CanActivate {
     return true;
   }
 }
+
+// Public reads may personalize access flags, but supplied credentials must be valid.
+@Injectable()
+export class OptionalJwtAuthGuard extends JwtAuthGuard {
+  override canActivate(context: ExecutionContext) {
+    const request = context.switchToHttp().getRequest<Request>();
+    if (!request.headers.authorization) return Promise.resolve(true);
+    return super.canActivate(context);
+  }
+}
