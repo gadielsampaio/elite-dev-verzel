@@ -45,6 +45,27 @@ export class WalletsService {
     );
   }
 
+  async creditMemos(userId: string) {
+    const entries = await this.prisma.auditEvent.findMany({
+      where: {
+        action: 'lot.credit_memo',
+        metadata: { path: ['bidderId'], equals: userId },
+      },
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+    });
+    return entries.map((entry) => {
+      const memo = entry.metadata as Prisma.JsonObject;
+      return {
+        id: entry.id,
+        lotId: entry.lotId,
+        title: memo.title,
+        amount: memo.amount,
+        currency: memo.currency,
+        createdAt: entry.createdAt,
+      };
+    });
+  }
+
   private receipt(entry: WalletTransaction) {
     return {
       id: entry.id,
@@ -76,51 +97,65 @@ export class WalletsService {
         'Idempotency key already used for another operation',
       );
     }
+
     return this.receipt(entry);
+  }
+
+  private async createDeposit(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    data: DepositDto,
+    amount: Prisma.Decimal,
+  ) {
+    // Serialize first-wallet creation; NO KEY UPDATE permits bid foreign-key checks.
+    await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
+    const existing = await this.replay(tx, userId, data, amount);
+    if (existing) return { receipt: existing, created: false };
+
+    const wallet = await tx.wallet.upsert({
+      where: { userId },
+      create: { userId, currency: 'USD' },
+      update: {},
+    });
+    await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id}::uuid FOR UPDATE`;
+    if (wallet.currency !== 'USD')
+      throw new ConflictException('Only USD deposits are supported');
+
+    const entry = await tx.walletTransaction.create({
+      data: {
+        walletId: wallet.id,
+        type: 'deposit',
+        amount,
+        idempotencyKey: data.idempotencyKey,
+        description: 'Simulated deposit',
+      },
+    });
+
+    return { receipt: this.receipt(entry), created: true };
   }
 
   async deposit(userId: string, data: DepositDto) {
     const amount = new Prisma.Decimal(data.amount);
     if (amount.lte(0))
       throw new BadRequestException('Deposit must be greater than zero');
+
     try {
-      let created = false;
-      const receipt = await this.prisma.$transaction(async (tx) => {
-        // Serialize first-wallet creation; NO KEY UPDATE permits bid foreign-key checks.
-        await tx.$queryRaw`SELECT id FROM users WHERE id = ${userId}::uuid FOR NO KEY UPDATE`;
-        const existing = await this.replay(tx, userId, data, amount);
-        if (existing) return existing;
-        const wallet = await tx.wallet.upsert({
-          where: { userId },
-          create: { userId, currency: 'USD' },
-          update: {},
-        });
-        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id}::uuid FOR UPDATE`;
-        if (wallet.currency !== 'USD')
-          throw new ConflictException('Only USD deposits are supported');
-        const entry = await tx.walletTransaction.create({
-          data: {
-            walletId: wallet.id,
-            type: 'deposit',
-            amount,
-            idempotencyKey: data.idempotencyKey,
-            description: 'Simulated deposit',
-          },
-        });
-        created = true;
-        return this.receipt(entry);
-      });
+      const { receipt, created } = await this.prisma.$transaction((tx) =>
+        this.createDeposit(tx, userId, data, amount),
+      );
       if (created) this.events?.publishAccount(userId);
       return receipt;
     } catch (error) {
       // Different users can race on the globally unique key. Never expose another receipt.
       if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
+        !(error instanceof Prisma.PrismaClientKnownRequestError) ||
+        error.code !== 'P2002'
       ) {
-        const existing = await this.replay(this.prisma, userId, data, amount);
-        if (existing) return existing;
+        throw error;
       }
+
+      const existing = await this.replay(this.prisma, userId, data, amount);
+      if (existing) return existing;
       throw error;
     }
   }

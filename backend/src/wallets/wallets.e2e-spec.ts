@@ -1,11 +1,12 @@
+import { configureTestValidation } from '../../test/support/http-app.js';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { AppModule } from '../src/app.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { Prisma } from '../src/generated/prisma/client.js';
+import { AppModule } from '../app.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../generated/prisma/client.js';
 
 describe('Wallet HTTP', () => {
   const userId = '11111111-1111-4111-8111-111111111111',
@@ -42,15 +43,10 @@ describe('Wallet HTTP', () => {
       .compile();
     token = await module.get(JwtService).signAsync({ sub: userId });
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureTestValidation(app);
     await app.init();
   });
+
   beforeEach(() => {
     vi.resetAllMocks();
     db.user.findUnique.mockResolvedValue({
@@ -68,6 +64,7 @@ describe('Wallet HTTP', () => {
     db.walletTransaction.groupBy.mockResolvedValue([]);
     db.walletHold.aggregate.mockResolvedValue({ _sum: { amount: null } });
   });
+
   afterAll(async () => {
     await app.close();
     vi.unstubAllEnvs();
@@ -84,6 +81,7 @@ describe('Wallet HTTP', () => {
       .send({})
       .expect(401);
   });
+
   it('returns zero for a wallet not yet created, without writing', async () => {
     db.wallet.findUnique.mockResolvedValue(null);
     await request(app.getHttpServer())
@@ -99,6 +97,7 @@ describe('Wallet HTTP', () => {
       });
     expect(db.wallet.upsert).not.toHaveBeenCalled();
   });
+
   it('uses all ledger directions and active holds with exact decimals', async () => {
     db.walletTransaction.groupBy.mockResolvedValue(
       [
@@ -135,6 +134,7 @@ describe('Wallet HTTP', () => {
       isolationLevel: 'RepeatableRead',
     });
   });
+
   it('creates a simulated deposit for the authenticated wallet', async () => {
     await deposit().expect(201);
     expect(db.walletTransaction.create.mock.calls[0][0].data).toMatchObject({
@@ -145,11 +145,13 @@ describe('Wallet HTTP', () => {
     });
     expect(db.$queryRaw).toHaveBeenCalledTimes(2);
   });
+
   it('replays the original receipt without another credit', async () => {
     db.walletTransaction.findUnique.mockResolvedValue(entry);
     await deposit().expect(201);
     expect(db.walletTransaction.create).not.toHaveBeenCalled();
   });
+
   it.each([
     { wallet: { userId: walletId } },
     { amount: new Prisma.Decimal('20') },
@@ -159,6 +161,7 @@ describe('Wallet HTTP', () => {
     await deposit().expect(409);
     expect(db.walletTransaction.create).not.toHaveBeenCalled();
   });
+
   it('checks a key conflict after rollback', async () => {
     db.$transaction.mockRejectedValue(
       new Prisma.PrismaClientKnownRequestError('duplicate', {
@@ -172,11 +175,13 @@ describe('Wallet HTTP', () => {
     });
     await deposit().expect(409);
   });
+
   it.each(['auctioneer', 'admin'])('rejects %s deposits', async (role) => {
     db.user.findUnique.mockResolvedValue({ id: userId, role, isActive: true });
     await deposit().expect(403);
     expect(db.$transaction).not.toHaveBeenCalled();
   });
+
   it.each([
     { amount: '0' },
     { amount: '-1' },
@@ -195,6 +200,7 @@ describe('Wallet HTTP', () => {
     );
     expect(db.walletTransaction.create).not.toHaveBeenCalled();
   });
+
   it('rejects deposits into a non-USD wallet', async () => {
     db.wallet.upsert.mockResolvedValue({ id: walletId, currency: 'EUR' });
     await deposit().expect(409);

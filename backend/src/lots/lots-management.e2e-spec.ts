@@ -1,10 +1,13 @@
+import { AuctionEvents } from '../events/auction-events.js';
+import { configureTestValidation } from '../../test/support/http-app.js';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { AppModule } from '../src/app.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
+import { AppModule } from '../app.module.js';
+import { Prisma } from '../generated/prisma/client.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 describe('Lot listing and cancellation (HTTP)', () => {
   const ownerId = '11111111-1111-4111-8111-111111111111';
@@ -19,11 +22,15 @@ describe('Lot listing and cancellation (HTTP)', () => {
       update: vi.fn(),
     },
     bid: { count: vi.fn() },
+    auctionResult: { findUnique: vi.fn() },
+    walletHold: { findMany: vi.fn(), update: vi.fn() },
+    auditEvent: { create: vi.fn() },
     $transaction: vi.fn(),
     $queryRaw: vi.fn(),
   };
   let app: INestApplication;
   let token: string;
+  let accountNotification: ReturnType<typeof vi.spyOn>;
   let lot: {
     id: string;
     ownerId: string;
@@ -39,17 +46,13 @@ describe('Lot listing and cancellation (HTTP)', () => {
       .overrideProvider(PrismaService)
       .useValue(prisma)
       .compile();
+    accountNotification = vi.spyOn(module.get(AuctionEvents), 'publishAccount');
     token = await module.get(JwtService).signAsync({ sub: ownerId });
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureTestValidation(app);
     await app.init();
   });
+
   beforeEach(() => {
     vi.resetAllMocks();
     prisma.lot.updateManyAndReturn.mockResolvedValue([]);
@@ -70,12 +73,15 @@ describe('Lot listing and cancellation (HTTP)', () => {
     });
     prisma.lot.findUniqueOrThrow.mockImplementation(() => Promise.resolve(lot));
     prisma.bid.count.mockResolvedValue(0);
+    prisma.auctionResult.findUnique.mockResolvedValue(null);
+    prisma.walletHold.findMany.mockResolvedValue([]);
     prisma.lot.update.mockImplementation(({ data }) =>
       Promise.resolve({ ...lot, ...data }),
     );
     prisma.lot.findMany.mockResolvedValue([]);
     prisma.lot.count.mockResolvedValue(0);
   });
+
   afterAll(async () => {
     await app.close();
     vi.unstubAllEnvs();
@@ -121,12 +127,14 @@ describe('Lot listing and cancellation (HTTP)', () => {
       data: { status: 'open' },
     });
   });
+
   it('excludes draft/cancelled states by default', async () => {
     await request(app.getHttpServer()).get('/lots').expect(200);
     expect(prisma.lot.findMany.mock.calls[0][0].where).toEqual({
       status: { in: ['scheduled', 'open', 'closed'] },
     });
   });
+
   it.each([
     'status=cancelled',
     'status=draft',
@@ -142,6 +150,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
       .expect(400);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
   it('lists only token-owned lots, including cancellations, with bid eligibility', async () => {
     prisma.lot.findMany.mockResolvedValue([
       { ...lot, _count: { bids: 0 } },
@@ -155,7 +164,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
       .expect(200);
     expect(
       response.body.items.map((item: { canCancel: boolean }) => item.canCancel),
-    ).toEqual([true, false, false]);
+    ).toEqual([true, true, false]);
     expect(response.body.items[0]).not.toHaveProperty('_count');
     expect(prisma.lot.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { ownerId }, skip: 5, take: 5 }),
@@ -167,6 +176,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
       ),
     ).toBe(true);
   });
+
   it('protects the seller list and rejects owner spoofing', async () => {
     await request(app.getHttpServer()).get('/lots/mine').expect(401);
     await request(app.getHttpServer())
@@ -186,6 +196,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
     }
     expect(prisma.lot.findMany).not.toHaveBeenCalled();
   });
+
   it.each(['scheduled', 'open'])(
     'allows owner cancellation of a %s lot without bids',
     async (status) => {
@@ -198,7 +209,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
         cancellationReason: 'No longer available',
       });
       expect(res.body.cancelledAt).toBeTruthy();
-      expect(prisma.bid.count).toHaveBeenCalledWith({ where: { lotId } });
+      expect(prisma.walletHold.findMany).toHaveBeenCalled();
       expect(prisma.$queryRaw).toHaveBeenCalled();
     },
   );
@@ -209,6 +220,7 @@ describe('Lot listing and cancellation (HTTP)', () => {
       .expect(401);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
   it.each(['bidder', 'admin'])('rejects %s cancellation', async (role) => {
     prisma.user.findUnique.mockResolvedValue({
       id: ownerId,
@@ -218,27 +230,62 @@ describe('Lot listing and cancellation (HTTP)', () => {
     await cancel().expect(403);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
   it('rejects another auctioneer', async () => {
     lot.ownerId = lotId;
     await cancel().expect(403);
     expect(prisma.lot.update).not.toHaveBeenCalled();
   });
+
   it('returns 404 for missing lots', async () => {
     prisma.$queryRaw.mockResolvedValue([]);
     await cancel().expect(404);
   });
-  it('rejects any previous bids, including inactive bids', async () => {
-    prisma.bid.count.mockResolvedValue(1);
-    await cancel().expect(409);
-    expect(prisma.lot.update).not.toHaveBeenCalled();
-    expect(prisma.bid.count).toHaveBeenCalledWith({ where: { lotId } });
+
+  it('releases reservations and records exact credit memos without changing bids', async () => {
+    const hold = {
+      id: 'hold',
+      walletId: 'wallet',
+      bidId: 'bid',
+      amount: new Prisma.Decimal('9007199254740993.01'),
+      wallet: { userId: 'bidder' },
+    };
+    prisma.walletHold.findMany.mockResolvedValue([hold]);
+    await cancel().expect(200);
+    expect(accountNotification).toHaveBeenCalledExactlyOnceWith('bidder');
+    expect(prisma.walletHold.update).toHaveBeenCalledWith({
+      where: { id: hold.id },
+      data: { status: 'released', releasedAt: expect.any(Date) },
+    });
+    expect(prisma.auditEvent.create).toHaveBeenCalledWith({
+      data: expect.objectContaining({
+        action: 'lot.credit_memo',
+        entityId: hold.id,
+        lotId,
+        metadata: expect.objectContaining({
+          bidderId: 'bidder',
+          amount: '9007199254740993.01',
+          bidId: 'bid',
+        }),
+      }),
+    });
   });
+
+  it('rejects a lot with an existing settlement result', async () => {
+    prisma.auctionResult.findUnique.mockResolvedValue({ id: 'result' });
+    await cancel().expect(409);
+    expect(prisma.walletHold.update).not.toHaveBeenCalled();
+    expect(prisma.auditEvent.create).not.toHaveBeenCalled();
+    expect(accountNotification).not.toHaveBeenCalled();
+  });
+
   it.each(['closed', 'draft', 'expired'])('rejects %s lots', async (status) => {
     if (status === 'expired') lot.endTime = new Date(Date.now() - 1000);
     else lot.status = status;
     await cancel().expect(409);
     expect(prisma.lot.update).not.toHaveBeenCalled();
   });
+
   it('repeated cancellation preserves its original time/reason', async () => {
     lot.status = 'cancelled';
     lot.cancelledAt = new Date();
@@ -246,8 +293,12 @@ describe('Lot listing and cancellation (HTTP)', () => {
     const res = await cancel({ reason: 'replacement' }).expect(200);
     expect(res.body.cancelledAt).toBe(lot.cancelledAt.toISOString());
     expect(res.body.cancellationReason).toBe('original');
+    expect(prisma.walletHold.update).not.toHaveBeenCalled();
+    expect(prisma.auditEvent.create).not.toHaveBeenCalled();
+    expect(accountNotification).not.toHaveBeenCalled();
     expect(prisma.lot.update).not.toHaveBeenCalled();
   });
+
   it.each([
     { reason: null },
     { reason: '' },

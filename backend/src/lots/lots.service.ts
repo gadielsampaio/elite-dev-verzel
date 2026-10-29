@@ -34,6 +34,7 @@ export class LotsService {
       options,
     );
     changes.forEach((change) => this.events.publish(change));
+
     return result;
   }
 
@@ -45,8 +46,8 @@ export class LotsService {
 
   async create(ownerId: string, data: CreateLotDto) {
     let startTime =
-        data.startMode === 'now' ? new Date() : new Date(data.startTime!),
-      endTime = new Date(data.endTime);
+      data.startMode === 'now' ? new Date() : new Date(data.startTime!);
+    const endTime = new Date(data.endTime);
     if (
       (data.startMode !== 'now' && startTime.getTime() <= Date.now()) ||
       endTime <= startTime
@@ -55,6 +56,7 @@ export class LotsService {
         'Start must be in the future and end must be after start',
       );
     }
+
     const startingBid = new Prisma.Decimal(data.startingBid);
     const bidIncrement = new Prisma.Decimal(data.bidIncrement);
     const estimatedValue = new Prisma.Decimal(data.estimatedValue);
@@ -65,17 +67,20 @@ export class LotsService {
     ) {
       throw new BadRequestException('Prices must be greater than zero');
     }
+
     const artwork = await this.catalog.findOne(data.artworkId);
     if (artwork.isPublicDomain !== true)
       throw new BadRequestException('Artwork must be public domain (CC0)');
     if (!artwork.imageUrl?.trim())
       throw new BadRequestException('Artwork must have an image');
+
     // Reject a schedule that expired while waiting for the provider.
     if (data.startMode === 'now') startTime = new Date();
     if (endTime <= startTime)
       throw new BadRequestException('End must be after start');
     if (data.startMode !== 'now' && startTime.getTime() <= Date.now())
       throw new BadRequestException('Start must be in the future');
+
     const lot = await this.prisma.lot.create({
       data: {
         ownerId,
@@ -104,11 +109,13 @@ export class LotsService {
       },
       include: { items: { orderBy: { position: 'asc' } } },
     });
+
     this.events.publish({
       type: 'lot.created',
       lotId: lot.id,
       endTime: lot.endTime.toISOString(),
     });
+
     return lot;
   }
 
@@ -159,6 +166,7 @@ export class LotsService {
   async findAll({ status, page, limit }: ListLotsDto) {
     return this.withEvents(async (tx, changes) => {
       await this.refreshLifecycle(tx, new Date(), changes);
+
       const where: Prisma.LotWhereInput = {
         status: status ?? { in: ['scheduled', 'open', 'closed'] },
       };
@@ -169,6 +177,7 @@ export class LotsService {
         orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
         include: { items: { orderBy: { position: 'asc' } } },
       });
+
       const total = await tx.lot.count({ where });
       return { items, total, page, limit };
     });
@@ -179,6 +188,7 @@ export class LotsService {
       async (tx, changes) => {
         const now = new Date();
         await this.refreshLifecycle(tx, now, changes, undefined, ownerId);
+
         const where: Prisma.LotWhereInput = {
           ownerId,
           ...(status ? { status } : {}),
@@ -193,14 +203,13 @@ export class LotsService {
             _count: { select: { bids: true } },
           },
         });
+
         const total = await tx.lot.count({ where });
         const items = lots.map(({ _count, ...lot }) => ({
           ...lot,
           bidCount: _count.bids,
           canCancel:
-            ['scheduled', 'open'].includes(lot.status) &&
-            lot.endTime > now &&
-            _count.bids === 0,
+            ['scheduled', 'open'].includes(lot.status) && lot.endTime > now,
         }));
         return { items, total, page, limit };
       },
@@ -221,7 +230,8 @@ export class LotsService {
   }
 
   async cancel(id: string, ownerId: string, { reason }: CancelLotDto) {
-    return this.withEvents(async (tx, changes) => {
+    const affectedBidders = new Set<string>();
+    const result = await this.withEvents(async (tx, changes) => {
       // All future bid writes must take this same lot lock before checking state.
       const locked = await tx.$queryRaw<
         { id: string }[]
@@ -234,17 +244,53 @@ export class LotsService {
       if (lot.ownerId !== ownerId)
         throw new ForbiddenException('Only the owner can cancel this lot');
       if (lot.status === 'cancelled') return lot;
+
       const now = new Date();
       if (!['scheduled', 'open'].includes(lot.status) || lot.endTime <= now) {
         throw new ConflictException(
           'Only scheduled or live lots can be cancelled',
         );
       }
-      if (await tx.bid.count({ where: { lotId: id } })) {
-        throw new ConflictException(
-          'A lot that has received bids cannot be cancelled',
-        );
+      if (await tx.auctionResult.findUnique({ where: { lotId: id } }))
+        throw new ConflictException('A settled lot cannot be cancelled');
+
+      const holds = await tx.walletHold.findMany({
+        where: { bid: { lotId: id }, status: 'active' },
+        include: { wallet: { select: { userId: true } } },
+      });
+      if (holds.length) {
+        const walletIds = [
+          ...new Set(holds.map((hold) => hold.walletId)),
+        ].sort();
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id IN (${Prisma.join(walletIds)}) ORDER BY id FOR UPDATE`;
+        for (const hold of holds) {
+          await tx.walletHold.update({
+            where: { id: hold.id },
+            data: { status: 'released', releasedAt: now },
+          });
+          affectedBidders.add(hold.wallet.userId);
+          // A released reservation restores availability; it is not a ledger credit.
+          await tx.auditEvent.create({
+            data: {
+              lotId: id,
+              actorId: ownerId,
+              action: 'lot.credit_memo',
+              entityType: 'wallet_hold',
+              entityId: hold.id,
+              metadata: {
+                bidderId: hold.wallet.userId,
+                bidId: hold.bidId,
+                title: lot.title,
+                amount: hold.amount.toFixed(2),
+                currency: lot.currency,
+                reason: reason ?? null,
+              },
+              createdAt: now,
+            },
+          });
+        }
       }
+
       const cancelled = await tx.lot.update({
         where: { id },
         data: {
@@ -261,5 +307,7 @@ export class LotsService {
       });
       return cancelled;
     });
+    affectedBidders.forEach((userId) => this.events.publishAccount(userId));
+    return result;
   }
 }

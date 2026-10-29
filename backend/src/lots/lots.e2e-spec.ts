@@ -1,6 +1,6 @@
+import { configureTestValidation } from '../../test/support/http-app.js';
 import { Test } from '@nestjs/testing';
 import {
-  ValidationPipe,
   ServiceUnavailableException,
   NotFoundException,
   type INestApplication,
@@ -8,9 +8,9 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { AppModule } from '../src/app.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { CatalogService } from '../src/catalog/catalog.service.js';
+import { AppModule } from '../app.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { CatalogService } from '../catalog/catalog.service.js';
 
 // Real routing, JWT and DTO validation; persistence/provider isolated here.
 describe('Lot publication (HTTP)', () => {
@@ -53,15 +53,10 @@ describe('Lot publication (HTTP)', () => {
       .get(JwtService)
       .signAsync({ sub: ownerId, role: 'auctioneer' });
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureTestValidation(app);
     await app.init();
   });
+
   beforeEach(() => {
     vi.resetAllMocks();
     prisma.lot.updateManyAndReturn.mockResolvedValue([]);
@@ -90,6 +85,7 @@ describe('Lot publication (HTTP)', () => {
       ownerId,
     });
   });
+
   afterAll(async () => {
     await app.close();
     vi.unstubAllEnvs();
@@ -124,6 +120,7 @@ describe('Lot publication (HTTP)', () => {
     expect(write.items.create.sourceFetchedAt).toBeInstanceOf(Date);
     expect(catalog.findOne).toHaveBeenCalledWith(27992);
   });
+
   it('rejects artwork without an image before creating a lot', async () => {
     catalog.findOne.mockResolvedValue({ ...artwork, imageUrl: null });
     await request(app.getHttpServer())
@@ -133,6 +130,7 @@ describe('Lot publication (HTTP)', () => {
       .expect(400);
     expect(prisma.lot.create).not.toHaveBeenCalled();
   });
+
   it.each([false, null])(
     'rejects non-CC0 artwork (%s)',
     async (isPublicDomain) => {
@@ -149,6 +147,7 @@ describe('Lot publication (HTTP)', () => {
     await request(app.getHttpServer()).post('/lots').send(data).expect(401);
     expect(prisma.lot.create).not.toHaveBeenCalled();
   });
+
   it.each(['bidder', 'admin'])(
     'rejects %s publication before fetching artwork',
     async (role) => {
@@ -186,6 +185,7 @@ describe('Lot publication (HTTP)', () => {
     expect(prisma.lot.create).not.toHaveBeenCalled();
     expect(catalog.findOne).not.toHaveBeenCalled();
   });
+
   it('publishes immediately using server time after catalog lookup', async () => {
     const { startTime: _, ...immediate } = data;
     const before = Date.now();
@@ -195,6 +195,7 @@ describe('Lot publication (HTTP)', () => {
     expect(saved.startTime.getTime()).toBeGreaterThanOrEqual(before);
     expect(saved.startTime.getTime()).toBeLessThanOrEqual(Date.now());
   });
+
   it('rejects invalid immediate publication end times', async () => {
     const { startTime: _, ...immediate } = data;
     await publish({
@@ -204,6 +205,7 @@ describe('Lot publication (HTTP)', () => {
     }).expect(400);
     expect(prisma.lot.create).not.toHaveBeenCalled();
   });
+
   it('rejects past starts and reversed intervals', async () => {
     await publish({
       ...data,
@@ -212,6 +214,7 @@ describe('Lot publication (HTTP)', () => {
     await publish({ ...data, endTime: data.startTime }).expect(400);
     expect(prisma.lot.create).not.toHaveBeenCalled();
   });
+
   it('rejects a schedule that expires during provider lookup', async () => {
     catalog.findOne.mockImplementation(() => {
       vi.spyOn(Date, 'now').mockReturnValue(
@@ -226,6 +229,7 @@ describe('Lot publication (HTTP)', () => {
       vi.restoreAllMocks();
     }
   });
+
   it.each([
     new NotFoundException('Artwork not found'),
     new ServiceUnavailableException('Provider unavailable'),
@@ -234,6 +238,7 @@ describe('Lot publication (HTTP)', () => {
     await publish().expect(error.getStatus());
     expect(prisma.lot.create).not.toHaveBeenCalled();
   });
+
   it('reads persisted details without authentication or provider access', async () => {
     prisma.lot.findFirst.mockResolvedValue({
       id: lotId,
@@ -250,6 +255,7 @@ describe('Lot publication (HTTP)', () => {
       include: { items: { orderBy: { position: 'asc' } } },
     });
   });
+
   it('returns 404 for missing/draft/cancelled lots and 400 for invalid UUIDs', async () => {
     prisma.lot.findFirst.mockResolvedValue(null);
     await request(app.getHttpServer()).get(`/lots/${lotId}`).expect(404);

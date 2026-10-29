@@ -24,6 +24,11 @@ export class WalletsController {
     return this.wallets.balance(request.user.id);
   }
 
+  @Get('credit-memos')
+  creditMemos(@Req() request: AuthenticatedRequest) {
+    return this.wallets.creditMemos(request.user.id);
+  }
+
   @Post('deposits')
   deposit(@Req() request: AuthenticatedRequest, @Body() data: DepositDto) {
     if (request.user.role !== 'bidder')

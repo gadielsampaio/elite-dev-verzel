@@ -1,11 +1,12 @@
-import { AuctionEvents } from '../src/events/auction-events.js';
+import { configureTestValidation } from '../../test/support/http-app.js';
+import { AuctionEvents } from '../events/auction-events.js';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
-import { AppModule } from '../src/app.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
+import { AppModule } from '../app.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 // Real concurrent transactions need committed fixtures. Cleanup targets only IDs created here.
 describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
@@ -32,13 +33,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
           .useValue(db)
           .compile();
         app = module.createNestApplication({ logger: false });
-        app.useGlobalPipes(
-          new ValidationPipe({
-            whitelist: true,
-            forbidNonWhitelisted: true,
-            transform: true,
-          }),
-        );
+        configureTestValidation(app);
         await app.init();
         const http = app.getHttpServer(),
           jwt = module.get(JwtService);

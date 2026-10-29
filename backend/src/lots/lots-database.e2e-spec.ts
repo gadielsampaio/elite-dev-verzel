@@ -1,11 +1,11 @@
+import { configureTestValidation } from '../../test/support/http-app.js';
 import { randomUUID } from 'node:crypto';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
-import { AppModule } from '../src/app.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import type { LotStatus } from '../src/generated/prisma/client.js';
+import { AppModule } from '../app.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import type { LotStatus } from '../generated/prisma/client.js';
 
 // Opt in with RUN_DATABASE_TESTS=1. All fixtures and lifecycle writes roll back.
 describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
@@ -76,13 +76,31 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
               const draft = await create('draft', -3600000, 3600000);
               const cancelled = await create('cancelled', -3600000, 3600000);
               const withBids = await create('open', -3600000, 3600000);
-              await tx.bid.create({
+              const reservedBid = await tx.bid.create({
                 data: {
                   lotId: withBids.id,
                   bidderId: bidder.id,
                   amount: '100',
                   idempotencyKey: randomUUID(),
-                  isActive: false,
+                  isActive: true,
+                },
+              });
+              const wallet = await tx.wallet.create({
+                data: { userId: bidder.id },
+              });
+              await tx.walletTransaction.create({
+                data: {
+                  walletId: wallet.id,
+                  type: 'deposit',
+                  amount: '150',
+                  idempotencyKey: randomUUID(),
+                },
+              });
+              const hold = await tx.walletHold.create({
+                data: {
+                  walletId: wallet.id,
+                  bidId: reservedBid.id,
+                  amount: '100',
                 },
               });
               // Services execute within this outer transaction, so every write is rolled back.
@@ -101,13 +119,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
                 .useValue(transactionalDb)
                 .compile();
               const app = module.createNestApplication({ logger: false });
-              app.useGlobalPipes(
-                new ValidationPipe({
-                  whitelist: true,
-                  forbidNonWhitelisted: true,
-                  transform: true,
-                }),
-              );
+              configureTestValidation(app);
               try {
                 await app.init();
                 const http = app.getHttpServer();
@@ -151,7 +163,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
                   own.body.items.find(
                     (item: { id: string }) => item.id === withBids.id,
                   ).canCancel,
-                ).toBe(false);
+                ).toBe(true);
                 expect(
                   own.body.items.find(
                     (item: { id: string }) => item.id === cancelled.id,
@@ -214,18 +226,56 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
                     (lot: { id: string }) => lot.id === live.id,
                   ),
                 ).toBe(false);
-                await request(http)
-                  .patch(`/lots/${withBids.id}/cancel`)
-                  .auth(token, { type: 'bearer' })
-                  .send({})
-                  .expect(409);
+                const bidderToken = await module
+                  .get(JwtService)
+                  .signAsync({ sub: bidder.id });
+                const beforeRelease = await request(http)
+                  .get('/wallet')
+                  .auth(bidderToken, { type: 'bearer' })
+                  .expect(200);
+                expect(beforeRelease.body).toMatchObject({
+                  total: '150.00',
+                  committed: '100.00',
+                  available: '50.00',
+                });
+                for (let attempt = 0; attempt < 2; attempt++) {
+                  await request(http)
+                    .patch(`/lots/${withBids.id}/cancel`)
+                    .auth(token, { type: 'bearer' })
+                    .send({})
+                    .expect(200);
+                }
+                const afterRelease = await request(http)
+                  .get('/wallet')
+                  .auth(bidderToken, { type: 'bearer' })
+                  .expect(200);
+                expect(afterRelease.body).toMatchObject({
+                  total: '150.00',
+                  committed: '0.00',
+                  available: '150.00',
+                });
                 expect(
-                  (
-                    await tx.lot.findUniqueOrThrow({
-                      where: { id: withBids.id },
-                    })
-                  ).status,
-                ).toBe('open');
+                  await tx.walletHold.findUnique({ where: { id: hold.id } }),
+                ).toMatchObject({ status: 'released' });
+                expect(
+                  await tx.bid.findUnique({ where: { id: reservedBid.id } }),
+                ).toMatchObject({ isActive: true, amount: reservedBid.amount });
+                const memos = await request(http)
+                  .get('/wallet/credit-memos')
+                  .auth(bidderToken, { type: 'bearer' })
+                  .expect(200);
+                expect(memos.body).toHaveLength(1);
+                expect(memos.body[0]).toMatchObject({
+                  lotId: withBids.id,
+                  amount: '100.00',
+                  currency: 'USD',
+                });
+                await request(http).get('/wallet/credit-memos').expect(401);
+                await request(http)
+                  .get('/wallet/credit-memos')
+                  .auth(token, { type: 'bearer' })
+                  .expect(200)
+                  .expect([]);
                 await request(http)
                   .patch(`/lots/${expired.id}/cancel`)
                   .auth(token, { type: 'bearer' })
