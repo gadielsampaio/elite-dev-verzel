@@ -1,0 +1,87 @@
+/* Reuse the original scene geometry, animation, parallax caption and controls. */
+@import "./scene.css";
+
+.hs-shadcn-room {
+  --hs-bg: var(--background);
+  --hs-ink: #181817;
+  --hs-border: #d4d1c9;
+  --hs-muted: #77736d;
+  --hs-hover: #eae8e0;
+  display: block;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  transform: none;
+  translate: none;
+  animation: none;
+}
+/* Keep translucent scene surfaces in sync with the light theme. */
+.hs-shadcn-room .hs-immersive-vignette {
+  background:
+    radial-gradient(
+      ellipse at 38% 40%,
+      transparent 0%,
+      color-mix(in srgb, var(--hs-bg) 73%, transparent) 82%
+    ),
+    color-mix(in srgb, var(--hs-bg) 69%, transparent);
+}
+.hs-shadcn-room .hs-preview-close {
+  background: color-mix(in srgb, var(--hs-bg) 91%, transparent);
+}
+.hs-shadcn-room .hs-zoom-tools {
+  background: color-mix(in srgb, var(--hs-bg) 94%, transparent);
+}
+.hs-shadcn-room > button:last-child {
+  display: none;
+}
+.hs-shadcn-room .hs-room-card {
+  position: absolute;
+  z-index: 15;
+  right: clamp(24px, 4.8vw, 85px);
+  top: clamp(105px, 16vh, 214px);
+  width: clamp(325px, 29vw, 390px);
+  max-height: min(640px, calc(100dvh - clamp(105px, 16vh, 214px) - 24px));
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+:root[data-theme="dark"] .hs-shadcn-room {
+  --hs-bg: #181817;
+  --hs-ink: #f2efe9;
+  --hs-border: #494740;
+  --hs-muted: #b4afa7;
+  --hs-hover: #34332e;
+}
+:root[data-theme="dark"] .hs-shadcn-room .hs-immersive-background {
+  opacity: 0.16;
+  filter: blur(90px) saturate(0.58);
+}
+:root[data-theme="dark"] .hs-shadcn-room .hs-immersive-vignette {
+  background:
+    radial-gradient(ellipse at 38% 40%, #18181700 0%, #181817bb 82%), #181817aa;
+}
+:root[data-theme="dark"] .hs-shadcn-room .hs-preview-close {
+  background: #242320e8;
+}
+:root[data-theme="dark"] .hs-shadcn-room .hs-zoom-tools {
+  background: #242320ef;
+}
+
+@media (max-width: 1100px) and (min-width: 791px) {
+  .hs-shadcn-room .hs-room-card {
+    right: 25px;
+    width: 340px;
+  }
+}
+@media (max-width: 790px) {
+  .hs-shadcn-room .hs-room-card {
+    position: relative;
+    top: auto;
+    right: auto;
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+}

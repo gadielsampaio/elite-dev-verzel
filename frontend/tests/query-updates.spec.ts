@@ -32,10 +32,12 @@ async function login(page: Page) {
   await page.getByLabel("EMAIL ADDRESS").fill("seller@example.com");
   await page.getByLabel("PASSWORD", { exact: true }).fill("test-password-123");
   await page
-    .locator("#login-form")
+    .locator("#shadcn-login-form")
     .getByRole("button", { name: "LOG IN", exact: true })
     .click();
-  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
 }
 
 test("storefront loads initially, retains filters and updates from events without connected polling", async ({
@@ -53,10 +55,10 @@ test("storefront loads initially, retains filters and updates from events withou
   });
   await page.goto("/#/");
   await expect(
-    page.getByRole("button", { name: "View Initial collection", exact: true }),
+    page.getByRole("link", { name: "View Initial collection", exact: true }),
   ).toBeVisible();
   await page.getByRole("tab", { name: "UPCOMING" }).click();
-  await page.getByRole("button", { name: "NEXT →" }).click();
+  await page.getByRole("button", { name: "Next page" }).click();
   await expect
     .poll(() =>
       requests.some(
@@ -67,7 +69,7 @@ test("storefront loads initially, retains filters and updates from events withou
   title = "Changed collection";
   signal("collection.changed", { lotId: lot.id, type: "lot.created" });
   await expect(
-    page.getByRole("button", { name: "View Changed collection", exact: true }),
+    page.getByRole("link", { name: "View Changed collection", exact: true }),
   ).toBeVisible();
   expect(requests.filter((r) => r.includes("limit=9")).at(-1)).toContain(
     "status=scheduled",
@@ -111,23 +113,31 @@ test("seller summary, owned lots and wallet update without manual refresh", asyn
   );
   await login(page);
   await page
-    .locator(".hs-footer-links")
-    .getByRole("button", { name: "SELLER STUDIO" })
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "SELLER STUDIO" })
     .click();
-  await expect(page.locator(".hs-seller-row")).toContainText(
-    "Owned collection",
-  );
+  await expect(
+    page
+      .getByRole("link", {
+        name: /View lot (Owned collection|Updated owned lot)/,
+      })
+      .locator(".."),
+  ).toContainText("Owned collection");
   await expect(page.getByText("$0.00", { exact: true })).toBeVisible();
   total = "125.00";
   title = "Updated owned lot";
   signal("collection.changed", { lotId: lot.id, type: "lot.settled" });
   await expect(page.getByText("$125.00", { exact: true })).toBeVisible();
-  await expect(page.locator(".hs-seller-row")).toContainText(
-    "Updated owned lot",
-  );
+  await expect(
+    page
+      .getByRole("link", {
+        name: /View lot (Owned collection|Updated owned lot)/,
+      })
+      .locator(".."),
+  ).toContainText("Updated owned lot");
   await page
-    .locator(".hs-footer-links")
-    .getByRole("button", { name: "WALLET" })
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "WALLET" })
     .click();
   await expect(page.getByText("$100.00", { exact: true })).toBeVisible();
   await page.route("**/api/wallet", (route) =>
@@ -161,7 +171,7 @@ test("initial HTTP load and fallback work even when WebSocket never connects", a
   );
   await page.goto("/#/");
   await expect(
-    page.getByRole("button", {
+    page.getByRole("link", {
       name: "View Initial offline collection",
       exact: true,
     }),
@@ -169,6 +179,6 @@ test("initial HTTP load and fallback work even when WebSocket never connects", a
   title = "Fallback collection";
   await page.clock.fastForward(10200);
   await expect(
-    page.getByRole("button", { name: "View Fallback collection", exact: true }),
+    page.getByRole("link", { name: "View Fallback collection", exact: true }),
   ).toBeVisible();
 });

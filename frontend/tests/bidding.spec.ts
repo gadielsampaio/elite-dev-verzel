@@ -36,7 +36,7 @@ async function room(
           bidderAlias: "bidder_public",
           isLeading: accepted || !!options.leading,
           position: accepted ? 1 : null,
-          bestBid: accepted ? {} : null,
+          bestBid: accepted ? { amount: requests.at(-1)!.amount } : null,
         },
       });
     return route.fulfill({
@@ -58,6 +58,8 @@ async function room(
                 id: "bid1",
                 bidderAlias: "bidder_public",
                 bidderLabel: "Bidder A",
+                createdAt: new Date().toISOString(),
+                isActive: true,
                 amount: requests.at(-1)!.amount,
               },
             ]
@@ -69,15 +71,17 @@ async function room(
   await page.getByLabel("EMAIL ADDRESS").fill("bidder@example.com");
   await page.getByLabel("PASSWORD", { exact: true }).fill("test-password-123");
   await page
-    .locator("#login-form")
+    .locator("#shadcn-login-form")
     .getByRole("button", { name: "LOG IN", exact: true })
     .click();
-  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
   await page.evaluate(() => {
     location.hash = "/";
   });
   await page
-    .getByRole("button", { name: `View ${lot.title}`, exact: true })
+    .getByRole("link", { name: `View ${lot.title}`, exact: true })
     .click();
   return requests;
 }
@@ -86,15 +90,16 @@ test("bid sends exact decimals, refreshes history/leadership and prevents self-o
   page,
 }) => {
   const requests = await room(page);
-  await page.getByLabel("BID AMOUNT (USD)").fill("9007199254740993.01");
-  await page.getByRole("button", { name: "PLACE BID", exact: true }).click();
-  await expect(page.getByText("Bid accepted.", { exact: false })).toBeVisible();
+  await page.getByLabel("Bid amount (USD)").fill("9007199254740993.01");
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
+  await expect(page.getByText("Bid accepted", { exact: false })).toBeVisible();
   await expect(
-    page.getByText("● YOU ARE CURRENTLY LEADING", { exact: false }),
+    page.getByText("You are currently leading", { exact: false }),
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "PLACE BID", exact: true }),
+    page.getByRole("button", { name: "Place bid", exact: true }),
   ).toBeDisabled();
+  await page.getByRole("tab", { name: "History", exact: true }).click();
   await expect(page.getByText("You", { exact: true })).toBeVisible();
   expect(requests[0].amount).toBe("9007199254740993.01");
   expect(requests[0].idempotencyKey).toMatch(/^[0-9a-f-]{36}$/);
@@ -104,17 +109,17 @@ test("uncertain bid survives closing the room and retries the same key and amoun
   page,
 }) => {
   const requests = await room(page, { dropped: true });
-  await page.getByLabel("BID AMOUNT (USD)").fill("125.00");
-  await page.getByRole("button", { name: "PLACE BID", exact: true }).click();
-  await expect(page.getByRole("button", { name: "RETRY BID" })).toBeVisible();
+  await page.getByLabel("Bid amount (USD)").fill("125.00");
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Retry bid" })).toBeVisible();
   await page.getByRole("button", { name: "Close artwork room" }).click();
   await page
-    .getByRole("button", { name: `View ${lot.title}`, exact: true })
+    .getByRole("link", { name: `View ${lot.title}`, exact: true })
     .click();
-  await expect(page.getByLabel("BID AMOUNT (USD)")).toHaveValue("$125.00");
-  await expect(page.getByLabel("BID AMOUNT (USD)")).toBeDisabled();
-  await page.getByRole("button", { name: "RETRY BID" }).click();
-  await expect(page.getByText("Bid accepted.", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Bid amount (USD)")).toHaveValue("$125.00");
+  await expect(page.getByLabel("Bid amount (USD)")).toBeDisabled();
+  await page.getByRole("button", { name: "Retry bid" }).click();
+  await expect(page.getByText("Bid accepted", { exact: false })).toBeVisible();
   expect(requests).toHaveLength(2);
   expect(requests[1]).toEqual(requests[0]);
 });
@@ -123,13 +128,13 @@ test("server rejection is shown and a corrected bid gets a new key", async ({
   page,
 }) => {
   const requests = await room(page, { failure: 400 });
-  await page.getByLabel("BID AMOUNT (USD)").fill("125.00");
-  await page.getByRole("button", { name: "PLACE BID", exact: true }).click();
+  await page.getByLabel("Bid amount (USD)").fill("125.00");
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
   await expect(page.getByRole("alert")).toContainText(
     "Insufficient available balance",
   );
-  await page.getByLabel("BID AMOUNT (USD)").fill("100.00");
-  await page.getByRole("button", { name: "PLACE BID", exact: true }).click();
+  await page.getByLabel("Bid amount (USD)").fill("100.00");
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
   await expect.poll(() => requests.length).toBe(2);
   expect(requests[1].idempotencyKey).not.toBe(requests[0].idempotencyKey);
 });
@@ -138,8 +143,8 @@ for (const status of ["scheduled", "closed"])
   test(`cannot submit to a ${status} lot`, async ({ page }) => {
     const requests = await room(page, { status });
     await expect(
-      page.getByRole("button", { name: "PLACE BID", exact: true }),
-    ).toBeDisabled();
+      page.getByRole("button", { name: "Place bid", exact: true }),
+    ).toHaveCount(0);
     expect(requests).toHaveLength(0);
   });
 
@@ -148,7 +153,7 @@ test("auctioneer cannot access bid entry", async ({ page }) => {
   await expect(
     page.getByText("Only bidder accounts can place bids."),
   ).toBeVisible();
-  await expect(page.getByLabel("BID AMOUNT (USD)")).toHaveCount(0);
+  await expect(page.getByLabel("Bid amount (USD)")).toHaveCount(0);
   expect(requests).toHaveLength(0);
 });
 
@@ -156,7 +161,7 @@ test("currency digits format from the right, backspace removes cents, and cursor
   page,
 }) => {
   const requests = await room(page);
-  const amount = page.getByLabel("BID AMOUNT (USD)");
+  const amount = page.getByLabel("Bid amount (USD)");
   await amount.click();
   await amount.pressSequentially("123456");
   await expect(amount).toHaveValue("$1,234.56");
@@ -168,7 +173,7 @@ test("currency digits format from the right, backspace removes cents, and cursor
   ).toBe(true);
   await amount.press("Backspace");
   await expect(amount).toHaveValue("$123.45");
-  await page.getByRole("button", { name: "PLACE BID", exact: true }).click();
+  await page.getByRole("button", { name: "Place bid", exact: true }).click();
   await expect.poll(() => requests.length).toBe(1);
   expect(requests[0].amount).toBe("123.45");
 });

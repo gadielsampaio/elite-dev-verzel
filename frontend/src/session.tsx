@@ -1,3 +1,5 @@
+import { Alert, AlertDescription } from "./components/ui/alert";
+import { Button } from "./components/ui/button";
 import { SessionSkeleton } from "./components/SessionSkeleton";
 import {
   createContext,
@@ -78,6 +80,11 @@ export function SessionProvider({
   const active = useRef<Session | null>(null),
     generation = useRef(0);
   const channel = useRef<BroadcastChannel | null>(null);
+  const renewing = useRef<{
+    token: string;
+    generation: number;
+    promise: Promise<string>;
+  } | null>(null);
   function clear(text = "") {
     generation.current++;
     active.current = null;
@@ -92,7 +99,23 @@ export function SessionProvider({
     setSession(value);
     setWarning("");
   }
-  async function renew(oldToken: string) {
+  function renew(oldToken: string): Promise<string> {
+    if (
+      renewing.current?.token === oldToken &&
+      renewing.current.generation === generation.current
+    )
+      return renewing.current.promise;
+    const pending = {
+      token: oldToken,
+      generation: generation.current,
+      promise: performRenew(oldToken),
+    };
+    renewing.current = pending;
+    return pending.promise.finally(() => {
+      if (renewing.current === pending) renewing.current = null;
+    });
+  }
+  async function performRenew(oldToken: string) {
     const current = generation.current;
     if (
       active.current &&
@@ -247,23 +270,32 @@ export function SessionProvider({
   if (restoring) return <SessionSkeleton />;
   if (restoreError)
     return (
-      <section className="hs-utility-page">
-        <p role="alert">Could not restore your session. {restoreError}</p>
-        <button
-          className="hs-seller-btn"
-          onClick={() => setRetry((n) => n + 1)}
-        >
+      <section className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-4 px-6">
+        <Alert variant="destructive">
+          <AlertDescription>
+            Could not restore your session. {restoreError}
+          </AlertDescription>
+        </Alert>
+        <Button size="lg" onClick={() => setRetry((n) => n + 1)}>
           RETRY
-        </button>
-        <button className="hs-seller-btn ghost" onClick={() => void logout()}>
+        </Button>
+        <Button size="lg" variant="outline" onClick={() => void logout()}>
           SIGN OUT
-        </button>
-        {warning && <p role="alert">{warning}</p>}
+        </Button>
+        {warning && (
+          <Alert variant="destructive">
+            <AlertDescription>{warning}</AlertDescription>
+          </Alert>
+        )}
       </section>
     );
   return (
     <Context.Provider value={{ session, notice, login, logout }}>
-      {warning && <p role="alert">{warning}</p>}
+      {warning && (
+        <Alert variant="destructive">
+          <AlertDescription>{warning}</AlertDescription>
+        </Alert>
+      )}
       {children}
     </Context.Provider>
   );

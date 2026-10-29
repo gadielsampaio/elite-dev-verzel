@@ -36,10 +36,12 @@ test("real local HttpOnly cookie rotates on reload and is revoked on logout", as
     await page.getByLabel("EMAIL ADDRESS").fill(email);
     await page.getByLabel("PASSWORD", { exact: true }).fill(password);
     await page
-      .locator("#login-form")
+      .locator("#shadcn-login-form")
       .getByRole("button", { name: "LOG IN", exact: true })
       .click();
-    await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Sign out", exact: true }),
+    ).toBeVisible();
     const first = (await page.context().cookies()).find(
       (c) => c.name === "auction_refresh",
     );
@@ -53,7 +55,9 @@ test("real local HttpOnly cookie rotates on reload and is revoked on logout", as
       ),
     ).not.toContain(first!.value);
     await page.reload();
-    await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Sign out", exact: true }),
+    ).toBeVisible();
     const second = (await page.context().cookies()).find(
       (c) => c.name === "auction_refresh",
     );
@@ -64,9 +68,9 @@ test("real local HttpOnly cookie rotates on reload and is revoked on logout", as
         [userId],
       ),
     ).toMatchObject({ rows: [{ n: 1 }] });
-    await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
+    await page.getByRole("button", { name: "Sign out", exact: true }).click();
     await expect(
-      page.getByRole("button", { name: "SIGN OUT", exact: true }),
+      page.getByRole("button", { name: "Sign out", exact: true }),
     ).toHaveCount(0);
     expect(
       (await page.context().cookies()).some(
@@ -75,7 +79,7 @@ test("real local HttpOnly cookie rotates on reload and is revoked on logout", as
     ).toBe(false);
     await page.reload();
     await expect(
-      page.getByRole("button", { name: "SIGN OUT", exact: true }),
+      page.getByRole("button", { name: "Sign out", exact: true }),
     ).toHaveCount(0);
     const active = await pool.query(
       "SELECT count(*)::int AS n FROM refresh_sessions WHERE user_id=$1 AND revoked_at IS NULL",

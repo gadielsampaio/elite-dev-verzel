@@ -46,7 +46,8 @@ test("room follows lifecycle signals, confirms settlement and clears cancelled d
       return route.fulfill({
         json: {
           status: settled ? "settled" : "pending_settlement",
-          receipt: settled ? { id: "receipt" } : null,
+          receipt: null,
+          canViewReceipt: false,
         },
       });
     if (path.endsWith("/bids"))
@@ -68,32 +69,43 @@ test("room follows lifecycle signals, confirms settlement and clears cancelled d
   });
   await page.goto("/#/");
   await page
-    .getByRole("button", { name: `View ${lot.title}`, exact: true })
+    .getByRole("link", { name: `View ${lot.title}`, exact: true })
     .click();
   await expect(
-    page.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+    page.getByText("Live updates connected", { exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".hs-p-topline")).toHaveText("SCHEDULED");
+  await expect(
+    page.getByText("Upcoming", { exact: true }).first(),
+  ).toBeVisible();
   status = "open";
   signal("lot.opened");
-  await expect(page.locator(".hs-p-topline")).toHaveText("● LIVE NOW");
+  await expect(page.getByText("Live now", { exact: true })).toBeVisible();
   status = "closed";
   signal("lot.closed");
   await expect(
-    page.getByText("BIDDING CLOSED — SETTLEMENT PENDING.", { exact: false }),
+    page.getByText(
+      "Bidding has ended. The final result is awaiting confirmation.",
+      { exact: false },
+    ),
   ).toBeVisible();
   settled = true;
   signal("lot.settled");
   await expect(
-    page.getByText("SETTLED — RECEIPT AVAILABLE.", { exact: false }),
+    page.getByText("This auction has settled.", { exact: false }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "View settlement result and receipt" }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Verify history" }),
   ).toBeVisible();
   // Separate eligible cancellation path; no settlement is inferred from this signal.
   cancelled = true;
   signal("lot.cancelled");
   await expect(
-    page.getByText("LOT UNAVAILABLE", { exact: true }),
+    page.getByText("Lot unavailable", { exact: true }),
   ).toBeVisible();
   await expect(
-    page.getByText("SETTLED — RECEIPT AVAILABLE.", { exact: false }),
+    page.getByText("This auction has settled.", { exact: false }),
   ).toHaveCount(0);
 });

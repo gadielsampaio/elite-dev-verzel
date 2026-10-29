@@ -1,0 +1,3 @@
+// Shared by page links (aria-current) and Radix tabs (data-state).
+export const navigationItemStyles =
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none border-b-2 border-transparent px-0 py-5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground transition-colors motion-reduce:transition-none hover:border-foreground hover:text-foreground focus-visible:border-foreground focus-visible:outline-2 focus-visible:outline-ring focus-visible:outline-offset-2 aria-[current=page]:border-foreground aria-[current=page]:text-foreground data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none sm:text-xs";

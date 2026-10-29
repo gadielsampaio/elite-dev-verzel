@@ -1,28 +1,25 @@
-import { SessionSkeleton } from "./components/SessionSkeleton";
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router-dom";
 import { SessionProvider } from "./session";
+import { SessionSkeleton } from "./components/SessionSkeleton";
+import "./haus/app/theme.css";
 
-// Separate entry bundles keep the existing API application's global CSS isolated.
-const HausApp = lazy(() => import("./haus/HausApp"));
-const LegacyApp = lazy(() => import("./LegacyApp"));
-const ConnectedApp = lazy(() => import("./haus/connected/ConnectedApp"));
-const isHaus = ["/preview", "/preview/"].includes(location.pathname);
-const isConnected = location.pathname === "/";
+const App = lazy(() => import("./haus/app/App"));
+
+// Preserve previously shared links without loading a second application.
+const path = location.pathname.replace(/\/$/, "");
+let hash: string | undefined;
+if (path === "/shadcn" || path === "/lots") hash = location.hash || "#/home";
+else if (/^\/lots\/[^/]+$/.test(path)) hash = `#/lot/${path.split("/")[2]}`;
+else if (/^\/(login|register|wallet|seller|activity|audit)$/.test(path))
+  hash = `#${path}`;
+if (hash) history.replaceState(history.state, "", `/${location.search}${hash}`);
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <SessionProvider restoreSession={!isHaus}>
+    <SessionProvider>
       <Suspense fallback={<SessionSkeleton />}>
-        {isConnected ? (
-          <ConnectedApp />
-        ) : isHaus ? (
-          <HausApp />
-        ) : (
-          <BrowserRouter>
-            <LegacyApp />
-          </BrowserRouter>
-        )}
+        <App />
       </Suspense>
     </SessionProvider>
   </StrictMode>,

@@ -1,4 +1,4 @@
-import { useLiveRefresh } from "./haus/connected/useLiveRefresh";
+import { useLiveRefresh } from "./haus/data/useLiveRefresh";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { api, ApiError, message, type Wallet } from "./api";
 type Pending = { amount: string; idempotencyKey: string };

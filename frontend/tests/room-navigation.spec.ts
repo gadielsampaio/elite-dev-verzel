@@ -14,7 +14,7 @@ async function openRoom(page: Page) {
   );
   await page.goto("/");
   await page
-    .getByRole("button", { name: `View ${lot.title}`, exact: true })
+    .getByRole("link", { name: `View ${lot.title}`, exact: true })
     .click();
   await expect(page.locator("#lot-img")).toBeVisible();
   await page.getByRole("button", { name: "Zoom in", exact: true }).click();
@@ -34,13 +34,13 @@ test("zoomed room supports bounded drag, keyboard pan and reset without toggling
   await openRoom(page);
   const scene = page.locator("#lot-scene"),
     box = (await scene.boundingBox())!;
-  const caption = await page.locator("#lot-dialog").getAttribute("class");
+  const caption = await page.getByRole("dialog").getAttribute("class");
   await page.mouse.move(box.x + 150, box.y + 220);
   await page.mouse.down();
   await page.mouse.move(box.x + 270, box.y + 280, { steps: 8 });
   await page.mouse.up();
   await expect.poll(async () => (await pan(page)).x).toBeGreaterThan(50);
-  await expect(page.locator("#lot-dialog")).toHaveAttribute("class", caption!);
+  await expect(page.getByRole("dialog")).toHaveAttribute("class", caption!);
   await scene.focus();
   const before = (await pan(page)).x;
   await scene.press("ArrowLeft");
@@ -75,7 +75,7 @@ test.describe("touch navigation", () => {
       touchPoints: [],
     });
     await expect.poll(async () => (await pan(page)).x).toBeGreaterThan(20);
-    await expect(page.locator("#lot-dialog")).toHaveClass(/caption-visible/);
+    await expect(page.getByRole("dialog")).toHaveClass(/caption-visible/);
     await client.detach();
   });
 });

@@ -6,10 +6,12 @@ async function login(page: Page) {
   await page.getByLabel("EMAIL ADDRESS").fill("seller@example.com");
   await page.getByLabel("PASSWORD", { exact: true }).fill("test-password-123");
   await page
-    .locator("#login-form")
+    .locator("#shadcn-login-form")
     .getByRole("button", { name: "LOG IN", exact: true })
     .click();
-  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
 }
 test("reload restores a verified seller session and sign out clears it", async ({
   page,
@@ -25,8 +27,8 @@ test("reload restores a verified seller session and sign out clears it", async (
   });
   await login(page);
   await page
-    .locator(".hs-footer-links")
-    .getByRole("button", { name: "SELLER STUDIO" })
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "SELLER STUDIO" })
     .click();
   const beforeReload = profiles;
   await page.reload();
@@ -38,16 +40,16 @@ test("reload restores a verified seller session and sign out clears it", async (
   expect(
     await page.evaluate((key) => sessionStorage.getItem(key), key),
   ).toBeNull();
-  await page.getByRole("button", { name: "SIGN OUT", exact: true }).click();
+  await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "SIGN OUT", exact: true }),
+    page.getByRole("button", { name: "Sign out", exact: true }),
   ).toHaveCount(0);
   expect(
     await page.evaluate((key) => sessionStorage.getItem(key), key),
   ).toBeNull();
   await page.reload();
   await expect(
-    page.getByRole("button", { name: "SIGN OUT", exact: true }),
+    page.getByRole("button", { name: "Sign out", exact: true }),
   ).toHaveCount(0);
 });
 test("server rejection during restore clears stored credentials", async ({
@@ -83,7 +85,9 @@ test("temporary restore failure keeps the token and supports retry", async ({
   ).toBeNull();
   fail = false;
   await page.getByRole("button", { name: "RETRY", exact: true }).click();
-  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
 });
 test("removes legacy storage tokens and restores using the refresh cookie", async ({
   page,
@@ -95,7 +99,9 @@ test("removes legacy storage tokens and restores using the refresh cookie", asyn
     key,
   );
   await page.reload();
-  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate((key) => sessionStorage.getItem(key), key),
   ).toBeNull();
@@ -135,9 +141,11 @@ test("renews before access-token expiry without logging out", async ({
   await page.clock.fastForward(850000);
   await expect.poll(() => rotations).toBe(1);
   await expect(
-    page.getByRole("button", { name: "SIGN OUT", exact: true }),
+    page.getByRole("button", { name: "Sign out", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Sign out", exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(() =>
       JSON.stringify({ ...localStorage, ...sessionStorage }),
@@ -203,8 +211,8 @@ test("concurrent unauthorized requests share one refresh and retry with the new 
     ),
   );
   await page
-    .locator(".hs-footer-links")
-    .getByRole("button", { name: "SELLER STUDIO" })
+    .getByRole("navigation", { name: "Main navigation" })
+    .getByRole("link", { name: "SELLER STUDIO" })
     .click();
   await expect(page.getByText("No lots yet.", { exact: false })).toBeVisible();
   expect(rotations).toBe(1);

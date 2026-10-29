@@ -13,9 +13,6 @@ export const translations = {
     view: "VIEW LOT",
     explore: "EXPLORE THE AUCTIONS",
     login: "LOG IN",
-    audit:
-      "Every lot has a publicly visible bid history.<br/>Audit results in this prototype are illustrative only.",
-    auditAction: "EXPLORE PUBLIC AUDIT ↗",
   },
   PT: {
     live: "AO VIVO",
@@ -31,9 +28,6 @@ export const translations = {
     view: "VER LOTE",
     explore: "EXPLORAR LEILÕES",
     login: "ENTRAR",
-    audit:
-      "O histórico de lances de cada lote é público.<br/>Os resultados desta demonstração são ilustrativos.",
-    auditAction: "VER AUDITORIA PÚBLICA ↗",
   },
 };
 
@@ -52,15 +46,11 @@ export const authTranslations = {
     show: "SHOW",
     hide: "HIDE",
     noAccount: "NEW TO HAUS SAMPAIO?",
-    create: "CREATE AN ACCOUNT ↗",
+    create: "CREATE AN ACCOUNT",
     createTitle: "CREATE AN ACCOUNT",
     passwordPlaceholder: "Enter your password",
     newPasswordPlaceholder: "Enter a password",
     confirmPlaceholder: "Repeat password",
-    previewLabel: "VISUAL PROTOTYPE",
-    demoExplain:
-      "Authentication is not connected. Explore the flows with demo profiles.",
-    demoAction: "EXPLORE DEMO PROFILES ↗",
     newAccountEyebrow: "PRIVATE AREA / NEW ACCOUNT",
     join: "JOIN THE<br>COLLECTION.",
     registerIntro:
@@ -80,8 +70,6 @@ export const authTranslations = {
     createButton: "CREATE ACCOUNT",
     haveAccount: "ALREADY HAVE AN ACCOUNT?",
     signInAction: "LOG IN ↗",
-    registrationExplain:
-      "This form demonstrates the experience. No account or password is saved.",
     dark: "DARK",
     light: "LIGHT",
     emailError: "Enter a valid email address.",
@@ -89,10 +77,6 @@ export const authTranslations = {
     shortPassword: "Use at least 8 characters.",
     nameError: "Enter your full name.",
     confirmError: "Passwords do not match.",
-    validLogin:
-      "Fields validated. No login was performed: this is a visual prototype.",
-    validRegister:
-      "Form validated. No account was created and no password was saved.",
   },
   PT: {
     back: "VOLTAR AOS LEILÕES",
@@ -107,15 +91,11 @@ export const authTranslations = {
     show: "MOSTRAR",
     hide: "OCULTAR",
     noAccount: "NOVO NA HAUS SAMPAIO?",
-    create: "CRIAR CONTA ↗",
+    create: "CRIAR CONTA",
     createTitle: "CRIAR CONTA",
     passwordPlaceholder: "Informe sua senha",
     newPasswordPlaceholder: "Crie uma senha",
     confirmPlaceholder: "Repita sua senha",
-    previewLabel: "PROTÓTIPO VISUAL",
-    demoExplain:
-      "A autenticação não está conectada. Explore os fluxos usando perfis de demonstração.",
-    demoAction: "EXPLORAR PERFIS DEMO ↗",
     newAccountEyebrow: "ÁREA PRIVADA / NOVA CONTA",
     join: "FAÇA PARTE<br>DA COLEÇÃO.",
     registerIntro:
@@ -134,8 +114,6 @@ export const authTranslations = {
     createButton: "CRIAR CONTA",
     haveAccount: "JÁ POSSUI CONTA?",
     signInAction: "ENTRAR ↗",
-    registrationExplain:
-      "Este formulário apresenta a experiência. Nenhuma conta ou senha é salva.",
     dark: "ESCURO",
     light: "CLARO",
     emailError: "Informe um e-mail válido.",
@@ -143,9 +121,5 @@ export const authTranslations = {
     shortPassword: "Use ao menos 8 caracteres.",
     nameError: "Informe seu nome completo.",
     confirmError: "As senhas não coincidem.",
-    validLogin:
-      "Campos validados. Nenhum login foi realizado: este é um protótipo visual.",
-    validRegister:
-      "Formulário validado. Nenhuma conta foi criada ou senha salva.",
   },
 };

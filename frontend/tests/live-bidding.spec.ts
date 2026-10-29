@@ -13,8 +13,11 @@ test("live publication, bidding, settlement and account results journey", async 
     process.env.RUN_LIVE_TESTS !== "1",
     "Requires local API/database and Cleveland",
   );
-  test.setTimeout(90000);
+  test.setTimeout(120000);
   process.loadEnvFile(new URL("../../backend/.env", import.meta.url));
+  expect(["localhost", "127.0.0.1"]).toContain(
+    new URL(process.env.DATABASE_URL!).hostname,
+  );
   expect(
     process.env.AUDIT_CHECKPOINT_DIR,
     "Configure external audit storage before this live test",
@@ -44,17 +47,19 @@ test("live publication, bidding, settlement and account results journey", async 
     await page.getByLabel("EMAIL ADDRESS").fill(email);
     await page.getByLabel("PASSWORD", { exact: true }).fill(password);
     await page
-      .locator("#login-form")
+      .locator("#shadcn-login-form")
       .getByRole("button", { name: "LOG IN", exact: true })
       .click();
-    await expect(page.locator(".hs-wallet-grid")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Sign out", exact: true }),
+    ).toBeVisible();
   }
   async function open(page: Page) {
     await page.evaluate(() => {
       location.hash = "/";
     });
     await page
-      .getByRole("button", { name: `View ${title}`, exact: true })
+      .getByRole("link", { name: `View ${title}`, exact: true })
       .click();
   }
   try {
@@ -67,24 +72,28 @@ test("live publication, bidding, settlement and account results journey", async 
     await sellerPage.evaluate(() => {
       location.hash = "/seller";
     });
-    await sellerPage.getByRole("tab", { name: "CREATE A LOT" }).click();
+    await sellerPage.getByRole("tab", { name: "Create a lot" }).click();
+    await expect(
+      sellerPage.getByRole("combobox", { name: "Artwork type" }),
+    ).toContainText("Paintings");
     await sellerPage
-      .getByLabel("ARTWORK TYPE", { exact: true })
-      .selectOption("Painting");
-    await sellerPage
-      .getByRole("button", { name: "SEARCH", exact: true })
+      .getByRole("button", { name: /^Select / })
+      .first()
       .click();
-    await sellerPage.locator(".hs-seller-art-card").first().click();
-    await sellerPage.getByLabel("LOT TITLE").fill(title);
-    await sellerPage.getByLabel("PUBLICATION").selectOption("now");
-    await sellerPage.getByLabel("STARTING BID (USD)").fill("100.00");
-    await sellerPage.getByLabel("MINIMUM INCREMENT (USD)").fill("5.00");
-    await sellerPage.getByLabel("ESTIMATED VALUE (USD)").fill("500.00");
-    await expect(sellerPage.getByLabel("MINIMUM INCREMENT (USD)")).toHaveValue(
+    await sellerPage.getByLabel("Lot title").fill(title);
+    await expect(
+      sellerPage.getByRole("combobox", { name: "Publication" }),
+    ).toContainText("Publish now");
+    await sellerPage.getByLabel("Starting bid (USD)").fill("100.00");
+    await sellerPage.getByLabel("Minimum increment (USD)").fill("5.00");
+    await sellerPage.getByLabel("Estimated value (USD)").fill("500.00");
+    await expect(sellerPage.getByLabel("Minimum increment (USD)")).toHaveValue(
       "$5.00",
     );
+    await expect(sellerPage.locator("form input:invalid")).toHaveCount(0);
     const publication = sellerPage.waitForResponse(
       (r) => r.url().endsWith("/api/lots") && r.request().method() === "POST",
+      { timeout: 15000 },
     );
     await sellerPage
       .getByRole("button", { name: "PUBLISH LOT", exact: true })
@@ -93,6 +102,10 @@ test("live publication, bidding, settlement and account results journey", async 
     expect(published.status()).toBe(201);
     const lot = await published.json();
     expect(lot.status).toBe("open");
+    await sellerPage
+      .getByRole("dialog")
+      .getByRole("button", { name: "My lots", exact: true })
+      .click();
     const pageA = await contexts[1].newPage(),
       pageB = await contexts[2].newPage();
     for (const [page, email] of [
@@ -100,44 +113,55 @@ test("live publication, bidding, settlement and account results journey", async 
       [pageB, b],
     ] as const) {
       await login(page, email);
-      await page.getByLabel("DEPOSIT AMOUNT (USD)").fill("500.00");
       await page
-        .getByRole("button", { name: "SIMULATE DEPOSIT", exact: true })
+        .getByRole("navigation", { name: "Main navigation" })
+        .getByRole("link", { name: "WALLET", exact: true })
         .click();
-      await expect(page.getByText("Simulated deposit recorded.")).toBeVisible();
+      await page.getByLabel("Deposit amount (USD)").fill("500.00");
+      await page
+        .getByRole("button", { name: "Simulate deposit", exact: true })
+        .click();
+      await expect(
+        page.getByText("Deposit recorded", { exact: true }),
+      ).toBeVisible();
       await open(page);
       await expect(
-        page.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+        page.getByText("Live updates connected", { exact: true }),
       ).toBeVisible();
     }
-    await pageB.getByLabel("BID AMOUNT (USD)").fill("105.00");
-    await pageA.getByLabel("BID AMOUNT (USD)").fill("100.00");
-    await pageA.getByRole("button", { name: "PLACE BID", exact: true }).click();
+    await pageB.getByLabel("Bid amount (USD)").fill("105.00");
+    await pageA.getByLabel("Bid amount (USD)").fill("100.00");
+    await pageA.getByRole("button", { name: "Place bid", exact: true }).click();
+    await pageA.getByRole("tab", { name: "History", exact: true }).click();
     await expect(pageA.getByText("You", { exact: true })).toBeVisible();
+    await pageA.getByRole("tab", { name: "Bid", exact: true }).click();
     await expect(
-      pageA.getByText("● YOU ARE CURRENTLY LEADING", { exact: false }),
+      pageA.getByText("You are currently leading", { exact: false }),
     ).toBeVisible();
 
+    await pageB.getByRole("tab", { name: "History", exact: true }).click();
     await expect(pageB.getByText("Bidder A", { exact: true })).toBeVisible();
-    await expect(pageB.getByLabel("BID AMOUNT (USD)")).toHaveValue("$105.00");
+    await pageB.getByRole("tab", { name: "Bid", exact: true }).click();
+    await expect(pageB.getByLabel("Bid amount (USD)")).toHaveValue("$105.00");
     await contexts[1].setOffline(true);
     await expect(
-      pageA.getByText("CONNECTING LIVE UPDATES · AUTOMATIC REFRESH ACTIVE", {
+      pageA.getByText("Connecting live updates · Automatic refresh active", {
         exact: true,
       }),
     ).toBeVisible();
-    await pageB.getByRole("button", { name: "PLACE BID", exact: true }).click();
+    await pageB.getByRole("button", { name: "Place bid", exact: true }).click();
     await expect(
-      pageB.getByText("● YOU ARE CURRENTLY LEADING", { exact: false }),
+      pageB.getByText("You are currently leading", { exact: false }),
     ).toBeVisible();
 
     await contexts[1].setOffline(false);
     await expect(
-      pageA.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+      pageA.getByText("Live updates connected", { exact: true }),
     ).toBeVisible();
     await expect(
-      pageA.getByText("● YOU HAVE BEEN OUTBID", { exact: false }),
+      pageA.getByText("You have been outbid", { exact: false }),
     ).toBeVisible();
+    await pageA.getByRole("tab", { name: "History", exact: true }).click();
     await expect(pageA.getByText("Bidder B", { exact: true })).toBeVisible();
     await expect(pageA.getByText("You", { exact: true })).toBeVisible();
     for (const [page, committed, available] of [
@@ -150,21 +174,21 @@ test("live publication, bidding, settlement and account results journey", async 
       });
       await expect(
         page
-          .locator(".hs-wallet-grid > div")
-          .filter({ hasText: "COMMITTED BALANCE" })
-          .locator("strong"),
+          .locator('dl[aria-label="Wallet balances"] > div')
+          .filter({ hasText: "Committed balance" })
+          .locator("dd"),
       ).toHaveText(committed);
       await expect(
         page
-          .locator(".hs-wallet-grid > div")
-          .filter({ hasText: "AVAILABLE BALANCE" })
-          .locator("strong"),
+          .locator('dl[aria-label="Wallet balances"] > div')
+          .filter({ hasText: "Available balance" })
+          .locator("dd"),
       ).toHaveText(available);
     }
 
     await open(pageA);
     await expect(
-      pageA.getByText("LIVE UPDATES CONNECTED", { exact: true }),
+      pageA.getByText("Live updates connected", { exact: true }),
     ).toBeVisible();
     // Advance only this test-owned lot's deadline; let the real background worker settle it.
     const expired = await db.query(
@@ -184,67 +208,75 @@ test("live publication, bidding, settlement and account results journey", async 
       .toBe("settled");
 
     await expect(
-      pageA.getByText("SETTLED — RECEIPT AVAILABLE.", { exact: false }),
+      pageA.getByText("You did not win this auction. Settlement is complete."),
     ).toBeVisible();
     await pageA.getByRole("button", { name: "Close artwork room" }).click();
-    await pageB.getByRole("button", { name: "REFRESH BALANCE" }).click();
+    await pageB.getByRole("button", { name: "Refresh balance" }).click();
     await expect(
       pageB
-        .locator(".hs-wallet-grid > div")
-        .filter({ hasText: "COMMITTED BALANCE" })
-        .locator("strong"),
+        .locator('dl[aria-label="Wallet balances"] > div')
+        .filter({ hasText: "Committed balance" })
+        .locator("dd"),
     ).toHaveText("$0.00");
     await expect(
       pageB
-        .locator(".hs-wallet-grid > div")
-        .filter({ hasText: "TOTAL BALANCE" })
-        .locator("strong"),
+        .locator('dl[aria-label="Wallet balances"] > div')
+        .filter({ hasText: "Total balance" })
+        .locator("dd"),
     ).toHaveText("$395.00");
 
-    await sellerPage.getByRole("button", { name: "REFRESH SUMMARY" }).click();
     await expect(
       sellerPage
-        .locator(".hs-seller-stats > div")
-        .filter({ hasText: "TOTAL RECEIVED" })
-        .locator("strong"),
+        .locator("dl > div")
+        .filter({ hasText: "Total received" })
+        .locator("dd"),
     ).toHaveText("$105.00");
     await expect(
       sellerPage
-        .locator(".hs-seller-stats > div")
-        .filter({ hasText: "LOTS SOLD" })
-        .locator("strong"),
+        .locator("dl > div")
+        .filter({ hasText: "Lots sold" })
+        .locator("dd"),
     ).toHaveText("1");
-    await sellerPage.getByRole("tab", { name: "RESULTS", exact: true }).click();
+    await sellerPage.getByRole("tab", { name: "Results", exact: true }).click();
     await expect(
-      sellerPage.getByText("SOLD · SETTLED", { exact: true }),
+      sellerPage.getByText("Sold · Settled", { exact: true }),
     ).toBeVisible();
     await sellerPage.screenshot({
       path: "/tmp/haus-seller-settled.png",
       fullPage: true,
     });
 
-    await pageB.getByRole("button", { name: "MY BIDS", exact: true }).click();
-    await pageB.getByRole("tab", { name: "MY WINS", exact: true }).click();
+    await pageB
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "MY BIDS", exact: true })
+      .click();
+    await pageB.getByRole("tab", { name: "My wins", exact: true }).click();
     await expect(
-      pageB.getByText("WON · SETTLED", { exact: true }),
+      pageB.getByText("Won · Settled", { exact: true }),
     ).toBeVisible();
     await pageB.screenshot({ path: "/tmp/haus-winner.png", fullPage: true });
-    await pageB.getByRole("link", { name: "VIEW / SHARE RECEIPT ↗" }).click();
+    await pageB.getByRole("link", { name: "Result/Receipt" }).click();
     await expect(
-      pageB.getByRole("heading", { name: "SETTLED RECEIPT" }),
+      pageB.getByRole("heading", { name: "Settled receipt" }),
     ).toBeVisible();
     const receiptUrl = await pageB
-      .getByLabel("SHAREABLE RECEIPT LINK")
+      .getByLabel("Shareable receipt link")
       .inputValue();
     const guest = await browser.newContext();
     contexts.push(guest);
     const guestPage = await guest.newPage();
     await guestPage.goto(receiptUrl);
     await expect(
-      guestPage.getByRole("heading", { name: "SETTLED RECEIPT" }),
+      guestPage.getByText(
+        "Sign in as the winning bidder or lot owner to view this receipt.",
+      ),
     ).toBeVisible();
-    await expect(guestPage.getByText("$105.00", { exact: true })).toBeVisible();
-    await expect(guestPage.locator("body")).not.toContainText(b);
+    const denied = await request.get(`/api/lots/${lot.id}/receipt`);
+    expect(denied.status()).toBe(401);
+    await pageA.goto(receiptUrl);
+    await expect(pageA.getByRole("alert")).toContainText(
+      /receipt|winner|auctioneer/i,
+    );
     await expect
       .poll(
         async () => {
@@ -255,15 +287,18 @@ test("live publication, bidding, settlement and account results journey", async 
         { timeout: 15000 },
       )
       .toBe("intact");
-    await guestPage.getByRole("link", { name: "VERIFY BID HISTORY" }).click();
+    await guestPage.goto(`/#/audit/${lot.id}`);
     await expect(guestPage.getByRole("status")).toHaveText("INTACT");
-    await expect(guestPage.getByRole("listitem")).toHaveCount(2);
+    await expect(guestPage.locator("tbody tr")).toHaveCount(2);
     await expect(guestPage.locator("body")).not.toContainText(b);
-    await pageA.getByRole("button", { name: "MY BIDS", exact: true }).click();
+    await pageA
+      .getByRole("navigation", { name: "Main navigation" })
+      .getByRole("link", { name: "MY BIDS", exact: true })
+      .click();
     await expect(
-      pageA.getByText("NOT WON · SETTLED", { exact: true }),
+      pageA.getByText("Not won · Settled", { exact: true }),
     ).toBeVisible();
-    await pageA.getByRole("tab", { name: "MY WINS", exact: true }).click();
+    await pageA.getByRole("tab", { name: "My wins", exact: true }).click();
     await expect(pageA.getByText("No confirmed wins yet.")).toBeVisible();
   } finally {
     await Promise.allSettled(contexts.map((context) => context.close()));

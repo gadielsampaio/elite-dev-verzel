@@ -1,5 +1,5 @@
 .session-skeleton {
-  --skeleton-bg: #faf9f6;
+  --skeleton-bg: #f5efe3;
   --skeleton-ink: #1b1b19;
   --skeleton-fill: #e8e6e0;
   --skeleton-border: #d9d6cf;
@@ -70,7 +70,7 @@
   gap: 30px;
   margin-top: 32px;
 }
-.session-skeleton-meta > span {
+.session-skeleton-meta > .session-skeleton-block {
   width: 100px;
   height: 40px;
 }
@@ -92,7 +92,7 @@
   margin-bottom: 32px;
   border-bottom: 1px solid var(--skeleton-border);
 }
-.session-skeleton-filters > span {
+.session-skeleton-filters > .session-skeleton-block {
   max-width: 250px;
 }
 .session-skeleton-grid {
@@ -135,5 +135,29 @@
   }
   .session-skeleton-catalog {
     padding-top: 40px;
+  }
+}
+
+.session-skeleton-nav {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  border-bottom: 1px solid var(--skeleton-border);
+}
+.session-skeleton-nav > div {
+  max-width: 360px;
+}
+.session-skeleton-block {
+  border-radius: 0;
+  animation: session-skeleton-pulse 2s ease-in-out infinite;
+}
+@keyframes session-skeleton-pulse {
+  50% {
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .session-skeleton-block {
+    animation: none;
   }
 }
