@@ -1,3 +1,5 @@
+import { ACCESS_TOKEN_TTL_SECONDS } from './token.constants.js';
+
 export function jwtOptions() {
   const secret = process.env.JWT_SECRET;
   if (!secret || secret.length < 32) {
@@ -5,6 +7,9 @@ export function jwtOptions() {
   }
   return {
     secret,
-    signOptions: { expiresIn: 900, algorithm: 'HS256' as const },
+    signOptions: {
+      expiresIn: ACCESS_TOKEN_TTL_SECONDS,
+      algorithm: 'HS256' as const,
+    },
   };
 }

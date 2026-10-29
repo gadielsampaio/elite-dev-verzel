@@ -1,18 +1,18 @@
-import { AuctionEvents } from '../src/events/auction-events.js';
+import { AuctionEvents } from '../events/auction-events.js';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { BidsService } from '../src/bids/bids.service.js';
-import { WalletsService } from '../src/wallets/wallets.service.js';
-import { AuditService } from '../src/audit/audit.service.js';
-import { AuditController } from '../src/audit/audit.controller.js';
-import { CheckpointStore } from '../src/audit/checkpoint-store.js';
-import { SettlementService } from '../src/settlement/settlement.service.js';
-import { hashBidAudit } from '../src/audit/bid-hash.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { BidsService } from '../bids/bids.service.js';
+import { WalletsService } from '../wallets/wallets.service.js';
+import { AuditService } from './audit.service.js';
+import { AuditController } from './audit.controller.js';
+import { CheckpointStore } from './checkpoint-store.js';
+import { SettlementService } from '../settlement/settlement.service.js';
+import { hashBidAudit } from './bid-hash.js';
 
 describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
   'Public audit (PostgreSQL)',
@@ -67,6 +67,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
           })
         ).id;
       });
+
       afterEach(async () => {
         try {
           await db.walletTransaction.deleteMany({
@@ -91,6 +92,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
           await rm(directory, { recursive: true, force: true });
         }
       });
+
       it('recovers confirmation after restart, verifies without login and hides private identities', async () => {
         const key = randomUUID();
         await place(key);
@@ -124,6 +126,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
           await app.close();
         }
       });
+
       it('detects database history rewriting even with recomputed hashes', async () => {
         const bid = await place();
         await audit.confirm(lotId);
@@ -136,6 +139,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         });
         expect((await audit.verify(lotId)).status).toBe('tampered');
       });
+
       it('detects bidder identity changes', async () => {
         const bid = await place();
         await audit.confirm(lotId);
@@ -145,6 +149,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         });
         expect((await audit.verify(lotId)).status).toBe('tampered');
       });
+
       it.each(['microseconds', 'eligibility'])(
         'detects direct edits to %s',
         async (field) => {
@@ -174,6 +179,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         });
         expect((await audit.verify(lotId)).status).toBe('tampered');
       });
+
       it('detects deletion of the complete lot and its history', async () => {
         await place();
         await audit.confirm(lotId);
@@ -182,6 +188,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await db.lot.delete({ where: { id: lotId } });
         expect((await audit.verify(lotId)).status).toBe('tampered');
       });
+
       it.runIf(storage === 'external')(
         'fails bidding atomically when configured checkpoint storage is inaccessible',
         async () => {
@@ -225,6 +232,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await new SettlementService(db, new AuctionEvents()).settle(lotId);
         expect((await audit.verify(lotId)).status).toBe('intact');
       });
+
       it('detects a winner flag set outside settlement', async () => {
         const bid = await place();
         await db.bid.update({
@@ -233,6 +241,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         });
         expect((await audit.verify(lotId)).status).toBe('tampered');
       });
+
       it('retains evidence after an edit is reverted', async () => {
         const bid = await place();
         await audit.confirm(lotId);
@@ -240,6 +249,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await db.$executeRaw`UPDATE bids SET amount = 100 WHERE id = ${bid.id}::uuid`;
         expect((await audit.verify(lotId)).status).toBe('tampered');
       });
+
       it('rejects direct evidence writes and truncation', async () => {
         await place();
         await expect(
@@ -265,6 +275,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
           ).rejects.toThrow(/append-only|Cannot truncate/);
         }
       });
+
       it('rolls back trigger evidence with failed transactions', async () => {
         await expect(
           db.$transaction(async (tx) => {
@@ -282,6 +293,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         expect(await db.bidAuditHistory.count({ where: { lotId } })).toBe(0);
         expect((await audit.verify(lotId)).status).toBe('not_verifiable');
       });
+
       it('does not certify pre-migration bids', async () => {
         vi.stubEnv('AUDIT_CHECKPOINT_DIR', '');
         // Simulate one legacy row without dropping or resetting the database.
@@ -303,6 +315,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await place();
         expect((await audit.verify(lotId)).status).toBe('not_verifiable');
       });
+
       it('detects unpaired SQL insertions even before the first accepted bid', async () => {
         await db.bid.create({
           data: {

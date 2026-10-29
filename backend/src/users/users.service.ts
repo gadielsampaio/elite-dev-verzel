@@ -67,15 +67,10 @@ export class UsersService {
         data,
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2025') {
-          throw new NotFoundException('User not found');
-        }
-
-        if (error.code === 'P2002') {
-          throw new ConflictException('Email already exists');
-        }
-      }
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError)) throw error;
+      if (error.code === 'P2025') throw new NotFoundException('User not found');
+      if (error.code === 'P2002')
+        throw new ConflictException('Email already exists');
 
       throw error;
     }

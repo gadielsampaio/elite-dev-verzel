@@ -1,13 +1,14 @@
+import { configureTestValidation } from '../../test/support/http-app.js';
 import {
   ClevelandTransport,
   HttpClevelandTransport,
-} from '../src/catalog/cleveland.transport.js';
-import { artworkResponses } from '../src/catalog/fixtures/artworks.js';
+} from './cleveland.transport.js';
+import { artworkResponses } from './fixtures/artworks.js';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { CatalogModule } from '../src/catalog/catalog.module.js';
+import { CatalogModule } from './catalog.module.js';
 
 // HTTP routing, validation and real adapter; external HTTP is mocked.
 describe('Catalog and external health (HTTP)', () => {
@@ -23,19 +24,15 @@ describe('Catalog and external health (HTTP)', () => {
       .useValue(new HttpClevelandTransport())
       .compile();
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureTestValidation(app);
     await app.init();
   });
+
   beforeEach(() => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
   });
+
   afterEach(() => vi.unstubAllGlobals());
   afterAll(async () => {
     await app.close();
@@ -55,6 +52,7 @@ describe('Catalog and external health (HTTP)', () => {
     expect(url.searchParams.get('limit')).toBe('1');
     expect(options.signal).toBeInstanceOf(AbortSignal);
   });
+
   it('normalizes search results and encodes user input as a query value', async () => {
     reply({ data: [artwork], info: { total: 1 } });
     const res = await request(app.getHttpServer())
@@ -69,6 +67,7 @@ describe('Catalog and external health (HTTP)', () => {
           name: artwork.title,
           articImageId: null,
           imageUrl: artwork.images!.web.url,
+          printImageUrl: artwork.images?.print?.url ?? null,
           artistDisplay: artwork.creators[0].description,
           creditLine: artwork.creditline,
           isPublicDomain: true,
@@ -83,6 +82,7 @@ describe('Catalog and external health (HTTP)', () => {
     expect(url.pathname).toBe('/api/artworks/');
     expect(url.searchParams.get('q')).toBe('cats & dogs');
   });
+
   it.each([
     { type: 'Painting' },
     { q: 'Monet' },
@@ -137,6 +137,7 @@ describe('Catalog and external health (HTTP)', () => {
     });
     expect(res.body).toMatchObject({ page: 1, limit: 10 });
   });
+
   it('returns an empty result without treating it as provider failure', async () => {
     reply({ data: [], info: { total: 0 } });
     await request(app.getHttpServer())
@@ -150,6 +151,7 @@ describe('Catalog and external health (HTTP)', () => {
         provider: 'cleveland',
       });
   });
+
   it.each([
     '',
     '?q=',
@@ -166,6 +168,7 @@ describe('Catalog and external health (HTTP)', () => {
       .expect(400);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
   it.each([403, 429, 500])('maps upstream HTTP %s to 503', async (status) => {
     reply({ error: 'upstream' }, status);
     await request(app.getHttpServer())
@@ -176,6 +179,7 @@ describe('Catalog and external health (HTTP)', () => {
       .expect(503)
       .expect({ status: 'error', services: { cleveland: 'down' } });
   });
+
   it.each(['network', 'timeout', 'json', 'shape'])(
     'maps %s failures to 503',
     async (kind) => {
@@ -214,6 +218,7 @@ describe('Catalog and external health (HTTP)', () => {
       timeout.mockRestore();
     }
   });
+
   it.each([
     { data: [artwork] },
     { data: [{ id: 'bad' }], info: { total: 1 } },
@@ -224,10 +229,12 @@ describe('Catalog and external health (HTTP)', () => {
       .get('/catalog/search?q=cats')
       .expect(503);
   });
+
   it('rejects an empty health response', async () => {
     reply({ data: [] });
     await request(app.getHttpServer()).get('/health/external').expect(503);
   });
+
   it('normalizes the official detail shape using the HTTP transport', async () => {
     reply(artworkResponses[0]);
     const res = await request(app.getHttpServer())
@@ -241,6 +248,7 @@ describe('Catalog and external health (HTTP)', () => {
     });
     expect(fetchMock.mock.calls[0][0].pathname).toBe('/api/artworks/141639');
   });
+
   it('maps provider detail 404 to a local 404', async () => {
     reply(
       { status: 404, error: 'Not Found', detail: 'Artwork not found' },
@@ -250,12 +258,14 @@ describe('Catalog and external health (HTTP)', () => {
       .get('/catalog/artworks/999999')
       .expect(404);
   });
+
   it('does not substitute fixtures when real detail requests fail', async () => {
     reply({ error: 'unavailable' }, 503);
     await request(app.getHttpServer())
       .get('/catalog/artworks/141639')
       .expect(503);
   });
+
   it.each([
     { data: [] },
     { data: { ...artworkResponses[0].data, id: 28560 } },

@@ -12,10 +12,15 @@ import type { Namespace, Socket } from 'socket.io';
 import { AuctionEvents } from '../events/auction-events.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
+const MAX_SOCKET_MESSAGE_BYTES = 4096;
+const MILLISECONDS_PER_SECOND = 1000;
+const LOT_ID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+
 @WebSocketGateway({
   namespace: '/auctions',
   transports: ['websocket'],
-  maxHttpBufferSize: 4096,
+  maxHttpBufferSize: MAX_SOCKET_MESSAGE_BYTES,
 })
 export class AuctionGateway
   implements OnGatewayInit<Namespace>, OnModuleDestroy
@@ -36,39 +41,45 @@ export class AuctionGateway
         .to('collection')
         .emit('collection.changed', { lotId: event.lotId, type: event.type });
     });
-    this.unsubscribeAccount = this.events.subscribeAccount(async (userId) => {
-      const user = await this.prisma.user.findUnique({
-        where: { id: userId },
-        select: { isActive: true },
-      });
-      for (const client of await server
-        .in(`account:${userId}`)
-        .fetchSockets()) {
-        if (
-          !user?.isActive ||
-          client.data.accountExpiresAt <= Date.now() ||
-          (client.data.accountSessionId &&
-            !(await this.prisma.refreshSession.findFirst({
-              where: {
-                familyId: client.data.accountSessionId,
-                userId,
-                revokedAt: null,
-                consumedAt: null,
-                expiresAt: { gt: new Date() },
-              },
-              select: { id: true },
-            })))
-        ) {
-          client.leave(`account:${userId}`);
-          client.emit('account.expired');
-        } else client.emit('account.changed');
-      }
+    this.unsubscribeAccount = this.events.subscribeAccount((userId) =>
+      this.notifyAccount(server, userId),
+    );
+  }
+
+  private async notifyAccount(server: Namespace, userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { isActive: true },
     });
+    for (const client of await server.in(`account:${userId}`).fetchSockets()) {
+      if (
+        !user?.isActive ||
+        client.data.accountExpiresAt <= Date.now() ||
+        (client.data.accountSessionId &&
+          !(await this.prisma.refreshSession.findFirst({
+            where: {
+              familyId: client.data.accountSessionId,
+              userId,
+              revokedAt: null,
+              consumedAt: null,
+              expiresAt: { gt: new Date() },
+            },
+            select: { id: true },
+          })))
+      ) {
+        client.leave(`account:${userId}`);
+        client.emit('account.expired');
+        continue;
+      }
+
+      client.emit('account.changed');
+    }
   }
 
   @SubscribeMessage('collection.subscribe')
   async collection(@ConnectedSocket() client: Socket) {
     await client.join('collection');
+
     return { ok: true };
   }
 
@@ -90,6 +101,7 @@ export class AuctionGateway
         typeof body.token !== 'string'
       )
         return { ok: false };
+
       const payload = await this.jwt.verifyAsync<{
         sub: string;
         exp: number;
@@ -98,9 +110,10 @@ export class AuctionGateway
       if (
         !isUUID(payload.sub) ||
         typeof payload.exp !== 'number' ||
-        payload.exp * 1000 <= Date.now()
+        payload.exp * MILLISECONDS_PER_SECOND <= Date.now()
       )
         return { ok: false };
+
       const user = await this.prisma.user.findUnique({
         where: { id: payload.sub },
         select: { isActive: true },
@@ -121,8 +134,9 @@ export class AuctionGateway
           })))
       )
         return { ok: false };
+
       client.data.accountSessionId = payload.sid;
-      client.data.accountExpiresAt = payload.exp * 1000;
+      client.data.accountExpiresAt = payload.exp * MILLISECONDS_PER_SECOND;
       await client.join(`account:${payload.sub}`);
       return { ok: true };
     } catch {
@@ -144,11 +158,7 @@ export class AuctionGateway
       typeof body.lotId === 'string'
         ? body.lotId.toLowerCase()
         : '';
-    if (
-      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(
-        lotId,
-      )
-    )
+    if (!LOT_ID_PATTERN.test(lotId))
       return { ok: false, error: 'Invalid lot ID' };
     if (this.pending.has(client))
       return { ok: false, error: 'Subscription pending' };

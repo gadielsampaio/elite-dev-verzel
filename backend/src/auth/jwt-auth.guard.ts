@@ -14,6 +14,26 @@ export interface AuthenticatedRequest extends Request {
   user: { id: string; role: UserRole };
 }
 
+const BEARER_HEADER = /^Bearer ([^\s]+)$/i;
+
+type AccessClaims = { sub?: unknown; exp?: unknown; sid?: unknown };
+
+function accessClaims(payload: AccessClaims) {
+  if (
+    typeof payload.sub !== 'string' ||
+    !isUUID(payload.sub) ||
+    typeof payload.exp !== 'number'
+  ) {
+    throw new Error('Invalid token claims');
+  }
+
+  if (payload.sid === undefined)
+    return { subject: payload.sub, sessionId: undefined };
+  if (typeof payload.sid !== 'string' || !isUUID(payload.sid))
+    throw new Error('Invalid session');
+  return { subject: payload.sub, sessionId: payload.sid };
+}
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
@@ -23,34 +43,18 @@ export class JwtAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const match = /^Bearer ([^\s]+)$/i.exec(
-      request.headers.authorization ?? '',
-    );
+    const match = BEARER_HEADER.exec(request.headers.authorization ?? '');
     if (!match) throw new UnauthorizedException();
 
     let subject: string;
     let sessionId: string | undefined;
     try {
-      const payload = await this.jwt.verifyAsync<{
-        sub?: unknown;
-        exp?: unknown;
-        sid?: unknown;
-      }>(match[1], {
+      const payload = await this.jwt.verifyAsync<AccessClaims>(match[1], {
         algorithms: ['HS256'],
       });
-      if (
-        typeof payload.sub !== 'string' ||
-        !isUUID(payload.sub) ||
-        typeof payload.exp !== 'number'
-      ) {
-        throw new Error('Invalid token claims');
-      }
-      subject = payload.sub;
-      if (payload.sid !== undefined) {
-        if (typeof payload.sid !== 'string' || !isUUID(payload.sid))
-          throw new Error('Invalid session');
-        sessionId = payload.sid;
-      }
+      const claims = accessClaims(payload);
+      subject = claims.subject;
+      sessionId = claims.sessionId;
     } catch {
       throw new UnauthorizedException();
     }
@@ -61,6 +65,7 @@ export class JwtAuthGuard implements CanActivate {
       select: { id: true, role: true, isActive: true },
     });
     if (!user?.isActive) throw new UnauthorizedException();
+
     if (
       sessionId &&
       !(await this.prisma.refreshSession.findFirst({
@@ -75,7 +80,9 @@ export class JwtAuthGuard implements CanActivate {
       }))
     )
       throw new UnauthorizedException();
+
     request.user = { id: user.id, role: user.role };
+
     return true;
   }
 }
@@ -86,6 +93,7 @@ export class OptionalJwtAuthGuard extends JwtAuthGuard {
   override canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<Request>();
     if (!request.headers.authorization) return Promise.resolve(true);
+
     return super.canActivate(context);
   }
 }

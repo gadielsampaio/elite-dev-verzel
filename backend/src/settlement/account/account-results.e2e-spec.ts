@@ -3,9 +3,9 @@ import { ValidationPipe, type INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { AppModule } from '../src/app.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { AccountResultsService } from '../src/settlement/account-results.service.js';
+import { AppModule } from '../../app.module.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { AccountResultsService } from './account-results.service.js';
 
 describe('Private results HTTP authorization', () => {
   const id = '11111111-1111-4111-8111-111111111111';
@@ -33,6 +33,7 @@ describe('Private results HTTP authorization', () => {
     );
     await app.init();
   });
+
   beforeEach(() => {
     vi.resetAllMocks();
     findUnique.mockResolvedValue({ id, role: 'auctioneer', isActive: true });
@@ -40,6 +41,7 @@ describe('Private results HTTP authorization', () => {
     seller.mockResolvedValue({ items: [] });
     participations.mockResolvedValue({ items: [] });
   });
+
   afterAll(async () => {
     await app.close();
     vi.unstubAllEnvs();
@@ -62,6 +64,7 @@ describe('Private results HTTP authorization', () => {
     await get('auction-results?page=2&limit=9').expect(200);
     expect(seller).toHaveBeenCalledWith(id, { page: 2, limit: 9 });
   });
+
   it.each(['page=0', 'limit=51', 'ownerId=other', 'filter=wins'])(
     'rejects invalid seller query %s',
     async (query) => {
@@ -74,6 +77,7 @@ describe('Private results HTTP authorization', () => {
     await get('auction-summary').expect(403);
     await get('auction-results').expect(403);
   });
+
   it.each(['auctioneer', 'admin'])(
     'rejects %s for bidder reads',
     async (role) => {

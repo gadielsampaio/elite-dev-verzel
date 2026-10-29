@@ -27,9 +27,11 @@ describe('Protected external checkpoint files', () => {
       completeHistory: true,
     };
   });
+
   afterEach(async () => {
     await rm(directory, { recursive: true, force: true });
   });
+
   it('publishes atomically, supports concurrent retries and survives a new reader', async () => {
     await Promise.all([store.prepare(witness), store.prepare(witness)]);
     expect((await store.read(witness.entry.lotId))[0].confirmed).toBe(false);
@@ -48,6 +50,7 @@ describe('Protected external checkpoint files', () => {
       ).mode & 0o777,
     ).toBe(0o600);
   });
+
   it('refuses to overwrite existing evidence', async () => {
     await store.prepare(witness);
     await expect(
@@ -57,6 +60,7 @@ describe('Protected external checkpoint files', () => {
       true,
     );
   });
+
   it('rejects corrupted external records instead of treating them as absent', async () => {
     await store.prepare(witness);
     await writeFile(
@@ -65,8 +69,21 @@ describe('Protected external checkpoint files', () => {
     );
     await expect(store.read(witness.entry.lotId)).rejects.toThrow();
   });
+
   it('rejects relative roots and path traversal', async () => {
     expect(() => new CheckpointStore('./checkpoints')).toThrow('absolute');
     await expect(store.read('../escape')).rejects.toThrow('location');
+  });
+
+  it('distinguishes a missing confirmation from a corrupted confirmation', async () => {
+    await store.prepare(witness);
+    expect((await store.read(witness.entry.lotId))[0].confirmed).toBe(false);
+    await writeFile(
+      join(directory, witness.entry.lotId, `${witness.entry.bidId}.confirmed`),
+      JSON.stringify('wrong-hash'),
+    );
+    await expect(store.read(witness.entry.lotId)).rejects.toThrow(
+      'Invalid checkpoint confirmation',
+    );
   });
 });

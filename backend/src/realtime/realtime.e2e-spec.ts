@@ -2,9 +2,9 @@ import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import { io, type Socket } from 'socket.io-client';
-import { RealtimeModule } from '../src/realtime/realtime.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { AuctionEvents } from '../src/events/auction-events.js';
+import { RealtimeModule } from './realtime.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { AuctionEvents } from '../events/auction-events.js';
 
 const first = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
 const second = 'bbbbbbbb-bbbb-4bbb-bbbb-bbbbbbbbbbbb';
@@ -37,6 +37,7 @@ describe('Auction WebSocket rooms', () => {
     url = await app.getUrl();
     events = app.get(AuctionEvents);
   });
+
   afterEach(async () => {
     clients.splice(0).forEach((client) => client.disconnect());
     await app.close();
@@ -67,6 +68,7 @@ describe('Auction WebSocket rooms', () => {
       (await subscribe(client, 'cccccccc-cccc-4ccc-cccc-cccccccccccc')).ok,
     ).toBe(false);
   });
+
   it('delivers committed signals only to the selected room and supports switching', async () => {
     const a = await connect(),
       b = await connect();
@@ -101,6 +103,7 @@ describe('Auction WebSocket rooms', () => {
     expect(receivedA).toEqual([change, extension]);
     expect(receivedB).toEqual([extension]);
   });
+
   it('broadcasts collection changes without private fields', async () => {
     const client = await connect();
     expect(
@@ -116,6 +119,7 @@ describe('Auction WebSocket rooms', () => {
     });
     expect(await received).toEqual({ type: 'lot.created', lotId: first });
   });
+
   it('keeps wallet notifications private and rejects expired/invalid tokens', async () => {
     const a = await connect(),
       b = await connect(),
@@ -150,6 +154,7 @@ describe('Auction WebSocket rooms', () => {
     expect(other).not.toHaveBeenCalled();
     expect(anonymous).not.toHaveBeenCalled();
   });
+
   it('allows a disconnected client to reconnect and subscribe again', async () => {
     const client = await connect();
     await subscribe(client, first);

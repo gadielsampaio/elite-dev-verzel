@@ -7,6 +7,9 @@ import {
 import { CheckpointStore } from './checkpoint-store.js';
 import { AuditService } from './audit.service.js';
 
+const CONFIRMATION_INTERVAL_MS = 5000;
+const CONFIRMATION_BATCH_SIZE = 50;
+
 @Injectable()
 export class AuditWorker implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(AuditWorker.name);
@@ -17,10 +20,11 @@ export class AuditWorker implements OnApplicationBootstrap, OnModuleDestroy {
   onApplicationBootstrap() {
     if (process.env.NODE_ENV === 'test' || !process.env.AUDIT_CHECKPOINT_DIR)
       return;
-    this.timer = setInterval(() => this.tick(), 5000);
+    this.timer = setInterval(() => this.tick(), CONFIRMATION_INTERVAL_MS);
     this.timer.unref();
     this.tick();
   }
+
   private tick() {
     if (this.running) return;
     this.running = this.runBatch()
@@ -31,10 +35,11 @@ export class AuditWorker implements OnApplicationBootstrap, OnModuleDestroy {
         this.running = undefined;
       });
   }
+
   async runBatch() {
     const lots = (await new CheckpointStore().lots())
       .filter((id) => id > this.cursor)
-      .slice(0, 50);
+      .slice(0, CONFIRMATION_BATCH_SIZE);
     for (const id of lots) {
       try {
         await this.audit.confirm(id);
@@ -44,8 +49,10 @@ export class AuditWorker implements OnApplicationBootstrap, OnModuleDestroy {
         );
       }
     }
-    this.cursor = lots.length === 50 ? lots[lots.length - 1] : '';
+    this.cursor =
+      lots.length === CONFIRMATION_BATCH_SIZE ? lots[lots.length - 1] : '';
   }
+
   async onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
     await this.running;

@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import type { INestApplication } from '@nestjs/common';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
 import { ResultsController } from './results.controller.js';
 import { ResultsService } from './results.service.js';
 const id = '22222222-2222-4222-8222-222222222222';
@@ -74,10 +74,12 @@ describe('Receipt access over HTTP', () => {
     app = module.createNestApplication();
     await app.init();
   });
+
   afterAll(async () => {
     await app?.close();
     vi.unstubAllEnvs();
   });
+
   it('public result does not expose the receipt', async () => {
     const { body } = await request(app.getHttpServer())
       .get(`/lots/${id}/result`)
@@ -91,15 +93,18 @@ describe('Receipt access over HTTP', () => {
     expect(JSON.stringify(body)).not.toContain('private-receipt-id');
     expect(JSON.stringify(body)).not.toContain('private-bid-id');
   });
+
   it('requires authentication for the receipt', async () => {
     await request(app.getHttpServer()).get(`/lots/${id}/receipt`).expect(401);
   });
+
   it('rejects unrelated users even with a valid login', async () => {
     await request(app.getHttpServer())
       .get(`/lots/${id}/receipt`)
       .set('Authorization', `Bearer ${stranger}`)
       .expect(403);
   });
+
   it('rejects a different auctioneer', async () => {
     await request(app.getHttpServer())
       .get(`/lots/${id}/receipt`)
@@ -125,6 +130,7 @@ describe('Receipt access over HTTP', () => {
         receipt: null,
       });
     });
+
   it('rejects invalid supplied credentials on public personalized reads', async () => {
     await request(app.getHttpServer())
       .get(`/lots/${id}/result`)

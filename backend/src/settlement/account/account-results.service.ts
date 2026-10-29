@@ -1,7 +1,30 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client.js';
-import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '../../generated/prisma/client.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
 import { ParticipationPageDto, ResultsPageDto } from './account-results.dto.js';
+
+function accountLotStatus(
+  lot: { status: string; startTime: Date; endTime: Date },
+  now: Date,
+) {
+  if (lot.status === 'cancelled') return 'cancelled';
+  if (lot.status === 'closed' || lot.endTime <= now) return 'closed';
+  if (lot.startTime > now) return 'scheduled';
+  return 'open';
+}
+
+function accountLotOutcome(
+  lot: { status: string; result: unknown; _count: { bids: number } },
+  status: string,
+  settled: boolean,
+) {
+  if (settled) return 'settled';
+  if (status === 'cancelled') return 'cancelled';
+  if (status !== 'closed') return 'awaiting_close';
+  if (lot.status === 'closed' && !lot.result && lot._count.bids === 0)
+    return 'no_winner';
+  return 'pending_settlement';
+}
 
 @Injectable()
 export class AccountResultsService {
@@ -48,6 +71,7 @@ export class AccountResultsService {
 
   seller(ownerId: string, query: ResultsPageDto) {
     const now = new Date();
+
     return this.list(
       {
         ownerId,
@@ -116,25 +140,8 @@ export class AccountResultsService {
         const total = await tx.lot.count({ where });
         const items = lots.map((lot) => {
           const settled = !!lot.result?.settledAt;
-          const status =
-            lot.status === 'cancelled'
-              ? 'cancelled'
-              : lot.status === 'closed' || lot.endTime <= now
-                ? 'closed'
-                : lot.startTime > now
-                  ? 'scheduled'
-                  : 'open';
-          const outcome = settled
-            ? 'settled'
-            : status === 'cancelled'
-              ? 'cancelled'
-              : status !== 'closed'
-                ? 'awaiting_close'
-                : lot.status === 'closed' &&
-                    !lot.result &&
-                    lot._count.bids === 0
-                  ? 'no_winner'
-                  : 'pending_settlement';
+          const status = accountLotStatus(lot, now);
+          const outcome = accountLotOutcome(lot, status, settled);
           return {
             lotId: lot.id,
             title: lot.title,

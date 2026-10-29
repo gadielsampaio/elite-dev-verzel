@@ -1,5 +1,6 @@
+import { configureTestValidation } from './support/http-app.js';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import request from 'supertest';
 import { vi } from 'vitest';
@@ -32,20 +33,16 @@ describe('User route authorization (HTTP)', () => {
       .compile();
     jwt = module.get(JwtService);
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureTestValidation(app);
     await app.init();
   });
+
   afterAll(async () => {
     await app?.close();
     if (oldSecret === undefined) delete process.env.JWT_SECRET;
     else process.env.JWT_SECRET = oldSecret;
   });
+
   beforeEach(async () => {
     vi.resetAllMocks();
     prisma.user.findUnique.mockResolvedValue({
@@ -95,6 +92,7 @@ describe('User route authorization (HTTP)', () => {
       .expect(401);
     expect(prisma.user.findUnique).not.toHaveBeenCalled();
   });
+
   it.each([null, { id, role: 'bidder', isActive: false }])(
     'rejects missing/inactive accounts %j',
     async (user) => {
@@ -146,6 +144,7 @@ describe('User route authorization (HTTP)', () => {
       .auth(stale, { type: 'bearer' })
       .expect(403);
   });
+
   it('allows admins to list/create users and read/update other profiles', async () => {
     prisma.user.findUnique.mockResolvedValue({
       id,
@@ -171,6 +170,7 @@ describe('User route authorization (HTTP)', () => {
       .send({ name: 'Updated' })
       .expect(200);
   });
+
   it('rejects self-service role changes', async () => {
     await request(app.getHttpServer())
       .patch(`/users/${id}`)
@@ -179,6 +179,7 @@ describe('User route authorization (HTTP)', () => {
       .expect(400);
     expect(prisma.user.update).not.toHaveBeenCalled();
   });
+
   it('keeps health, registration and login public', async () => {
     prisma.$queryRaw.mockResolvedValue([{ '?column?': 1 }]);
     await request(app.getHttpServer()).get('/health').expect(200);

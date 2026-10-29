@@ -1,16 +1,13 @@
-import {
-  AuctionEvents,
-  type AuctionEvent,
-} from '../src/events/auction-events.js';
-import { hashBidAudit } from '../src/audit/bid-hash.js';
-import { Prisma } from '../src/generated/prisma/client.js';
+import { AuctionEvents, type AuctionEvent } from '../events/auction-events.js';
+import { hashBidAudit } from '../audit/bid-hash.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { randomUUID } from 'node:crypto';
-import { BidReadsService } from '../src/bids/bid-reads.service.js';
-import { BidsService } from '../src/bids/bids.service.js';
-import { WalletsService } from '../src/wallets/wallets.service.js';
-import { LotsService } from '../src/lots/lots.service.js';
-import { CatalogService } from '../src/catalog/catalog.service.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
+import { BidReadsService } from './bid-reads.service.js';
+import { BidsService } from './bids.service.js';
+import { WalletsService } from '../wallets/wallets.service.js';
+import { LotsService } from '../lots/lots.service.js';
+import { CatalogService } from '../catalog/catalog.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
 
 // Independent transactions require committed fixtures. Cleanup only IDs created here.
 describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
@@ -71,6 +68,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       ownerId = owner.id;
       userIds.push(ownerId);
     });
+
     afterEach(async () => {
       try {
         await db.walletHold.deleteMany({
@@ -88,6 +86,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await db.$disconnect();
       }
     });
+
     it('notifies observers only after bid, hold, audit and deadline are committed', async () => {
       const user = await bidder(),
         l = await lot(60000);
@@ -124,6 +123,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       expect(notification).toHaveBeenCalledTimes(2);
       events.onModuleDestroy();
     });
+
     it('persists a canonical chain and keeps bid deletion from erasing its snapshot', async () => {
       const a = await bidder(),
         b = await bidder(),
@@ -159,6 +159,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         1,
       );
     });
+
     it('rolls back bids, released holds and deadline changes when audit insertion fails', async () => {
       const a = await bidder(),
         b = await bidder(),
@@ -202,6 +203,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         (await db.lot.findUniqueOrThrow({ where: { id: l.id } })).endTime,
       ).toEqual(before.endTime);
     });
+
     it('does not fabricate audit snapshots for pre-existing bids', async () => {
       const a = await bidder(),
         b = await bidder(),
@@ -223,6 +225,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await db.bidAuditEntry.findUnique({ where: { bidId: current.id } }),
       ).toMatchObject({ sequence: 1, previousHash: null });
     });
+
     it('fails closed when the stored tail hash is inconsistent', async () => {
       const a = await bidder(),
         b = await bidder(),
@@ -240,6 +243,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       expect(await wallets.balance(a)).toMatchObject({ committed: '100.00' });
       expect(await wallets.balance(b)).toMatchObject({ committed: '0.00' });
     });
+
     it('atomically transfers reservations without deactivating eligible bids', async () => {
       const a = await bidder(),
         b = await bidder(),
@@ -278,6 +282,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       });
       expect(await db.auctionResult.count({ where: { lotId: l.id } })).toBe(0);
     });
+
     it('reads private-safe history and ranks distinct active bidders', async () => {
       const reads = new BidReadsService(db);
       const a = await bidder(),
@@ -373,6 +378,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         status: 404,
       });
     });
+
     it('accepts only one of two simultaneous equal bids', async () => {
       const a = await bidder(),
         b = await bidder(),
@@ -394,6 +400,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         }),
       ).toBe(1);
     });
+
     it('prevents overspending across simultaneous lots', async () => {
       const a = await bidder('150.00'),
         one = await lot(),
@@ -412,6 +419,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         await db.bid.count({ where: { lotId: { in: [one.id, two.id] } } }),
       ).toBe(1);
     });
+
     it('replays concurrent requests once and extends the deadline once', async () => {
       const a = await bidder(),
         l = await lot(60000),
@@ -432,6 +440,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       expect(await place(l.id, a, '100.00', key)).toEqual(result[0]);
       expect(await db.bidAuditEntry.count({ where: { lotId: l.id } })).toBe(1);
     });
+
     it('rolls back cross-lot key collisions without leaking a reservation', async () => {
       const a = await bidder(),
         one = await lot(60000),
@@ -453,6 +462,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         ).toBe(l.endTime.getTime() + (count ? 120000 : 0));
       }
     });
+
     it('serializes cancellation against the first bid', async () => {
       const a = await bidder(),
         l = await lot();
@@ -470,6 +480,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         count ? '100.00' : '0.00',
       );
     });
+
     it('coordinates deposits with bid foreign-key checks without deadlocking', async () => {
       const a = await bidder('100.00'),
         l = await lot();
@@ -484,6 +495,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         available: '20.00',
       });
     });
+
     it('locks shared wallets consistently when leaders swap across lots', async () => {
       const a = await bidder(),
         b = await bidder(),

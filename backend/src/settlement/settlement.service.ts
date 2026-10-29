@@ -5,6 +5,33 @@ import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { walletBalance } from '../wallets/wallet-balance.js';
 
+function settlementTransfers(
+  buyerWalletId: string,
+  sellerWalletId: string,
+  amount: Prisma.Decimal,
+  resultId: string,
+): Prisma.WalletTransactionCreateManyInput[] {
+  const transferId = randomUUID();
+  return [
+    {
+      walletId: buyerWalletId,
+      type: 'auction_purchase',
+      amount,
+      auctionResultId: resultId,
+      transferId,
+      idempotencyKey: randomUUID(),
+    },
+    {
+      walletId: sellerWalletId,
+      type: 'auction_sale',
+      amount,
+      auctionResultId: resultId,
+      transferId,
+      idempotencyKey: randomUUID(),
+    },
+  ];
+}
+
 @Injectable()
 export class SettlementService {
   constructor(
@@ -19,18 +46,21 @@ export class SettlementService {
         { id: string }[]
       >`SELECT id FROM lots WHERE id = ${lotId}::uuid FOR UPDATE`;
       if (!locked.length) return null;
+
       const lot = await tx.lot.findUniqueOrThrow({ where: { id: lotId } });
       if (
         !['scheduled', 'open', 'closed'].includes(lot.status) ||
         lot.endTime > new Date()
       )
         return null;
+
       const existing = await tx.auctionResult.findUnique({ where: { lotId } });
       if (existing) {
         if (!existing.settledAt)
           throw new ConflictException('Existing result is not settled');
         return existing;
       }
+
       const winner = await tx.bid.findFirst({
         where: { lotId, isActive: true },
         orderBy: [{ amount: 'desc' }, { createdAt: 'asc' }, { id: 'asc' }],
@@ -38,6 +68,7 @@ export class SettlementService {
       const holds = await tx.walletHold.findMany({
         where: { bid: { lotId }, status: 'active' },
       });
+
       const closed: AuctionEvent = {
         type: 'lot.closed',
         lotId,
@@ -52,9 +83,11 @@ export class SettlementService {
           where: { id: lotId },
           data: { status: 'closed' },
         });
+
         if (lot.status !== 'closed') changes.push(closed);
         return null;
       }
+
       if (
         winner.bidderId === lot.ownerId ||
         holds.length !== 1 ||
@@ -82,11 +115,13 @@ export class SettlementService {
         seller.currency !== lot.currency
       )
         throw new ConflictException('Settlement wallet mismatch');
+
       const ids = [seller.id, buyer.id].sort();
       await tx.$queryRaw`SELECT id FROM wallets WHERE id IN (${Prisma.join(ids)}) ORDER BY id FOR UPDATE`;
       const balance = await walletBalance(tx, buyer.id);
       if (balance.available.lt(0) || balance.total.lt(winner.amount))
         throw new ConflictException('Insufficient reserved funds');
+
       const now = new Date();
       const result = await tx.auctionResult.create({
         data: {
@@ -98,26 +133,13 @@ export class SettlementService {
           settledAt: now,
         },
       });
-      const transferId = randomUUID();
       await tx.walletTransaction.createMany({
-        data: [
-          {
-            walletId: buyer.id,
-            type: 'auction_purchase',
-            amount: winner.amount,
-            auctionResultId: result.id,
-            transferId,
-            idempotencyKey: randomUUID(),
-          },
-          {
-            walletId: seller.id,
-            type: 'auction_sale',
-            amount: winner.amount,
-            auctionResultId: result.id,
-            transferId,
-            idempotencyKey: randomUUID(),
-          },
-        ],
+        data: settlementTransfers(
+          buyer.id,
+          seller.id,
+          winner.amount,
+          result.id,
+        ),
       });
       await tx.walletHold.update({
         where: { id: holds[0].id },
@@ -128,11 +150,14 @@ export class SettlementService {
         data: { isWinner: true },
       });
       await tx.lot.update({ where: { id: lotId }, data: { status: 'closed' } });
+
       if (lot.status !== 'closed') changes.push(closed);
       changes.push({ ...closed, type: 'lot.settled' });
       return result;
     });
+
     changes.forEach((change) => this.events.publish(change));
+
     return settled;
   }
 }

@@ -1,12 +1,13 @@
+import { JwtService } from '@nestjs/jwt';
 import { Test } from '@nestjs/testing';
 import type { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { ResultsController } from '../src/settlement/results.controller.js';
-import { ResultsService } from '../src/settlement/results.service.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { Prisma } from '../src/generated/prisma/client.js';
-import { bidderAlias } from '../src/bids/bidder-alias.js';
+import { ResultsController } from './results.controller.js';
+import { ResultsService } from './results.service.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { Prisma } from '../../generated/prisma/client.js';
+import { bidderAlias } from '../../bids/bidder-alias.js';
 
 describe('Public auction results', () => {
   const id = '11111111-1111-4111-8111-111111111111';
@@ -28,6 +29,7 @@ describe('Public auction results', () => {
     const module = await Test.createTestingModule({
       controllers: [ResultsController],
       providers: [
+        { provide: JwtService, useValue: { verifyAsync: vi.fn() } },
         ResultsService,
         { provide: PrismaService, useValue: { $transaction: transaction } },
       ],
@@ -35,18 +37,20 @@ describe('Public auction results', () => {
     app = module.createNestApplication();
     await app.init();
   });
+
   beforeEach(() => {
     vi.resetAllMocks();
     transaction.mockImplementation((fn) => fn(tx));
     tx.lot.findFirst.mockResolvedValue(closed);
     tx.bid.count.mockResolvedValue(0);
   });
+
   afterAll(async () => {
-    await app.close();
+    await app?.close();
     vi.unstubAllEnvs();
   });
   const get = () => request(app.getHttpServer()).get(`/lots/${id}/result`);
-  it('returns a public receipt without account identities or raw snapshots', async () => {
+  it('returns a public summary without the private receipt or account identities', async () => {
     tx.lot.findFirst.mockResolvedValue({
       ...closed,
       result: {
@@ -63,31 +67,23 @@ describe('Public auction results', () => {
     const res = await get().expect(200);
     expect(res.body).toMatchObject({
       status: 'settled',
-      receipt: {
-        amount: '9007199254740993.01',
-        winnerAlias: bidderAlias(id, bidder),
-      },
+      receipt: null,
+      winnerAlias: bidderAlias(id, bidder),
     });
     expect(JSON.stringify(res.body)).not.toContain(bidder);
-    expect(Object.keys(res.body.receipt).sort()).toEqual([
-      'amount',
-      'endedAt',
-      'id',
-      'settledAt',
-      'winnerAlias',
-      'winningBidId',
-    ]);
     expect(tx.bid.count).not.toHaveBeenCalled();
     expect(transaction.mock.calls[0][1]).toEqual({
       isolationLevel: 'RepeatableRead',
     });
   });
+
   it('reports no winner only for closed lots without eligible bids', async () => {
     expect((await get().expect(200)).body).toMatchObject({
       status: 'no_winner',
       receipt: null,
     });
   });
+
   it('does not equate a closed lot with a completed sale', async () => {
     tx.bid.count.mockResolvedValue(2);
     expect((await get().expect(200)).body).toMatchObject({
@@ -95,10 +91,12 @@ describe('Public auction results', () => {
       receipt: null,
     });
   });
+
   it('keeps an expired but unprocessed lot pending', async () => {
     tx.lot.findFirst.mockResolvedValue({ ...closed, status: 'open' });
     expect((await get().expect(200)).body.status).toBe('pending_settlement');
   });
+
   it('does not expose an unsettled result as a receipt', async () => {
     tx.lot.findFirst.mockResolvedValue({
       ...closed,
@@ -109,6 +107,7 @@ describe('Public auction results', () => {
       receipt: null,
     });
   });
+
   it('reports a future deadline without querying bids', async () => {
     tx.lot.findFirst.mockResolvedValue({
       ...closed,
@@ -118,6 +117,7 @@ describe('Public auction results', () => {
     expect((await get().expect(200)).body.status).toBe('awaiting_close');
     expect(tx.bid.count).not.toHaveBeenCalled();
   });
+
   it('hides missing and unpublished lots', async () => {
     tx.lot.findFirst.mockResolvedValue(null);
     await get().expect(404);
@@ -127,6 +127,7 @@ describe('Public auction results', () => {
       'closed',
     ]);
   });
+
   it('validates the lot ID before accessing storage', async () => {
     await request(app.getHttpServer()).get('/lots/bad/result').expect(400);
     expect(transaction).not.toHaveBeenCalled();

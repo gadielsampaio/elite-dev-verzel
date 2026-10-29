@@ -1,13 +1,14 @@
+import { configureTestValidation } from '../../test/support/http-app.js';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { vi } from 'vitest';
-import { CatalogModule } from '../src/catalog/catalog.module.js';
+import { CatalogModule } from './catalog.module.js';
 import {
   catalogTransport,
   HttpClevelandTransport,
   MockClevelandTransport,
-} from '../src/catalog/cleveland.transport.js';
+} from './cleveland.transport.js';
 
 describe('Mock catalog (HTTP)', () => {
   let app: INestApplication;
@@ -18,23 +19,20 @@ describe('Mock catalog (HTTP)', () => {
       imports: [CatalogModule],
     }).compile();
     app = module.createNestApplication();
-    app.useGlobalPipes(
-      new ValidationPipe({
-        whitelist: true,
-        forbidNonWhitelisted: true,
-        transform: true,
-      }),
-    );
+    configureTestValidation(app);
     await app.init();
   });
+
   beforeEach(() => {
     fetchMock.mockReset();
     vi.stubGlobal('fetch', fetchMock);
   });
+
   afterEach(() => {
     expect(fetchMock).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
+
   afterAll(async () => {
     await app.close();
     vi.unstubAllEnvs();
@@ -58,6 +56,7 @@ describe('Mock catalog (HTTP)', () => {
       artworkType: 'Painting',
     });
   });
+
   it('paginates deterministically and handles out-of-range pages', async () => {
     const first = await request(app.getHttpServer())
       .get('/catalog/search?q=painting&limit=1')
@@ -75,6 +74,7 @@ describe('Mock catalog (HTTP)', () => {
     expect(beyond.body.items).toEqual([]);
     expect(beyond.body.total).toBe(2);
   });
+
   it('supports type-only and combined filters in offline mode', async () => {
     const result = await request(app.getHttpServer())
       .get('/catalog/search?type=Painting')
@@ -95,6 +95,7 @@ describe('Mock catalog (HTTP)', () => {
       .expect(200);
     expect(other.body.total).toBe(0);
   });
+
   it('returns an empty array for unmatched queries', async () => {
     const result = await request(app.getHttpServer())
       .get('/catalog/search?q=no-match')
@@ -105,6 +106,7 @@ describe('Mock catalog (HTTP)', () => {
       provider: 'mock',
     });
   });
+
   it('preserves nullable fields and non-public-domain metadata', async () => {
     const result = await request(app.getHttpServer())
       .get('/catalog/artworks/900000002')
@@ -115,11 +117,13 @@ describe('Mock catalog (HTTP)', () => {
       isPublicDomain: false,
     });
   });
+
   it('returns 404 for unknown artwork IDs', async () => {
     await request(app.getHttpServer())
       .get('/catalog/artworks/999999')
       .expect(404);
   });
+
   it.each(['0', '-1', 'abc', '1.5', '9007199254740992'])(
     'rejects invalid ID %s',
     async (id) => {
@@ -134,6 +138,7 @@ describe('Mock catalog (HTTP)', () => {
       .expect(200)
       .expect({ status: 'mocked', services: { cleveland: 'not_checked' } });
   });
+
   it('selects providers explicitly and rejects misconfiguration', () => {
     expect(catalogTransport()).toBeInstanceOf(MockClevelandTransport);
     try {

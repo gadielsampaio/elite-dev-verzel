@@ -3,9 +3,9 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { Prisma } from '../generated/prisma/client.js';
-import { PrismaService } from '../prisma/prisma.service.js';
-import { bidderAlias } from '../bids/bidder-alias.js';
+import { Prisma } from '../../generated/prisma/client.js';
+import { PrismaService } from '../../prisma/prisma.service.js';
+import { bidderAlias } from '../../bids/bidder-alias.js';
 
 @Injectable()
 export class ResultsService {

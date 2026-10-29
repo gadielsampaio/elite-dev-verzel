@@ -94,27 +94,20 @@ describe('UsersService', () => {
   });
 
   describe('findAll', () => {
-    it('should return all users', async () => {
-      const users = [{ id: '123', ...userData }];
+    it.each([{ users: [] }, { users: [{ id: '123', ...userData }] }])(
+      'returns the queried public users: $users',
+      async ({ users }) => {
+        prismaMock.user.findMany.mockResolvedValue(users);
 
-      prismaMock.user.findMany.mockResolvedValue(users);
+        const result = await service.findAll();
 
-      const result = await service.findAll();
-
-      expect(result).toEqual(users);
-      expect(prismaMock.user.findMany).toHaveBeenCalledWith({
-        select: expectedPublicFields,
-        orderBy: { createdAt: 'desc' },
-      });
-    });
-
-    it('should return an empty array when there are no users', async () => {
-      prismaMock.user.findMany.mockResolvedValue([]);
-
-      const result = await service.findAll();
-
-      expect(result).toEqual([]);
-    });
+        expect(result).toEqual(users);
+        expect(prismaMock.user.findMany).toHaveBeenCalledWith({
+          select: expectedPublicFields,
+          orderBy: { createdAt: 'desc' },
+        });
+      },
+    );
   });
 
   describe('findOne', () => {

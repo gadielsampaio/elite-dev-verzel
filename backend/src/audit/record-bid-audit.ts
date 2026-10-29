@@ -1,8 +1,22 @@
 import { CheckpointStore } from './checkpoint-store.js';
 import { ConflictException, ServiceUnavailableException } from '@nestjs/common';
-import type { Bid, Prisma } from '../generated/prisma/client.js';
+import type { Bid, BidAuditEntry, Prisma } from '../generated/prisma/client.js';
 import { bidderAlias } from '../bids/bidder-alias.js';
-import { hashBidAudit } from './bid-hash.js';
+import { hashBidAudit, type BidAuditInput } from './bid-hash.js';
+
+function validateAuditTail(previous: BidAuditEntry | null) {
+  if (!previous) return;
+  const digest = hashBidAudit({
+    ...previous,
+    amount: previous.amount.toFixed(2),
+    acceptedAt: previous.acceptedAt.toISOString(),
+    endTime: previous.endTime.toISOString(),
+  });
+  if (digest !== previous.hash)
+    throw new ConflictException(
+      'Audit tail is inconsistent; bid was not recorded',
+    );
+}
 
 // Caller must hold the lot lock and use the same transaction as bid/hold writes.
 export async function recordBidAudit(
@@ -15,18 +29,8 @@ export async function recordBidAudit(
     where: { lotId: bid.lotId },
     orderBy: { sequence: 'desc' },
   });
-  if (previous) {
-    const digest = hashBidAudit({
-      ...previous,
-      amount: previous.amount.toFixed(2),
-      acceptedAt: previous.acceptedAt.toISOString(),
-      endTime: previous.endTime.toISOString(),
-    });
-    if (digest !== previous.hash)
-      throw new ConflictException(
-        'Audit tail is inconsistent; bid was not recorded',
-      );
-  }
+  validateAuditTail(previous);
+
   const payload = {
     lotId: bid.lotId,
     bidId: bid.id,
@@ -47,23 +51,31 @@ export async function recordBidAudit(
       endTime,
     },
   });
-  if (process.env.AUDIT_CHECKPOINT_DIR) {
-    try {
-      const store = new CheckpointStore();
-      // Durable external witness BEFORE commit. A rollback can leave an orphan;
-      // never silently discard it or certify the affected history as intact.
-      await store.prepare({
-        version: 1,
-        entry: { ...payload, hash },
-        bidderId: bid.bidderId,
-        completeHistory:
-          (await tx.bid.count({ where: { lotId: bid.lotId } })) ===
-          payload.sequence,
-      });
-    } catch {
-      throw new ServiceUnavailableException(
-        'Audit checkpoint unavailable; bid was not accepted',
-      );
-    }
+  await prepareCheckpoint(tx, payload, hash, bid.bidderId);
+}
+
+async function prepareCheckpoint(
+  tx: Prisma.TransactionClient,
+  payload: BidAuditInput,
+  hash: string,
+  bidderId: string,
+) {
+  if (!process.env.AUDIT_CHECKPOINT_DIR) return;
+  try {
+    const store = new CheckpointStore();
+    // Durable external witness BEFORE commit. A rollback can leave an orphan;
+    // never silently discard it or certify the affected history as intact.
+    await store.prepare({
+      version: 1,
+      entry: { ...payload, hash },
+      bidderId,
+      completeHistory:
+        (await tx.bid.count({ where: { lotId: payload.lotId } })) ===
+        payload.sequence,
+    });
+  } catch {
+    throw new ServiceUnavailableException(
+      'Audit checkpoint unavailable; bid was not accepted',
+    );
   }
 }

@@ -1,12 +1,13 @@
+import { configureTestValidation } from '../../test/support/http-app.js';
 import { randomUUID, createHash } from 'node:crypto';
 import { hash } from 'bcryptjs';
 import { Test } from '@nestjs/testing';
-import { ValidationPipe, type INestApplication } from '@nestjs/common';
+import { type INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { AuthModule } from '../src/auth/auth.module.js';
-import { UsersModule } from '../src/users/users.module.js';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { cookieOptions } from '../src/auth/session-cookie.js';
+import { AuthModule } from './auth.module.js';
+import { UsersModule } from '../users/users.module.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { cookieOptions } from './session-cookie.js';
 
 describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
   'Rotating refresh sessions (PostgreSQL)',
@@ -34,15 +35,10 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         .useValue(db)
         .compile();
       app = module.createNestApplication();
-      app.useGlobalPipes(
-        new ValidationPipe({
-          whitelist: true,
-          forbidNonWhitelisted: true,
-          transform: true,
-        }),
-      );
+      configureTestValidation(app);
       await app.init();
     });
+
     afterEach(async () => {
       await app.close();
       await db.user.delete({ where: { id: userId } });
@@ -81,6 +77,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         .auth(second.body.accessToken, { type: 'bearer' })
         .expect(401);
     });
+
     it('revokes refresh and access tokens on logout', async () => {
       const session = await login();
       const response = await post('logout', cookie(session))
@@ -95,6 +92,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         .auth(session.body.accessToken, { type: 'bearer' })
         .expect(401);
     });
+
     it('allows at most one concurrent rotation and detects the replay', async () => {
       const session = await login();
       const responses = await Promise.all([
@@ -108,6 +106,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         .send({})
         .expect(401);
     });
+
     it.each(['expired', 'inactive'])('rejects %s sessions', async (kind) => {
       const session = await login();
       if (kind === 'expired')
@@ -122,6 +121,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         });
       await post('refresh', cookie(session)).send({}).expect(401);
     });
+
     it('requires the preflight-forcing header and uses secure production cookies', async () => {
       const session = await login();
       await request(app.getHttpServer())

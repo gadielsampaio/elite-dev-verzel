@@ -1,16 +1,13 @@
-import { LotsService } from '../src/lots/lots.service.js';
-import { CatalogService } from '../src/catalog/catalog.service.js';
-import {
-  AuctionEvents,
-  type AuctionEvent,
-} from '../src/events/auction-events.js';
-import { AccountResultsService } from '../src/settlement/account-results.service.js';
-import { ResultsService } from '../src/settlement/results.service.js';
+import { LotsService } from '../lots/lots.service.js';
+import { CatalogService } from '../catalog/catalog.service.js';
+import { AuctionEvents, type AuctionEvent } from '../events/auction-events.js';
+import { AccountResultsService } from './account/account-results.service.js';
+import { ResultsService } from './results/results.service.js';
 import { randomUUID } from 'node:crypto';
-import { PrismaService } from '../src/prisma/prisma.service.js';
-import { SettlementService } from '../src/settlement/settlement.service.js';
-import { WalletsService } from '../src/wallets/wallets.service.js';
-import { BidsService } from '../src/bids/bids.service.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { SettlementService } from './settlement.service.js';
+import { WalletsService } from '../wallets/wallets.service.js';
+import { BidsService } from '../bids/bids.service.js';
 
 describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
   'Settlement (PostgreSQL)',
@@ -49,6 +46,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         idempotencyKey: randomUUID(),
       });
     });
+
     afterEach(async () => {
       try {
         await db.walletTransaction.deleteMany({
@@ -92,6 +90,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         where: { id },
         data: { endTime: new Date(Date.now() - 1000) },
       });
+
     it('publishes settled evidence after commit, once across concurrent retries', async () => {
       const l = await lot();
       await expire(l.id);
@@ -126,6 +125,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         'type',
       ]);
     });
+
     it('publishes lifecycle transitions and cancellation once, after committed reads', async () => {
       const service = new LotsService(db, {} as CatalogService, events);
       const l = await lot(false);
@@ -164,6 +164,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         'lot.closed',
       ]);
     });
+
     it('reads seller credits and distinct participation only after settlement, scoped to each account', async () => {
       const reads = new AccountResultsService(db);
       const l = await lot();
@@ -247,6 +248,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       expect(JSON.stringify(results)).not.toContain(buyer);
       expect(JSON.stringify(wins)).not.toContain(seller);
     });
+
     it('settles concurrent retries exactly once with balanced entries and a captured hold', async () => {
       const l = await lot();
       await expire(l.id);
@@ -255,7 +257,11 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       );
       expect(new Set(results.map((r) => r?.id)).size).toBe(1);
       expect(results[0]?.settledAt).toBeInstanceOf(Date);
-      const receipt = await new ResultsService(db).forLot(l.id, { id: buyer, role: 'bidder' }, true);
+      const receipt = await new ResultsService(db).forLot(
+        l.id,
+        { id: buyer, role: 'bidder' },
+        true,
+      );
       expect(receipt).toMatchObject({
         status: 'settled',
         receipt: { id: results[0]?.id, amount: '100.00' },
@@ -294,6 +300,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         }),
       ).rejects.toMatchObject({ status: 409 });
     });
+
     it('closes empty lots without a result or transfer and replays safely', async () => {
       const l = await lot(false);
       await expire(l.id);
@@ -312,6 +319,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         total: '0.00',
       });
     });
+
     it('ignores unexpired, cancelled and draft lots', async () => {
       const l = await lot(false);
       expect(await settlement.settle(l.id)).toBeNull();
@@ -324,6 +332,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         });
       }
     });
+
     it('settles lots already closed by a read and preserves other lot reservations', async () => {
       const l = await lot(),
         other = await lot();
@@ -342,6 +351,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
         0,
       );
     });
+
     it('rejects missing reservation without partial transfers', async () => {
       const l = await lot();
       await expire(l.id);
@@ -355,6 +365,7 @@ describe.runIf(process.env.RUN_DATABASE_TESTS === '1')(
       expect(await db.auctionResult.count({ where: { lotId: l.id } })).toBe(0);
       expect(await wallets.balance(buyer)).toMatchObject({ total: '500.00' });
     });
+
     it('rolls back seller wallet creation when funds are inconsistent', async () => {
       const l = await lot();
       await expire(l.id);

@@ -9,7 +9,7 @@ import {
 import {
   JwtAuthGuard,
   type AuthenticatedRequest,
-} from '../auth/jwt-auth.guard.js';
+} from '../../auth/jwt-auth.guard.js';
 import { AccountResultsService } from './account-results.service.js';
 import { ParticipationPageDto, ResultsPageDto } from './account-results.dto.js';
 
@@ -22,6 +22,7 @@ export class AccountResultsController {
   summary(@Req() request: AuthenticatedRequest) {
     if (request.user.role !== 'auctioneer')
       throw new ForbiddenException('Auctioneer account required');
+
     return this.results.summary(request.user.id);
   }
 
@@ -29,6 +30,7 @@ export class AccountResultsController {
   sold(@Req() request: AuthenticatedRequest, @Query() query: ResultsPageDto) {
     if (request.user.role !== 'auctioneer')
       throw new ForbiddenException('Auctioneer account required');
+
     return this.results.seller(request.user.id, query);
   }
 
@@ -39,6 +41,7 @@ export class AccountResultsController {
   ) {
     if (request.user.role !== 'bidder')
       throw new ForbiddenException('Bidder account required');
+
     return this.results.participations(request.user.id, query);
   }
 }

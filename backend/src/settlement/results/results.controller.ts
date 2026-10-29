@@ -10,7 +10,7 @@ import {
   JwtAuthGuard,
   OptionalJwtAuthGuard,
   type AuthenticatedRequest,
-} from '../auth/jwt-auth.guard.js';
+} from '../../auth/jwt-auth.guard.js';
 import { ResultsService } from './results.service.js';
 
 @Controller('lots/:lotId')

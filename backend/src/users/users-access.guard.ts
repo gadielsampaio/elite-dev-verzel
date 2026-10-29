@@ -12,9 +12,12 @@ export class UsersAccessGuard implements CanActivate {
     const { user, params, method } = context
       .switchToHttp()
       .getRequest<AuthenticatedRequest>();
+
     if (user.role === 'admin') return true;
+
     if ((method === 'GET' || method === 'PATCH') && params.id === user.id)
       return true;
+
     throw new ForbiddenException();
   }
 }

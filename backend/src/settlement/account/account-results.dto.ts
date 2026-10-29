@@ -14,6 +14,7 @@ export class ResultsPageDto {
   @Max(50)
   limit = 10;
 }
+
 export class ParticipationPageDto extends ResultsPageDto {
   @IsIn(['all', 'wins'])
   filter: 'all' | 'wins' = 'all';

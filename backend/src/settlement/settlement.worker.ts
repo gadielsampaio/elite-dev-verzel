@@ -8,6 +8,9 @@ import {
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SettlementService } from './settlement.service.js';
 
+const SETTLEMENT_SCAN_INTERVAL_MS = 10_000;
+const SETTLEMENT_BATCH_SIZE = 50;
+
 @Injectable()
 export class SettlementWorker
   implements OnApplicationBootstrap, OnModuleDestroy
@@ -24,10 +27,11 @@ export class SettlementWorker
 
   onApplicationBootstrap() {
     if (process.env.NODE_ENV === 'test') return;
-    this.timer = setInterval(() => this.tick(), 10000);
+    this.timer = setInterval(() => this.tick(), SETTLEMENT_SCAN_INTERVAL_MS);
     this.timer.unref();
     this.tick();
   }
+
   private tick() {
     if (this.running) return;
     this.running = this.runBatch()
@@ -38,6 +42,7 @@ export class SettlementWorker
         this.running = undefined;
       });
   }
+
   async runBatch() {
     await this.lifecycle.reconcileLifecycle();
     const lots = await this.prisma.lot.findMany({
@@ -64,7 +69,7 @@ export class SettlementWorker
       },
       select: { id: true },
       orderBy: { id: 'asc' },
-      take: 50,
+      take: SETTLEMENT_BATCH_SIZE,
     });
     for (const lot of lots) {
       try {
@@ -76,8 +81,12 @@ export class SettlementWorker
       }
     }
     // Advance past failures so one broken lot cannot starve later lots.
-    this.cursor = lots.length === 50 ? lots[lots.length - 1].id : undefined;
+    this.cursor =
+      lots.length === SETTLEMENT_BATCH_SIZE
+        ? lots[lots.length - 1].id
+        : undefined;
   }
+
   async onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
     await this.running;

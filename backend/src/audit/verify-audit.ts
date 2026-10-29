@@ -24,6 +24,30 @@ export function matchesCheckpoint(
     bid.eligible !== false
   );
 }
+
+function firstById<T>(items: T[], key: (item: T) => string) {
+  const index = new Map<string, T>();
+  for (const item of items) {
+    const id = key(item);
+    if (!index.has(id)) index.set(id, item);
+  }
+  return index;
+}
+
+function validHashChain(entries: AuditEntry[]) {
+  let previousHash: string | null = null;
+  for (const [index, entry] of entries.entries()) {
+    if (
+      entry.sequence !== index + 1 ||
+      entry.previousHash !== previousHash ||
+      hashBidAudit(entry) !== entry.hash
+    )
+      return false;
+    previousHash = entry.hash;
+  }
+  return true;
+}
+
 export function verifyAudit(
   entries: AuditEntry[],
   bids: RecordedBid[],
@@ -34,24 +58,16 @@ export function verifyAudit(
     reason: string,
   ) => ({ status, reason });
   if (!checkpoints.length)
-    return result(
-      'not_verifiable',
-      'No audit checkpoint covers this history.',
-    );
+    return result('not_verifiable', 'No audit checkpoint covers this history.');
   try {
-    let previousHash: string | null = null;
-    for (const [index, entry] of entries.entries()) {
-      if (
-        entry.sequence !== index + 1 ||
-        entry.previousHash !== previousHash ||
-        hashBidAudit(entry) !== entry.hash
-      )
-        return result('tampered', 'The recorded hash chain is inconsistent.');
-      previousHash = entry.hash;
-    }
+    if (!validHashChain(entries))
+      return result('tampered', 'The recorded hash chain is inconsistent.');
+    const entriesByBid = firstById(entries, (entry) => entry.bidId);
+    const bidsById = firstById(bids, (bid) => bid.id);
+
     for (const checkpoint of checkpoints) {
-      const entry = entries.find((e) => e.bidId === checkpoint.entry.bidId);
-      const bid = bids.find((b) => b.id === checkpoint.entry.bidId);
+      const entry = entriesByBid.get(checkpoint.entry.bidId);
+      const bid = bidsById.get(checkpoint.entry.bidId);
       if (checkpoint.confirmed && !matchesCheckpoint(checkpoint, entry, bid))
         return result(
           'tampered',
@@ -76,12 +92,13 @@ export function verifyAudit(
     if (
       entries.length !== checkpoints.length ||
       bids.length !== entries.length ||
-      bids.some((b) => !entries.some((e) => e.bidId === b.id))
+      bids.some((bid) => !entriesByBid.has(bid.id))
     )
       return result(
         'tampered',
         'Bids were inserted or removed outside the checkpointed history.',
       );
+
     return result(
       'intact',
       'The complete recorded bid history matches the audit checkpoints.',
