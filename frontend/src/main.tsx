@@ -1,3 +1,4 @@
+import { SessionSkeleton } from "./components/SessionSkeleton";
 import { StrictMode, lazy, Suspense } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
@@ -12,7 +13,7 @@ const isConnected = location.pathname === "/";
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <SessionProvider restoreSession={!isHaus}>
-      <Suspense fallback={null}>
+      <Suspense fallback={<SessionSkeleton />}>
         {isConnected ? (
           <ConnectedApp />
         ) : isHaus ? (

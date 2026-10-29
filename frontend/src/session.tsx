@@ -1,3 +1,4 @@
+import { SessionSkeleton } from "./components/SessionSkeleton";
 import {
   createContext,
   useContext,
@@ -243,7 +244,7 @@ export function SessionProvider({
       );
     }
   }
-  if (restoring) return <p role="status">Restoring your session…</p>;
+  if (restoring) return <SessionSkeleton />;
   if (restoreError)
     return (
       <section className="hs-utility-page">
