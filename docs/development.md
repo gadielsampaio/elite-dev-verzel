@@ -408,7 +408,7 @@ Its artwork snapshot is defined in `prisma/seeds/data/items.json` (Cleveland
 141639, CC0 with an image); seeding needs no museum request. Images still use Cleveland's CDN.
 No bids, holds, financial credits or audit evidence are fabricated.
 
-Reruns preserve existing names, emails, passwords, balances, lot dates and status; they do not reopen an
+Reruns sync fixture names/emails by user ID and preserve passwords, balances, lot dates and status; they do not reopen an
 expired/cancelled lot. Create another lot through Seller Studio when needed.
 Seeds are transactional;
 if they fail, their writes roll back, but successfully applied migrations remain.

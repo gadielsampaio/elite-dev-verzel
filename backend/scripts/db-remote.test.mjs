@@ -7,6 +7,12 @@ import { Pool } from 'pg';
 import { parse } from 'dotenv';
 
 const cwd = new URL('../', import.meta.url);
+const fixtures = JSON.parse(
+  readFileSync(
+    new URL('../prisma/seeds/data/users.json', import.meta.url),
+    'utf8',
+  ),
+);
 const run = (env, args = []) =>
   spawnSync(process.execPath, ['scripts/db-remote.mjs', ...args], {
     cwd,
@@ -77,7 +83,19 @@ test(
       );
       await pool.query(`UPDATE "${schema}".lots SET status = 'cancelled'`);
       const before = await pool.query(`SELECT * FROM "${schema}".lots`);
+      await pool.query(
+        `UPDATE "${schema}".users SET name = 'Old seed name', email = $1 WHERE id = $2`,
+        ['old-seed@example.invalid', fixtures[0].id],
+      );
       const second = run({ ...config, SEED_PASSWORD: randomUUID() });
+      const updated = await pool.query(
+        `SELECT name,email FROM "${schema}".users WHERE id = $1`,
+        [fixtures[0].id],
+      );
+      assert.deepEqual(updated.rows[0], {
+        name: fixtures[0].name,
+        email: fixtures[0].email,
+      });
       assert.equal(second.status, 0, second.stdout + second.stderr);
       assert.deepEqual(
         (

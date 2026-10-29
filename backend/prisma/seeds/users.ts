@@ -9,7 +9,7 @@ export async function seedUsers(tx: Prisma.TransactionClient) {
   for (const user of users) {
     await tx.user.upsert({
       where: { id: user.id },
-      update: {},
+      update: { name: user.name, email: user.email },
       create: { ...user, role: user.role as UserRole, passwordHash },
     });
   }
