@@ -5,7 +5,6 @@ import { randomUUID } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { Pool } from 'pg';
 import { parse } from 'dotenv';
-import { seedConfig } from './seed-demo.mjs';
 
 const cwd = new URL('../', import.meta.url);
 const run = (env, args = []) =>
@@ -16,8 +15,17 @@ const run = (env, args = []) =>
   });
 test('requires an explicit target and validates seed password before connecting', () => {
   assert.equal(run({ REMOTE_DATABASE_URL: '' }, ['--check']).status, 1);
-  assert.throws(() => seedConfig({ SEED_PASSWORD: 'short' }));
-  assert.throws(() => seedConfig({ SEED_PASSWORD: 'ü'.repeat(40) }));
+  for (const password of ['short', 'ü'.repeat(40)])
+    assert.equal(
+      run(
+        {
+          REMOTE_DATABASE_URL: 'postgresql://localhost/unused',
+          SEED_PASSWORD: password,
+        },
+        ['--check'],
+      ).status,
+      1,
+    );
 });
 test('check mode does not connect or expose credentials; migrations can run without seeds', () => {
   const result = run(
@@ -49,7 +57,6 @@ test(
       const config = {
         REMOTE_DATABASE_URL: url.href,
         SEED_PASSWORD: randomUUID(),
-        SEED_NAMESPACE: 'seed-test',
       };
       const first = run(config);
       assert.equal(first.status, 0, first.stdout + first.stderr);
@@ -64,6 +71,9 @@ test(
       assert.equal(
         (await pool.query(`SELECT * FROM "${schema}".items`)).rowCount,
         1,
+      );
+      const items = await pool.query(
+        `SELECT * FROM "${schema}".items ORDER BY id`,
       );
       await pool.query(`UPDATE "${schema}".lots SET status = 'cancelled'`);
       const before = await pool.query(`SELECT * FROM "${schema}".lots`);
@@ -80,6 +90,10 @@ test(
       assert.deepEqual(
         (await pool.query(`SELECT * FROM "${schema}".lots`)).rows,
         before.rows,
+      );
+      assert.deepEqual(
+        (await pool.query(`SELECT * FROM "${schema}".items ORDER BY id`)).rows,
+        items.rows,
       );
       assert.equal(
         (await pool.query(`SELECT * FROM "${schema}".wallet_transactions`))

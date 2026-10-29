@@ -1,0 +1,21 @@
+[
+  {
+    "estimatedValue": "500",
+    "artwork": {
+      "provider": "cleveland",
+      "articArtworkId": 141639,
+      "articImageId": null,
+      "name": "Twilight in the Wilderness",
+      "imageUrl": "https://openaccess-cdn.clevelandart.org/1965.233/1965.233_web.jpg",
+      "printImageUrl": "https://openaccess-cdn.clevelandart.org/1965.233/1965.233_print.jpg",
+      "artistDisplay": "Frederic Edwin Church (American, 1826\u20131900)",
+      "creditLine": "Mr. and Mrs. William H. Marlatt Fund",
+      "isPublicDomain": true,
+      "dateDisplay": "1860",
+      "mediumDisplay": "oil on canvas",
+      "dimensions": "Unframed: 101.6 x 162.6 cm (40 x 64 in.); Framed: 124 x 185 x 13 cm (48 13/16 x 72 13/16 x 5 1/8 in.)",
+      "artworkType": "Painting"
+    },
+    "lotId": "939ee759-74e6-4a86-aeab-42cfc709001e"
+  }
+]

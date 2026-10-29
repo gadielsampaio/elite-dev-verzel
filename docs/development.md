@@ -364,12 +364,18 @@ No additional frontend environment variable is required. See the [room protocol]
 
 ## Remote migrations and demo seeds
 
+Mock records live in `backend/prisma/seeds/data/`: `users.json`, `wallets.json`,
+`lots.json` and `items.json`. Edit these JSON files to change the sample data.
+Each entity has a small matching seeder in `backend/prisma/seeds/`;
+`backend/prisma/seed.ts` runs them in order inside one Prisma transaction.
+`prisma7.config.ts` registers it with Prisma’s explicit `db seed` command.
+Seeding never clears the database.
+
 Requires Node.js 24 and installed backend dependencies (`npm ci --prefix backend`).
 In the root `.env` (see [.env.example](../.env.example)), configure:
 
 - `REMOTE_DATABASE_URL`: Render PostgreSQL **external** connection URL when running from your computer. Use `sslmode=verify-full` for Render external connections; keep TLS certificate verification enabled.
 - `SEED_PASSWORD`: demo login password, at least 12 characters and at most 72 UTF-8 bytes. Never commit it.
-- `SEED_NAMESPACE`: defaults to `auction-demo-v1`; keep it stable for repeatable seeds.
 
 From the repository root:
 
@@ -393,20 +399,31 @@ Paths are relative to the repository root. Exported environment variables take p
 the local `backend/.env` database. In a Render shell, set it to the appropriate
 internal URL instead. No credentials are printed.
 
-Seeds create `auctioneer@auction-demo-v1.example.invalid`,
-`bidder-a@auction-demo-v1.example.invalid` and `bidder-b@auction-demo-v1.example.invalid`
-using `SEED_PASSWORD`. The namespace replaces `auction-demo-v1` in these addresses.
+Fresh seeds create `auctioneer@mail.com`,
+`bidderA@mail.com` and `bidderB@mail.com`
+using `SEED_PASSWORD`. IDs and email addresses are fixed in the JSON fixtures.
 Each account has an empty USD wallet. Bidders can use the existing simulated deposit UI.
 One lot opens immediately for seven days, with starting bid $100 and increment $5.
-Its artwork snapshot comes from the checked-in Cleveland fixture (141639, CC0 with
-an image); seeding needs no museum request. Images still use Cleveland's CDN.
+Its artwork snapshot is defined in `prisma/seeds/data/items.json` (Cleveland
+141639, CC0 with an image); seeding needs no museum request. Images still use Cleveland's CDN.
 No bids, holds, financial credits or audit evidence are fabricated.
 
-Reruns preserve passwords, balances, lot dates and status; they do not reopen an
+Reruns preserve existing names, emails, passwords, balances, lot dates and status; they do not reopen an
 expired/cancelled lot. Create another lot through Seller Studio when needed.
-A different namespace creates a separate demo dataset. Seeds are transactional;
+Seeds are transactional;
 if they fail, their writes roll back, but successfully applied migrations remain.
 The script does not reset databases and is not part of automatic deployment startup.
+
+For local Docker (set `SEED_PASSWORD` in your shell first):
+
+```sh
+docker compose exec -e SEED_PASSWORD api npm run db:seed
+```
+
+For host execution, configure `DATABASE_URL` and `SEED_PASSWORD` in `backend/.env`,
+then run `npm run db:seed --prefix backend`. Generate Prisma Client first on a
+fresh checkout. Prisma 7 does not seed automatically after resetting migrations.
+A database reset is a separate destructive action, never part of the seed script.
 
 Validation (local isolated schema; removed after the test):
 
@@ -416,10 +433,23 @@ RUN_DATABASE_TESTS=1 node --test backend/scripts/db-remote.test.mjs
 
 Without `RUN_DATABASE_TESTS=1`, only configuration checks run. Database tests use
 `backend/.env` and require permission to create an isolated schema. The tests verify
-migration application, seed creation, and preservation on reruns. Production execution on 2026-10-28 applied migrations and seeded three accounts,
-empty wallets and open lot `939ee759-74e6-4a86-aeab-42cfc709001e`. A rerun preserved
-the lot and schedule. All three logins and wallet reads returned HTTP 200.
-Credentials are stored locally in ignored `.env.remote`; do not commit or publish them.
+migration application, seed creation, and preservation on reruns.
+With explicit authorization, local and Render databases were reset and seeded on
+2026-10-28 (America/Campo_Grande). Each has three users/wallets and one mock lot;
+all three logins and API health returned HTTP 200. No bids or financial entries
+were fabricated. Pre-reset database dumps and local audit checkpoints are retained
+in ignored `.local/backups/`.
+Credentials remain in ignored `.env.seed.local` (local) and `.env.remote` (Render).
+Legacy `SEED_NAMESPACE` settings are ignored. Existing local accounts with the old
+`auction-local-demo-v1` addresses are not renamed or removed; rerunning adds the
+fixed JSON accounts alongside them. To reuse the database/password configurations:
+
+```sh
+npm run db:remote --prefix backend -- --env-file .env.seed.local
+npm run db:remote --prefix backend -- --env-file .env.remote
+```
+
+These commands migrate and seed; they never reset data. Do not publish the env files.
 
 Production bidding/settlement verification is pending deployment of the
 trigger-history migration. Render can remain on Free compute with

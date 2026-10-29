@@ -3,7 +3,6 @@ import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parse } from 'dotenv';
-import { seedConfig, seedDemo } from './seed-demo.mjs';
 
 const backend = fileURLToPath(new URL('../', import.meta.url));
 const root = resolve(backend, '..');
@@ -45,11 +44,19 @@ async function main() {
     url.pathname.length < 2
   )
     throw new Error('REMOTE_DATABASE_URL must be a PostgreSQL database URL');
-  const config = migrateOnly ? null : seedConfig(env);
+  if (
+    !migrateOnly &&
+    (!env.SEED_PASSWORD ||
+      env.SEED_PASSWORD.length < 12 ||
+      Buffer.byteLength(env.SEED_PASSWORD) > 72)
+  )
+    throw new Error(
+      'SEED_PASSWORD must be 12 characters minimum and 72 bytes maximum',
+    );
   console.log(`Target: ${url.hostname}:${url.port || '5432'}${url.pathname}`);
   if (check) {
     console.log(
-      `Configuration valid. Would apply migrations${config ? ' and demo seeds' : ''}. No database connection made.`,
+      `Configuration valid. Would apply migrations${!migrateOnly ? ' and demo seeds' : ''}. No database connection made.`,
     );
     return;
   }
@@ -74,17 +81,30 @@ async function main() {
       'Migration deployment failed; seeds were not run. Check connectivity and migration status.',
     );
   console.log('Migrations applied successfully.');
-  if (config) {
-    try {
-      const seeded = await seedDemo(env.REMOTE_DATABASE_URL, config);
-      console.log(
-        `Demo accounts/wallets ready. Lot ${seeded.lotId}: ${seeded.lotCreated ? 'created, open for 7 days' : 'preserved (schedule/status unchanged)'}.`,
+  if (!migrateOnly) {
+    for (const command of [['generate'], ['db', 'seed']]) {
+      const seeded = spawnSync(
+        process.execPath,
+        [
+          'node_modules/prisma/build/index.js',
+          ...command,
+          '--config',
+          'prisma7.config.ts',
+        ],
+        {
+          cwd: backend,
+          env: { ...env, DATABASE_URL: env.REMOTE_DATABASE_URL },
+          encoding: 'utf8',
+        },
       );
-    } catch {
-      throw new Error(
-        'Seed transaction failed and was rolled back. Check database permissions, schema and seed account conflicts. Migrations remain applied.',
-      );
+      if (seeded.error || seeded.status !== 0)
+        throw new Error(
+          'Prisma generation or seeding failed. Migrations remain applied; existing data was not reset.',
+        );
     }
+    console.log(
+      'Prisma mock seeds ready: one auctioneer, two bidders, wallets and a lot.',
+    );
   }
 }
 main().catch((error) => {
