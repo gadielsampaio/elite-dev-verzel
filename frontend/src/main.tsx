@@ -4,7 +4,6 @@ import { restoreLegacyLink } from "./haus/app/routing/legacyLinks";
 import { createRoot } from "react-dom/client";
 import { SessionProvider } from "./auth/SessionProvider";
 import { PreferencesProvider } from "./preferences/PreferencesProvider";
-import { SessionBoundary } from "./haus/app/auth/components/SessionBoundary";
 import { SessionSkeleton } from "./components/SessionSkeleton";
 import "./haus/app/theme.css";
 
@@ -17,11 +16,9 @@ createRoot(document.getElementById("root")!).render(
     <HashRouter>
       <PreferencesProvider>
         <SessionProvider>
-          <SessionBoundary>
-            <Suspense fallback={<SessionSkeleton />}>
-              <App />
-            </Suspense>
-          </SessionBoundary>
+          <Suspense fallback={<SessionSkeleton />}>
+            <App />
+          </Suspense>
         </SessionProvider>
       </PreferencesProvider>
     </HashRouter>

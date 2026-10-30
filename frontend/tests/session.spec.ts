@@ -67,11 +67,13 @@ test("server rejection during restore clears stored credentials", async ({
     await page.evaluate((key) => sessionStorage.getItem(key), key),
   ).toBeNull();
 });
-test("temporary restore failure keeps the token and supports retry", async ({
+test("temporary restore failure on a private page supports retry", async ({
   page,
 }) => {
   await setup(page);
   await login(page);
+  await page.goto("/#/wallet");
+  await expect(page.getByRole("heading", { name: "My wallet", exact: true })).toBeVisible();
   let fail = true;
   await page.route(`**/api/users/${user.id}`, (route) =>
     route.fulfill(
@@ -475,4 +477,42 @@ test("failed sign out during recovery stays visible and can be retried", async (
   await expect(
     page.getByRole("heading", { name: "Session unavailable" }),
   ).toHaveCount(0);
+});
+
+
+test("private pages wait for restoration without sending anonymous account requests", async ({ page }) => {
+  await setup(page);
+  let release!: () => void;
+  const pending = new Promise<void>((resolve) => { release = resolve; });
+  let walletRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/wallet") walletRequests++;
+  });
+  await page.route("**/api/auth/refresh", async (route) => {
+    await pending;
+    await route.fulfill({ json: { accessToken: token } });
+  });
+  try {
+    await page.goto("/#/wallet");
+    await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
+    await expect(page.getByRole("status", { name: "Verifying your session" })).toBeVisible();
+    expect(walletRequests).toBe(0);
+    release();
+    await expect(page.getByRole("heading", { name: "My wallet", exact: true })).toBeVisible();
+    await expect.poll(() => walletRequests).toBeGreaterThan(0);
+  } finally {
+    release();
+  }
+});
+
+test("public collection remains usable when session restoration fails", async ({ page }) => {
+  await setup(page);
+  await page.route("**/api/auth/refresh", (route) =>
+    route.fulfill({ status: 503, json: { message: "Unavailable" } }),
+  );
+  await page.goto("/");
+  await expect(page.getByRole("heading", { level: 1, name: lot.title })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Session unavailable" })).toHaveCount(0);
+  await page.getByRole("link", { name: "LOG IN", exact: true }).first().click();
+  await expect(page.getByRole("heading", { name: "Session unavailable" })).toBeVisible();
 });

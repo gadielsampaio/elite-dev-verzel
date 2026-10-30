@@ -157,7 +157,11 @@ A suíte padrão de navegador simula respostas da API. Os testes `live-bidding.s
 
 ## Deploy
 
-O frontend está na Vercel; a API e o PostgreSQL, no Render. No Render, configure `DATABASE_URL`, `JWT_SECRET`, `CATALOG_PROVIDER=cleveland` e `CORS_ORIGINS` com a origem exata do frontend. Use `backend/` como raiz e `npm run start:render` como comando Docker: aplica migrations, gera o client, compila e inicia a API.
+O frontend está na Vercel; a API e o PostgreSQL, no Render. No Render, configure `DATABASE_URL`, `JWT_SECRET`, `CATALOG_PROVIDER=cleveland` e `CORS_ORIGINS` com a origem exata do frontend. Use `backend/` como raiz e `npm run start:render` como comando Docker (ou deixe o override vazio para usar o CMD da imagem). O estágio final do Docker gera o Prisma e compila a API durante o build da imagem. A inicialização executa apenas `node dist/main.js`, sem compilar ou aplicar migrations.
+
+Antes de publicar uma versão com alterações no banco, execute `npm run db:remote --prefix backend -- --migrate-only` em uma máquina confiável, com as dependências instaladas e `REMOTE_DATABASE_URL` configurada no `.env` da raiz. O comando aplica migrations sem seeds e não exige um hook pago do Render. Se falhar, interrompa a publicação. Use migrations compatíveis com a versão anterior enquanto ela estiver em execução. Um banco novo também exige essa etapa antes do primeiro deploy.
+
+O Render Free continua suspendendo o serviço após inatividade. A mudança remove a compilação da retomada, mas não elimina a espera da plataforma. Páginas públicas aparecem enquanto a sessão é restaurada; páginas de conta e formulários de autenticação aguardam a restauração. O Docker Compose usa explicitamente o estágio `development`, preservando o modo watch.
 
 Na Vercel, use `frontend/`, build `npm run build`, saída `dist`, `VITE_API_BASE_URL=/api` e `VITE_SOCKET_BASE_URL=https://elite-dev-verzel-2c5n.onrender.com`. O [vercel.json](frontend/vercel.json) encaminha HTTP ao backend; Socket.IO conecta diretamente. Em outro deploy, atualize também esse destino. Mantenha cookies Secure em produção; o Compose já configura a exceção para HTTP local.
 
@@ -165,6 +169,7 @@ O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE
 
 ## Comportamentos conhecidos e limitações
 
+- **Primeiro acesso lento (Render Free):** o backend é suspenso após 15 minutos sem tráfego de entrada. O próximo acesso reativa o serviço, o que pode levar cerca de um minuto; dados dos leilões e login podem permanecer carregando nesse período. A navegação pública aparece de forma independente. A compilação ocorre no deploy, e não em cada retomada, mas a espera do plano gratuito permanece. Veja os [limites das instâncias gratuitas do Render](https://render.com/docs/free#spinning-down-on-idle).
 - **Vitrine sem lotes ao vivo:** execute o seed para criar o lote `Stag at Sharkey's`. Se ele já encerrou ou foi cancelado, publique outro pelo Seller Studio; executar o seed novamente não reabre o lote.
 - **Catálogo:** o Adapter normaliza o Cleveland. Lotes publicados guardam os dados da obra, então consultas e operações não precisam chamar o catálogo novamente. As imagens ainda dependem do CDN do museu; indisponibilidade pode impedir sua exibição.
 - **Dinheiro:** depósitos são simulados, sem gateway de pagamento. Saldo deriva do extrato e das reservas, com operações críticas em transações. O cancelamento de lotes agendados ou ao vivo libera as reservas sem alterar o saldo total.

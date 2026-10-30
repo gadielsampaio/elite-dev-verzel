@@ -127,6 +127,7 @@ export function FeaturedLot({ lot }: { lot: Lot | null }) {
             className="group absolute inset-0 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-ring focus-visible:-outline-offset-4"
           >
             <Artwork
+              priority
               key={lot.id}
               lot={lot}
               className="h-auto max-h-full w-full object-contain transition-transform duration-2000 ease-out motion-safe:group-hover:scale-90 motion-safe:group-focus-visible:scale-90 motion-reduce:transition-none"

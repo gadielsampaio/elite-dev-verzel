@@ -22,7 +22,7 @@ for (const path of ["/#/missing-page", "/shadcn/missing-page", "/missing-page"])
       page.getByRole("heading", { name: "Page not found", exact: true }),
     ).toHaveCount(0);
   });
-test("session and content skeletons disappear when their requests complete", async ({
+test("public content loads while session restoration is still pending", async ({
   page,
 }) => {
   await setup(page);
@@ -44,10 +44,7 @@ test("session and content skeletons disappear when their requests complete", asy
     const session = page.getByRole("status", {
       name: "Verifying your session",
     });
-    await expect(session).toBeVisible();
-    await expect(session).toHaveCSS("background-color", "rgb(245, 239, 227)");
-    await expect(page.locator(".session-skeleton-nav")).toBeVisible();
-    releaseSession();
+    await expect(page.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
     await expect(session).toHaveCount(0);
     const hero = page.getByRole("status", {
       name: "Loading auctions…",

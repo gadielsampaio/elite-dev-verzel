@@ -16,7 +16,9 @@ services:
       retries: 10
 
   api:
-    build: ./backend
+    build:
+      context: ./backend
+      target: development
     ports:
       - "3000:3000"
     environment:

@@ -157,7 +157,11 @@ The default browser suite mocks API responses. The separate `live-bidding.spec.t
 
 ## Deployment
 
-The frontend is hosted on Vercel; the API and PostgreSQL are on Render. On Render, configure `DATABASE_URL`, `JWT_SECRET`, `CATALOG_PROVIDER=cleveland`, and `CORS_ORIGINS` with the exact frontend origin. Use `backend/` as the root and `npm run start:render` as the Docker command: it applies migrations, generates the client, builds, and starts the API.
+The frontend is hosted on Vercel; the API and PostgreSQL are on Render. On Render, configure `DATABASE_URL`, `JWT_SECRET`, `CATALOG_PROVIDER=cleveland`, and `CORS_ORIGINS` with the exact frontend origin. Use `backend/` as the root and `npm run start:render` as the Docker command (or leave the override empty to use the image CMD). The final Docker stage generates Prisma and compiles the API at image build time. Startup only runs `node dist/main.js`; it never builds or migrates the database.
+
+Before deploying a version with schema changes, run `npm run db:remote --prefix backend -- --migrate-only` from a trusted machine with dependencies installed and `REMOTE_DATABASE_URL` configured in the root `.env`. This applies migrations without seeding and does not require a paid Render pre-deploy hook. Stop the release if migration fails; only deploy the new application after successful migration. Use backward-compatible migrations while the old version is still running. A fresh database also needs this step before its first deployment.
+
+Render Free still sleeps after inactivity. This setup removes compilation from wake-up, but does not eliminate platform cold starts. Public pages render while session restoration runs; account pages and authentication forms wait for restoration. Docker Compose explicitly uses the `development` stage and retains watch mode.
 
 On Vercel, use `frontend/`, build command `npm run build`, output directory `dist`, `VITE_API_BASE_URL=/api`, and `VITE_SOCKET_BASE_URL=https://elite-dev-verzel-2c5n.onrender.com`. [vercel.json](frontend/vercel.json) forwards HTTP to the backend; Socket.IO connects directly. Update that destination for a different deployment. Keep cookies Secure in production; Compose already configures the exception for local HTTP.
 
@@ -165,6 +169,7 @@ The command `npm run db:remote --prefix backend -- --check` validates `REMOTE_DA
 
 ## Known behavior and limitations
 
+- **Slow first visit (Render Free):** the backend sleeps after 15 minutes without incoming traffic. The next visit wakes it, which can take about a minute; auction data and sign-in may remain loading during that time. Public navigation renders independently. Builds run during deployment rather than each wake-up, but the free-plan cold start still applies. See [Render’s free-instance limits](https://render.com/docs/free#spinning-down-on-idle).
 - **No live lots in the collection:** run the seed to create `Stag at Sharkey's`. If it has already closed or been cancelled, publish another lot through Seller Studio; rerunning the seed does not reopen it.
 - **Catalog:** the adapter normalizes Cleveland data. Published lots store artwork details, so queries and operations do not need to call the catalog again. Images still depend on the museum CDN and may fail to display during an outage.
 - **Money:** deposits are simulated, with no payment gateway. Balances are derived from the ledger and reservations, with critical operations inside transactions. Cancelling scheduled or live lots releases reservations without changing the total balance.
