@@ -161,21 +161,15 @@ O frontend está na Vercel; a API e o PostgreSQL, no Render. No Render, configur
 
 Antes de publicar uma versão com alterações no banco, execute `npm run db:remote --prefix backend -- --migrate-only` em uma máquina confiável, com as dependências instaladas e `REMOTE_DATABASE_URL` configurada no `.env` da raiz. O comando aplica migrations sem seeds e não exige um hook pago do Render. Se falhar, interrompa a publicação. Use migrations compatíveis com a versão anterior enquanto ela estiver em execução. Um banco novo também exige essa etapa antes do primeiro deploy.
 
-O Render Free continua suspendendo o serviço após inatividade. A mudança remove a compilação da retomada, mas não elimina a espera da plataforma. Páginas públicas aparecem enquanto a sessão é restaurada; páginas de conta e formulários de autenticação aguardam a restauração. O Docker Compose usa explicitamente o estágio `development`, preservando o modo watch.
+O Docker Compose usa explicitamente o estágio `development`, preservando o modo watch.
 
 Na Vercel, use `frontend/`, build `npm run build`, saída `dist`, `VITE_API_BASE_URL=/api` e `VITE_SOCKET_BASE_URL=https://elite-dev-verzel-2c5n.onrender.com`. O [vercel.json](frontend/vercel.json) encaminha HTTP ao backend; Socket.IO conecta diretamente. Em outro deploy, atualize também esse destino. Mantenha cookies Secure em produção; o Compose já configura a exceção para HTTP local.
 
 O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE_URL` e `SEED_PASSWORD` do `.env` raiz sem escrever. Sem `--check`, aplica migrations e seeds; `--migrate-only` aplica apenas migrations. Ele não limpa o banco. Variáveis `VITE_*` são públicas: não coloque senhas ou URLs de banco nelas.
 
-### Verificação periódica de produção
-
-O workflow [Production health check](https://github.com/gadielsampaio/elite-dev-verzel/actions/workflows/production-health.yml) consulta `/health` a cada dez minutos, verifica a API e o banco e ajuda a manter o Render ativo. Usa um runner padrão do GitHub, gratuito neste repositório público, sem segredos ou permissões de escrita. Para executar manualmente, acesse **Actions → Production health check → Run workflow**; desative pelo menu do workflow quando não precisar mais.
-
-Não há garantia de pontualidade: o GitHub pode atrasar execuções e desativa agendamentos de repositórios públicos após 60 dias sem atividade. Ainda podem ocorrer inicializações a frio. Um serviço ativo continuamente consome até 744 horas em um mês de 31 dias; as 750 horas gratuitas do Render são compartilhadas pelo workspace. Consulte os [limites do agendamento no GitHub](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) e os [limites de uso do Render](https://render.com/docs/free#monthly-usage-limits).
-
 ## Comportamentos conhecidos e limitações
 
-- **Primeiro acesso lento (Render Free):** o backend é suspenso após 15 minutos sem tráfego de entrada. O próximo acesso reativa o serviço, o que pode levar cerca de um minuto; dados dos leilões e login podem permanecer carregando nesse período. A navegação pública aparece de forma independente. A compilação ocorre no deploy, e não em cada retomada, mas a espera do plano gratuito permanece. Veja os [limites das instâncias gratuitas do Render](https://render.com/docs/free#spinning-down-on-idle).
+- **Carregamento inicial:** o primeiro acesso pode demorar um pouco mais porque a API está hospedada no plano gratuito do Render.
 - **Vitrine sem lotes ao vivo:** execute o seed para criar o lote `Stag at Sharkey's`. Se ele já encerrou ou foi cancelado, publique outro pelo Seller Studio; executar o seed novamente não reabre o lote.
 - **Catálogo:** o Adapter normaliza o Cleveland. Lotes publicados guardam os dados da obra, então consultas e operações não precisam chamar o catálogo novamente. As imagens ainda dependem do CDN do museu; indisponibilidade pode impedir sua exibição.
 - **Dinheiro:** depósitos são simulados, sem gateway de pagamento. Saldo deriva do extrato e das reservas, com operações críticas em transações. O cancelamento de lotes agendados ou ao vivo libera as reservas sem alterar o saldo total.
