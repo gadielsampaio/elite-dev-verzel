@@ -167,6 +167,12 @@ On Vercel, use `frontend/`, build command `npm run build`, output directory `dis
 
 The command `npm run db:remote --prefix backend -- --check` validates `REMOTE_DATABASE_URL` and `SEED_PASSWORD` from the root `.env` without writing. Without `--check`, it applies migrations and seeds; `--migrate-only` applies only migrations. It does not clear the database. `VITE_*` variables are public: do not put passwords or database URLs in them.
 
+### Scheduled production health check
+
+[Production health check](https://github.com/gadielsampaio/elite-dev-verzel/actions/workflows/production-health.yml) requests the API’s `/health` endpoint every ten minutes, verifies API/database readiness, and helps keep Render awake. It uses a standard GitHub-hosted runner, free for this public repository, with no secrets or write permissions. Run it manually from **Actions → Production health check → Run workflow**; disable it from the workflow menu when no longer needed.
+
+This is best effort: GitHub schedules can run late, and public-repository schedules are disabled after 60 days without repository activity. Cold starts can still occur. Keeping one service running continuously uses up to 744 hours in a 31-day month; Render’s 750 free instance hours are shared across the workspace. See [GitHub schedule limitations](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) and [Render usage limits](https://render.com/docs/free#monthly-usage-limits).
+
 ## Known behavior and limitations
 
 - **Slow first visit (Render Free):** the backend sleeps after 15 minutes without incoming traffic. The next visit wakes it, which can take about a minute; auction data and sign-in may remain loading during that time. Public navigation renders independently. Builds run during deployment rather than each wake-up, but the free-plan cold start still applies. See [Render’s free-instance limits](https://render.com/docs/free#spinning-down-on-idle).

@@ -167,6 +167,12 @@ Na Vercel, use `frontend/`, build `npm run build`, saída `dist`, `VITE_API_BASE
 
 O script `npm run db:remote --prefix backend -- --check` valida `REMOTE_DATABASE_URL` e `SEED_PASSWORD` do `.env` raiz sem escrever. Sem `--check`, aplica migrations e seeds; `--migrate-only` aplica apenas migrations. Ele não limpa o banco. Variáveis `VITE_*` são públicas: não coloque senhas ou URLs de banco nelas.
 
+### Verificação periódica de produção
+
+O workflow [Production health check](https://github.com/gadielsampaio/elite-dev-verzel/actions/workflows/production-health.yml) consulta `/health` a cada dez minutos, verifica a API e o banco e ajuda a manter o Render ativo. Usa um runner padrão do GitHub, gratuito neste repositório público, sem segredos ou permissões de escrita. Para executar manualmente, acesse **Actions → Production health check → Run workflow**; desative pelo menu do workflow quando não precisar mais.
+
+Não há garantia de pontualidade: o GitHub pode atrasar execuções e desativa agendamentos de repositórios públicos após 60 dias sem atividade. Ainda podem ocorrer inicializações a frio. Um serviço ativo continuamente consome até 744 horas em um mês de 31 dias; as 750 horas gratuitas do Render são compartilhadas pelo workspace. Consulte os [limites do agendamento no GitHub](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule) e os [limites de uso do Render](https://render.com/docs/free#monthly-usage-limits).
+
 ## Comportamentos conhecidos e limitações
 
 - **Primeiro acesso lento (Render Free):** o backend é suspenso após 15 minutos sem tráfego de entrada. O próximo acesso reativa o serviço, o que pode levar cerca de um minuto; dados dos leilões e login podem permanecer carregando nesse período. A navegação pública aparece de forma independente. A compilação ocorre no deploy, e não em cada retomada, mas a espera do plano gratuito permanece. Veja os [limites das instâncias gratuitas do Render](https://render.com/docs/free#spinning-down-on-idle).

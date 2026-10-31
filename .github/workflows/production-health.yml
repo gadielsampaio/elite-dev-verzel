@@ -1,0 +1,34 @@
+name: Production health check
+
+on:
+  schedule:
+    # Offset from the top of the hour to reduce scheduler contention (UTC).
+    - cron: '3,13,23,33,43,53 * * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/production-health.yml']
+
+permissions: {}
+
+concurrency:
+  group: production-health
+  cancel-in-progress: false
+
+jobs:
+  health:
+    if: github.repository == 'gadielsampaio/elite-dev-verzel'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Check API and database readiness
+        shell: bash
+        run: |
+          set -euo pipefail
+          response="$(curl --fail --silent --show-error \
+            --connect-timeout 15 --max-time 120 \
+            --retry 1 --retry-delay 5 --retry-max-time 160 \
+            https://elite-dev-verzel-2c5n.onrender.com/health)"
+          printf '%s\n' "$response"
+          jq -e '.status == "ok" and .services.api == "up" and .services.database == "up"' <<< "$response"
+          printf 'API and database healthy at %s\n' "$(date -u +%FT%TZ)" >> "$GITHUB_STEP_SUMMARY"
